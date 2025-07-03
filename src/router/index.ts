@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ProcessosView from '../views/ProcessosView.vue'
 import LoginView from '../views/LoginView.vue'
 import CadastroProcessoView from '../views/CadastroProcessoView.vue'
+import { obterUsuario } from '../services/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,6 +23,16 @@ const router = createRouter({
       component: CadastroProcessoView,
     },
   ],
+})
+
+router.beforeEach(async (to, from, next) => {
+  const publicPages = ['/login']
+  const authRequired = !publicPages.includes(to.path)
+  const user = await obterUsuario()
+  if (authRequired && !user) {
+    return next('/login')
+  }
+  next()
 })
 
 export default router
