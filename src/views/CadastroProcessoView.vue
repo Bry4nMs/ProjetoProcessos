@@ -47,12 +47,13 @@ async function registrarProcesso() {
     .insert([
       {
         user_id: usuario.id,
+        nome_acao: nomeAcao.value,
         area_tematica: areaTematica.value,
         ano_faf: anoFaf.value ? Number(anoFaf.value) : null,
-        tipo_natureza: tipoNatureza.value,
+        tipo_natureza_despesa: tipoNatureza.value,
         forca_responsavel: forcaResponsavel.value,
-        valor: valor.value ? Number(valor.value) : null,
-        data_criacao: dataCriacao.value || null,
+        valor_inicial_padrao: valor.value ? Number(valor.value) : null,
+        data_encaminhamento_aprovacao: dataCriacao.value || null,
         codigo_transferegov: codigoTransferegov.value,
         qtd_itens: quantidadeItens.value ? Number(quantidadeItens.value) : null,
         descricao_itens: descricaoItens.value,
@@ -61,7 +62,6 @@ async function registrarProcesso() {
         valor_economicidade: valorEconomicidade.value ? Number(valorEconomicidade.value) : null,
         valor_total_destinado: valorTotal.value ? Number(valorTotal.value) : null,
         descricao_geral: descricaoGeral.value,
-        nome_acao: nomeAcao.value,
       },
     ])
     .select('id')
@@ -72,23 +72,90 @@ async function registrarProcesso() {
   }
   const processoId = data[0].id
   // 2. Upload dos arquivos e vinculação na tabela documents
+  let arquivosEnviados = 0
+  let arquivosComErro = 0
+
+  console.log('Iniciando upload de arquivos:', arquivos.value.length, 'arquivos')
+
   for (const file of arquivos.value) {
-    const filePath = `${processoId}/${Date.now()}_${file.name}`
-    const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file)
-    if (!uploadError) {
-      const fileUrl = supabase.storage.from('documents').getPublicUrl(filePath).data.publicUrl
-      await supabase.from('documents').insert([
+    try {
+      console.log('Processando arquivo:', file.name, 'Tamanho:', file.size, 'Tipo:', file.type)
+
+      // Verificar se o arquivo é válido
+      if (!file || file.size === 0) {
+        console.error('Arquivo inválido:', file)
+        arquivosComErro++
+        feedback.value += `\nArquivo inválido: ${file.name}`
+        continue
+      }
+
+      const filePath = `${processoId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      console.log('Caminho do arquivo:', filePath)
+
+      // Upload para o storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Erro no upload:', uploadError)
+        arquivosComErro++
+        feedback.value += `\nFalha ao enviar ${file.name}: ${uploadError.message}`
+        continue
+      }
+
+      console.log('Upload bem-sucedido:', uploadData)
+
+      // Obter URL pública
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath)
+      const fileUrl = urlData.publicUrl
+      console.log('URL pública:', fileUrl)
+
+      // Inserir na tabela documents
+      const { data: insertData, error: insertError } = await supabase.from('documents').insert([
         {
           process_id: processoId,
           filename: file.name,
           file_url: fileUrl,
+          file_size: file.size,
+          mime_type: file.type,
+          storage_path: filePath,
         },
       ])
-    } else {
-      feedback.value += `\nFalha ao enviar ${file.name}: ${uploadError.message}`
+
+      if (insertError) {
+        console.error('Erro ao inserir no banco:', insertError)
+        arquivosComErro++
+        feedback.value += `\nFalha ao registrar ${file.name} no banco: ${insertError.message}`
+
+        // Tentar deletar o arquivo do storage se falhou no banco
+        await supabase.storage.from('documents').remove([filePath])
+      } else {
+        console.log('Inserção no banco bem-sucedida:', insertData)
+        arquivosEnviados++
+      }
+    } catch (error) {
+      console.error('Erro geral no processamento do arquivo:', error)
+      arquivosComErro++
+      feedback.value += `\nErro inesperado ao processar ${file.name}: ${(error as Error).message}`
     }
   }
-  feedback.value = 'Processo cadastrado com sucesso!'
+
+  // Feedback final
+  if (arquivos.value.length > 0) {
+    if (arquivosEnviados > 0) {
+      feedback.value = `Processo cadastrado com sucesso! ${arquivosEnviados} arquivo(s) anexado(s).`
+    }
+    if (arquivosComErro > 0) {
+      feedback.value += `\n${arquivosComErro} arquivo(s) com erro no envio.`
+    }
+  } else {
+    feedback.value = 'Processo cadastrado com sucesso!'
+  }
+
   limparFormulario()
   arquivos.value = []
   loading.value = false
@@ -110,6 +177,16 @@ function limparFormulario() {
   valorEconomicidade.value = ''
   valorTotal.value = ''
   descricaoGeral.value = ''
+}
+
+function handleFileSelected(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files) {
+    arquivos.value = Array.from(target.files)
+    console.log('Arquivos selecionados:', arquivos.value.length)
+  } else {
+    arquivos.value = []
+  }
 }
 </script>
 
@@ -288,12 +365,7 @@ function limparFormulario() {
             type="file"
             multiple
             class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep file:bg-abyss-primary file:text-abyss-black file:rounded file:px-4 file:py-2 file:mr-4"
-            @change="
-              (e) => {
-                const files = (e.target as HTMLInputElement).files
-                arquivos.value = files ? Array.from(files) : []
-              }
-            "
+            @change="handleFileSelected"
           />
         </div>
         <div class="flex justify-end">

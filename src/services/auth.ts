@@ -37,29 +37,42 @@ export async function buscarEtapasDoProcesso(processId: string) {
 }
 
 // Avançar etapa do processo
-export async function avancarEtapa(processId: string, etapaAtual: number, totalEtapas: number) {
-  // Marca a etapa atual como finalizada
-  const { error: errorAtual } = await supabase
+export async function avancarEtapa(processId: string, idxAtual: number, totalEtapas: number) {
+  // Busca as etapas ordenadas
+  const { data: etapas } = await supabase
     .from('process_steps')
-    .update({ ended_at: new Date().toISOString(), is_current: false })
+    .select('*')
     .eq('process_id', processId)
-    .eq('step_order', etapaAtual)
-    .eq('is_current', true)
+    .order('step_order', { ascending: true })
 
-  if (etapaAtual + 1 < totalEtapas) {
+  if (!etapas || etapas.length === 0) return { error: { message: 'Nenhuma etapa encontrada' } }
+
+  const etapaAtual = etapas[idxAtual]
+  if (!etapaAtual) return { error: { message: 'Etapa atual não encontrada' } }
+
+  if (idxAtual + 1 < totalEtapas) {
+    // Finaliza a etapa atual
+    const { error: errorAtual } = await supabase
+      .from('process_steps')
+      .update({ ended_at: new Date().toISOString(), is_current: false })
+      .eq('id', etapaAtual.id)
     // Marca a próxima etapa como atual e define started_at
+    const proximaEtapa = etapas[idxAtual + 1]
     const { error: errorProx } = await supabase
       .from('process_steps')
       .update({ started_at: new Date().toISOString(), is_current: true })
-      .eq('process_id', processId)
-      .eq('step_order', etapaAtual + 1)
+      .eq('id', proximaEtapa.id)
     return { error: errorAtual || errorProx }
   } else {
-    // Se for a última etapa, pode atualizar status do processo para 'Concluído'
+    // Se for a última etapa, finalizar a etapa e atualizar status do processo
+    const { error: errorUltima } = await supabase
+      .from('process_steps')
+      .update({ ended_at: new Date().toISOString(), is_current: false })
+      .eq('id', etapaAtual.id)
     const { error: errorProc } = await supabase
       .from('processes')
       .update({ status: 'Concluído' })
       .eq('id', processId)
-    return { error: errorAtual || errorProc }
+    return { error: errorUltima || errorProc }
   }
 }

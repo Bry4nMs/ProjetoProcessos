@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, defineProps, computed, toRef } from 'vue'
-import { useEtapaTimer } from '../composables/useEtapaTimer'
-import { buscarEtapasDoProcesso, avancarEtapa } from '../services/auth'
+import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted } from 'vue'
+import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../composables/useEtapaTimer'
+import { buscarEtapasDoProcesso } from '../services/auth'
+import { supabase } from '../services/supabase'
 
 const showModal = ref(false)
 const showEtapas = ref(false)
@@ -13,11 +14,29 @@ interface Etapa {
   ended_at?: string
   is_current?: boolean
   step_order?: number
+  inicio?: number | null
+  fim?: number | null
 }
+
+interface Documento {
+  id: string
+  filename: string
+  file_url: string
+  file_size?: number
+  mime_type?: string
+  storage_path: string
+  created_at?: string
+}
+
 const etapas = ref<Etapa[]>([])
+const documentos = ref<Documento[]>([])
 const etapaAtual = ref(0)
 const carregandoEtapas = ref(false)
+const carregandoDocumentos = ref(false)
 const erroEtapas = ref('')
+const erroDocumentos = ref('')
+const tempoEtapaAtual = ref(0)
+let timerInterval = null
 
 const props = defineProps({
   processo: {
@@ -52,6 +71,8 @@ async function carregarEtapas() {
         ended_at: e.ended_at,
         is_current: e.is_current,
         step_order: e.step_order,
+        inicio: e.started_at ? new Date(e.started_at).getTime() : null, // Para o timer
+        fim: e.ended_at ? new Date(e.ended_at).getTime() : null, // Opcional
       }),
     )
     etapaAtual.value = data.findIndex((e: { is_current: boolean }) => e.is_current)
@@ -60,11 +81,60 @@ async function carregarEtapas() {
   carregandoEtapas.value = false
 }
 
-function formatarValor(valor: number) {
+async function carregarDocumentos() {
+  carregandoDocumentos.value = true
+  erroDocumentos.value = ''
+  documentos.value = []
+
+  try {
+    // Tentar ordenar por created_at primeiro
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('process_id', props.processo.id)
+      .order('created_at', { ascending: false })
+
+    if (error && error.message.includes('created_at')) {
+      // Se created_at não existe, ordenar por id
+      const { data: dataFallback, error: errorFallback } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('process_id', props.processo.id)
+        .order('id', { ascending: false })
+
+      if (errorFallback) {
+        erroDocumentos.value = 'Erro ao buscar documentos: ' + errorFallback.message
+      } else if (dataFallback) {
+        documentos.value = dataFallback
+      }
+    } else if (error) {
+      erroDocumentos.value = 'Erro ao buscar documentos: ' + error.message
+    } else if (data) {
+      documentos.value = data
+    }
+  } catch (err) {
+    erroDocumentos.value = 'Erro inesperado ao buscar documentos: ' + (err as Error).message
+  }
+
+  carregandoDocumentos.value = false
+}
+
+function formatarValor(valor: number | null | undefined) {
+  if (valor === null || valor === undefined) return 'R$ 0,00'
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
-function formatarData(data: string) {
+
+function formatarData(data: string | null | undefined) {
+  if (!data) return 'Data não definida'
   return new Date(data).toLocaleDateString('pt-BR')
+}
+
+function formatarTamanhoArquivo(bytes: number | undefined) {
+  if (!bytes) return 'Tamanho desconhecido'
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  if (bytes === 0) return '0 Bytes'
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i]
 }
 
 function abrirEtapas(e) {
@@ -72,16 +142,43 @@ function abrirEtapas(e) {
   showEtapas.value = true
   carregarEtapas()
 }
+
 function fecharEtapas() {
   showEtapas.value = false
 }
 
+function abrirDetalhes(e) {
+  e.stopPropagation()
+  showModal.value = true
+  carregarDocumentos()
+}
+
+function fecharDetalhes() {
+  showModal.value = false
+}
+
+function visualizarArquivo(url: string) {
+  // Abrir arquivo em nova aba
+  window.open(url, '_blank')
+}
+
+function baixarArquivo(url: string, filename: string) {
+  // Criar link temporário para download
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.target = '_blank'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 async function passarEtapa(e) {
   e.stopPropagation()
-  if (etapas.value.length === 0) return
-  const totalEtapas = etapas.value.length
-  const idxAtual = etapaAtual.value
-  const { error } = await avancarEtapa(props.processo.id, idxAtual, totalEtapas)
+  if (!props.processo.id) return
+
+  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id })
+
   if (!error) {
     await carregarEtapas()
     emit('atualizar-processo')
@@ -93,9 +190,37 @@ const progresso = computed(() => {
   return (etapaAtual.value / (etapas.value.length - 1)) * 100
 })
 
-const etapaAtualRef = toRef(etapaAtual, 'value')
-const etapasRef = toRef(etapas, 'value')
-const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRef, etapaAtualRef)
+const tempoTotal = computed(() => tempoTotalProcesso(etapas.value))
+
+function startTimer() {
+  stopTimer()
+  const etapa = etapas.value[etapaAtual.value]
+  if (etapa && etapa.started_at && !etapa.ended_at && etapa.is_current) {
+    tempoEtapaAtual.value = tempoGastoEtapa(etapa.started_at)
+    timerInterval = setInterval(() => {
+      tempoEtapaAtual.value = tempoGastoEtapa(etapa.started_at)
+    }, 1000)
+  }
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+}
+
+watchEffect(() => {
+  startTimer()
+})
+
+onMounted(() => {
+  startTimer()
+})
+
+onUnmounted(() => {
+  stopTimer()
+})
 </script>
 
 <template>
@@ -117,8 +242,10 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
         }}</span>
         <span class="text-gray-400 text-xl">&#9825;</span>
       </div>
-      <h2 class="text-xl font-bold text-abyss-dark mb-1">{{ processo.nomeAcao }}</h2>
-      <p class="text-gray-600 mb-2">{{ processo.descricao }}</p>
+      <h2 class="text-xl font-bold text-abyss-dark mb-1">
+        {{ processo.nome_acao || 'Processo sem nome' }}
+      </h2>
+      <p class="text-gray-600 mb-2">{{ processo.descricao_geral || 'Sem descrição' }}</p>
       <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
         <span class="inline-flex items-center gap-1">
           <svg
@@ -139,23 +266,28 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
               d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          {{ processo.forcaResponsavel }}
+          {{ processo.forca_responsavel || 'Não definido' }}
         </span>
       </div>
       <div class="flex items-center gap-2 mb-2">
-        <span class="text-green-700 font-bold text-lg">{{ formatarValor(processo.valor) }}</span>
+        <span class="text-green-700 font-bold text-lg">{{
+          formatarValor(processo.valor_inicial_padrao || 0)
+        }}</span>
       </div>
       <div class="flex flex-wrap gap-2 mb-2">
         <span class="bg-abyss-primary/10 text-abyss-primary text-xs px-2 py-1 rounded">{{
-          processo.tipoNatureza
+          processo.tipo_natureza_despesa || 'Não definido'
         }}</span>
         <span class="bg-abyss-primary/10 text-abyss-primary text-xs px-2 py-1 rounded">{{
-          processo.areaTematica
+          processo.area_tematica || 'Não definido'
         }}</span>
       </div>
       <div class="flex items-center justify-between text-xs text-gray-500 mt-4">
-        <span>Criado em {{ formatarData(processo.dataCriacao) }}</span>
-        <span>Ano FAF: {{ processo.anoFaf }}</span>
+        <span
+          >Criado em
+          {{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}</span
+        >
+        <span>Ano FAF: {{ processo.ano_faf || 'Não definido' }}</span>
       </div>
       <!-- Botões de Etapas -->
       <div class="flex gap-2 mt-4">
@@ -163,7 +295,6 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
           v-if="processo.status !== 'Concluído'"
           class="px-3 py-1 bg-abyss-primary text-white rounded font-semibold shadow hover:bg-abyss-secondary transition"
           @click.stop="passarEtapa"
-          :disabled="processo.etapaAtual >= processo.etapas.length - 1"
         >
           Passar Etapa
         </button>
@@ -175,11 +306,7 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
         </button>
         <button
           class="px-3 py-1 bg-gray-100 text-abyss-dark rounded font-semibold shadow hover:bg-gray-200 transition"
-          @click.stop="
-            () => {
-              showModal = true
-            }
-          "
+          @click.stop="abrirDetalhes"
         >
           Ver Detalhes
         </button>
@@ -201,7 +328,9 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
         >
           &times;
         </button>
-        <h2 class="text-2xl font-bold text-abyss-primary mb-2">{{ processo.nomeAcao }}</h2>
+        <h2 class="text-2xl font-bold text-abyss-primary mb-2">
+          {{ processo.nome_acao || 'Processo sem nome' }}
+        </h2>
         <div class="mb-4 text-gray-600">
           Tempo total decorrido:
           <span class="font-semibold">{{ formatarSegundos(tempoTotal) }}</span>
@@ -227,12 +356,25 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
             <div class="flex-1">
               <div class="font-semibold text-abyss-dark">{{ etapa.nome }}</div>
               <div class="text-xs text-gray-500 mb-1">{{ etapa.descricao }}</div>
-              <div v-if="idx === etapaAtual" class="text-xs text-abyss-primary font-bold">
-                Tempo nesta etapa: <span>{{ formatarSegundos(tempoEtapaAtual) }}</span>
+              <div
+                v-if="idx === etapaAtual && etapa.started_at && !etapa.ended_at && etapa.is_current"
+                class="text-xs text-abyss-primary font-bold"
+              >
+                Tempo nesta etapa:
+                <span>{{ formatarSegundos(tempoEtapaAtual) }}</span>
+              </div>
+              <div
+                v-else-if="etapa.started_at && etapa.ended_at"
+                class="text-xs text-abyss-primary font-bold"
+              >
+                Tempo gasto nessa etapa:
+                <span>{{
+                  formatarSegundos(tempoGastoEtapa(etapa.started_at, etapa.ended_at))
+                }}</span>
               </div>
             </div>
             <div
-              v-if="idx === etapaAtual"
+              v-if="idx === etapaAtual && etapa.is_current"
               class="absolute top-2 right-2 text-xs font-bold text-abyss-primary"
             >
               ATUAL
@@ -242,52 +384,207 @@ const { tempoEtapaAtual, tempoTotal, formatarSegundos } = useEtapaTimer(etapasRe
       </div>
     </div>
 
-    <!-- Modal Detalhes (antigo) -->
+    <!-- Modal Detalhes com Documentos -->
     <div
       v-if="showModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
     >
-      <div class="bg-white rounded-xl shadow-xl p-8 max-w-lg w-full relative">
+      <div
+        class="bg-white rounded-xl shadow-xl p-8 max-w-4xl w-full relative max-h-[90vh] overflow-y-auto"
+      >
         <button
           class="absolute top-2 right-2 text-gray-400 hover:text-abyss-primary text-2xl"
-          @click="
-            () => {
-              showModal = false
-            }
-          "
+          @click="fecharDetalhes"
         >
           &times;
         </button>
-        <h2 class="text-xl font-bold text-abyss-dark mb-2">{{ processo.nomeAcao }}</h2>
-        <p class="mb-2 text-gray-600">{{ processo.descricao }}</p>
-        <div class="mb-2"><b>Área Temática:</b> {{ processo.areaTematica }}</div>
-        <div class="mb-2"><b>Ano do FAF:</b> {{ processo.anoFaf }}</div>
-        <div class="mb-2"><b>Tipo de Natureza:</b> {{ processo.tipoNatureza }}</div>
-        <div class="mb-2"><b>Força Responsável:</b> {{ processo.forcaResponsavel }}</div>
-        <div class="mb-2"><b>Valor:</b> {{ formatarValor(processo.valor) }}</div>
-        <div class="mb-2"><b>Data de Criação:</b> {{ formatarData(processo.dataCriacao) }}</div>
-        <div class="mb-2"><b>Código Transferegov:</b> {{ processo.codigoTransferegov }}</div>
-        <div class="mb-2"><b>Quantidade de Itens:</b> {{ processo.quantidadeItens }}</div>
-        <div class="mb-2"><b>Descrição dos Itens:</b> {{ processo.descricaoItens }}</div>
-        <div class="mb-2"><b>Destinação dos Itens:</b> {{ processo.destinacaoItens }}</div>
-        <div class="mb-2">
-          <b>Valor de Rendimentos:</b> {{ formatarValor(processo.valorRendimentos) }}
+
+        <!-- Informações do Processo -->
+        <div class="mb-6">
+          <h2 class="text-2xl font-bold text-abyss-dark mb-4">
+            {{ processo.nome_acao || 'Processo sem nome' }}
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div><b>Área Temática:</b> {{ processo.area_tematica || 'Não definido' }}</div>
+            <div><b>Ano do FAF:</b> {{ processo.ano_faf || 'Não definido' }}</div>
+            <div>
+              <b>Tipo de Natureza:</b> {{ processo.tipo_natureza_despesa || 'Não definido' }}
+            </div>
+            <div><b>Força Responsável:</b> {{ processo.forca_responsavel || 'Não definido' }}</div>
+            <div><b>Valor Inicial:</b> {{ formatarValor(processo.valor_inicial_padrao || 0) }}</div>
+            <div>
+              <b>Data de Encaminhamento:</b>
+              {{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}
+            </div>
+            <div>
+              <b>Código Transferegov:</b> {{ processo.codigo_transferegov || 'Não definido' }}
+            </div>
+            <div><b>Quantidade de Itens:</b> {{ processo.qtd_itens || 'Não definido' }}</div>
+          </div>
+
+          <div class="mt-4">
+            <div><b>Descrição dos Itens:</b> {{ processo.descricao_itens || 'Não definido' }}</div>
+            <div class="mt-2">
+              <b>Destinação dos Itens:</b> {{ processo.destinacao_itens || 'Não definido' }}
+            </div>
+            <div class="mt-2">
+              <b>Valor de Rendimentos:</b> {{ formatarValor(processo.valor_rendimentos || 0) }}
+            </div>
+            <div class="mt-2">
+              <b>Valor de Economicidade:</b> {{ formatarValor(processo.valor_economicidade || 0) }}
+            </div>
+            <div class="mt-2">
+              <b>Valor Total Destinado:</b> {{ formatarValor(processo.valor_total_destinado || 0) }}
+            </div>
+            <div class="mt-2">
+              <b>Descrição Geral:</b> {{ processo.descricao_geral || 'Não definido' }}
+            </div>
+          </div>
         </div>
-        <div class="mb-2">
-          <b>Valor de Economicidade:</b> {{ formatarValor(processo.valorEconomicidade) }}
+
+        <!-- Seção de Documentos -->
+        <div class="border-t pt-6">
+          <h3 class="text-xl font-bold text-abyss-dark mb-4 flex items-center gap-2">
+            <svg
+              class="w-6 h-6 text-abyss-primary"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            Documentos Anexados
+          </h3>
+
+          <div v-if="carregandoDocumentos" class="text-center py-4">
+            <div
+              class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-abyss-primary"
+            ></div>
+            <p class="mt-2 text-gray-600">Carregando documentos...</p>
+          </div>
+
+          <div v-else-if="erroDocumentos" class="text-red-600 text-center py-4">
+            {{ erroDocumentos }}
+          </div>
+
+          <div v-else-if="documentos.length === 0" class="text-center py-8 text-gray-500">
+            <svg
+              class="w-16 h-16 mx-auto text-gray-300 mb-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
+            </svg>
+            <p class="text-lg font-semibold">Nenhum documento anexado</p>
+            <p class="text-sm">Este processo ainda não possui documentos anexados.</p>
+          </div>
+
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              v-for="documento in documentos"
+              :key="documento.id"
+              class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+            >
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="w-10 h-10 bg-abyss-primary/10 rounded-lg flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-6 h-6 text-abyss-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-abyss-dark text-sm">{{ documento.filename }}</h4>
+                    <p class="text-xs text-gray-500">
+                      {{ formatarTamanhoArquivo(documento.file_size) }}
+                    </p>
+                    <p class="text-xs text-gray-400">
+                      {{
+                        documento.created_at
+                          ? formatarData(documento.created_at)
+                          : 'Documento anexado'
+                      }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex gap-2">
+                <button
+                  @click="visualizarArquivo(documento.file_url)"
+                  class="flex-1 px-3 py-2 bg-abyss-primary text-white text-sm rounded font-semibold hover:bg-abyss-secondary transition flex items-center justify-center gap-1"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                  Visualizar
+                </button>
+                <button
+                  @click="baixarArquivo(documento.file_url, documento.filename)"
+                  class="flex-1 px-3 py-2 bg-gray-200 text-abyss-dark text-sm rounded font-semibold hover:bg-gray-300 transition flex items-center justify-center gap-1"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Baixar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="mb-2">
-          <b>Valor Total Destinado à Ação:</b> {{ formatarValor(processo.valorTotal) }}
-        </div>
-        <div class="mb-2"><b>Descrição Geral:</b> {{ processo.descricaoGeral }}</div>
-        <div class="flex justify-end mt-4">
+
+        <div class="flex justify-end mt-6">
           <button
             class="px-4 py-2 bg-abyss-primary text-abyss-black rounded font-bold shadow hover:bg-abyss-secondary transition"
-            @click="
-              () => {
-                showModal = false
-              }
-            "
+            @click="fecharDetalhes"
           >
             Fechar
           </button>

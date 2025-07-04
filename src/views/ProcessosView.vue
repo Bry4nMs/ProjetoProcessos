@@ -110,10 +110,10 @@ interface Processo {
   user_id: string
   area_tematica?: string
   ano_faf?: number
-  tipo_natureza?: string
+  tipo_natureza_despesa?: string
   forca_responsavel?: string
-  valor?: number
-  data_criacao?: string
+  valor_inicial_padrao?: number
+  data_encaminhamento_aprovacao?: string
   codigo_transferegov?: string
   qtd_itens?: number
   descricao_itens?: string
@@ -145,7 +145,6 @@ async function carregarProcessos() {
   const { data } = await supabase
     .from('processes')
     .select('*')
-    .eq('user_id', usuario.id)
     .order('created_at', { ascending: false })
   // Para cada processo, buscar o status e etapa atual reais
   if (data) {
@@ -185,7 +184,9 @@ const processosFiltrados = computed(() => {
     const anoMatch = !filtroAno.value || proc.ano_faf === Number(filtroAno.value)
     const forcaMatch = !filtroForca.value || proc.forca_responsavel === filtroForca.value
     const dataMatch =
-      !filtroData.value || (proc.data_criacao && proc.data_criacao === filtroData.value)
+      !filtroData.value ||
+      (proc.data_encaminhamento_aprovacao &&
+        proc.data_encaminhamento_aprovacao === filtroData.value)
     // Adapte status conforme sua tabela
     const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
     return nomeMatch && anoMatch && forcaMatch && dataMatch && statusMatch
