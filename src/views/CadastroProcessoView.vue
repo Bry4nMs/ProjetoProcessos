@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import AppLayout from '../components/Layout.vue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import {
+  buscarForcasResponsaveis,
+  buscarAreasTematicas,
+  registrarEventoHistorico,
+} from '../services/auth'
 
 const anoAtual = new Date().getFullYear()
 const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
@@ -26,8 +31,19 @@ const descricaoGeral = ref('')
 const feedback = ref('')
 const loading = ref(false)
 const arquivos = ref<File[]>([])
+const areaTematicaId = ref('')
+const forcaResponsavelId = ref('')
+const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
+const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 
 const { user, fetchUser } = useAuth()
+
+onMounted(async () => {
+  const { data: areas } = await buscarAreasTematicas()
+  if (areas) areasTematicas.value = areas
+  const { data: forcas } = await buscarForcasResponsaveis()
+  if (forcas) forcasResponsaveis.value = forcas
+})
 
 async function registrarProcesso() {
   feedback.value = ''
@@ -48,10 +64,10 @@ async function registrarProcesso() {
       {
         user_id: usuario.id,
         nome_acao: nomeAcao.value,
-        area_tematica: areaTematica.value,
+        thematic_area_id: areaTematicaId.value ? Number(areaTematicaId.value) : null,
         ano_faf: anoFaf.value ? Number(anoFaf.value) : null,
         tipo_natureza_despesa: tipoNatureza.value,
-        forca_responsavel: forcaResponsavel.value,
+        responsible_force_id: forcaResponsavelId.value ? Number(forcaResponsavelId.value) : null,
         valor_inicial_padrao: valor.value ? Number(valor.value) : null,
         data_encaminhamento_aprovacao: dataCriacao.value || null,
         codigo_transferegov: codigoTransferegov.value,
@@ -71,6 +87,10 @@ async function registrarProcesso() {
     return
   }
   const processoId = data[0].id
+
+  // Registrar evento no histórico
+  await registrarEventoHistorico(processoId, 'Processo criado.')
+
   // 2. Upload dos arquivos e vinculação na tabela documents
   let arquivosEnviados = 0
   let arquivosComErro = 0
@@ -177,6 +197,8 @@ function limparFormulario() {
   valorEconomicidade.value = ''
   valorTotal.value = ''
   descricaoGeral.value = ''
+  areaTematicaId.value = ''
+  forcaResponsavelId.value = ''
 }
 
 function handleFileSelected(event: Event) {
@@ -208,16 +230,13 @@ function handleFileSelected(event: Event) {
           <div>
             <label class="block text-abyss-dark mb-1 font-semibold">Área Temática</label>
             <select
-              v-model="areaTematica"
+              v-model="areaTematicaId"
               class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
             >
               <option value="">Selecione</option>
-              <option>VPSP</option>
-              <option>ECV</option>
-              <option>FISP</option>
-              <option>EVM</option>
-              <option>MQV</option>
-              <option>RMVI</option>
+              <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
+                {{ area.code }}
+              </option>
             </select>
           </div>
           <div>
@@ -259,16 +278,13 @@ function handleFileSelected(event: Event) {
           <div>
             <label class="block text-abyss-dark mb-1 font-semibold">Força Responsável</label>
             <select
-              v-model="forcaResponsavel"
+              v-model="forcaResponsavelId"
               class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
             >
               <option value="">Selecione</option>
-              <option>PMGO</option>
-              <option>PCGO</option>
-              <option>CBMGO</option>
-              <option>DGPP</option>
-              <option>SPTC</option>
-              <option>SSP</option>
+              <option v-for="forca in forcasResponsaveis" :key="forca.id" :value="forca.id">
+                {{ forca.code }}
+              </option>
             </select>
           </div>
           <div>

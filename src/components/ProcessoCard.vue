@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted } from 'vue'
 import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../composables/useEtapaTimer'
-import { buscarEtapasDoProcesso } from '../services/auth'
+import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 
 const showModal = ref(false)
@@ -180,6 +180,16 @@ async function passarEtapa(e) {
   const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id })
 
   if (!error) {
+    // Buscar a nova etapa atual para registrar no histórico
+    const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id)
+    if (etapas && etapas.length > 0) {
+      const etapaAtual = etapas.findIndex((e: { is_current: boolean }) => e.is_current)
+      if (etapaAtual >= 0 && etapaAtual < etapas.length) {
+        const nomeNovaEtapa = etapas[etapaAtual].step_templates?.name || 'Etapa ' + (etapaAtual + 1)
+        await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`)
+      }
+    }
+
     await carregarEtapas()
     emit('atualizar-processo')
   }
@@ -266,7 +276,7 @@ onUnmounted(() => {
               d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
-          {{ processo.forca_responsavel || 'Não definido' }}
+          {{ processo.forca_code || 'Não definido' }}
         </span>
       </div>
       <div class="flex items-center gap-2 mb-2">
@@ -279,7 +289,7 @@ onUnmounted(() => {
           processo.tipo_natureza_despesa || 'Não definido'
         }}</span>
         <span class="bg-abyss-primary/10 text-abyss-primary text-xs px-2 py-1 rounded">{{
-          processo.area_tematica || 'Não definido'
+          processo.area_code || 'Não definido'
         }}</span>
       </div>
       <div class="flex items-center justify-between text-xs text-gray-500 mt-4">
@@ -406,12 +416,12 @@ onUnmounted(() => {
           </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div><b>Área Temática:</b> {{ processo.area_tematica || 'Não definido' }}</div>
+            <div><b>Área Temática:</b> {{ processo.area_code || 'Não definido' }}</div>
             <div><b>Ano do FAF:</b> {{ processo.ano_faf || 'Não definido' }}</div>
             <div>
               <b>Tipo de Natureza:</b> {{ processo.tipo_natureza_despesa || 'Não definido' }}
             </div>
-            <div><b>Força Responsável:</b> {{ processo.forca_responsavel || 'Não definido' }}</div>
+            <div><b>Força Responsável:</b> {{ processo.forca_code || 'Não definido' }}</div>
             <div><b>Valor Inicial:</b> {{ formatarValor(processo.valor_inicial_padrao || 0) }}</div>
             <div>
               <b>Data de Encaminhamento:</b>

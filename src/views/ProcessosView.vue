@@ -33,7 +33,21 @@
                 class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
               >
                 <option value="">Todas</option>
-                <option v-for="forca in forcas" :key="forca" :value="forca">{{ forca }}</option>
+                <option v-for="forca in forcasResponsaveis" :key="forca.id" :value="forca.id">
+                  {{ forca.code }}
+                </option>
+              </select>
+            </div>
+            <div class="flex flex-col min-w-[140px]">
+              <label class="text-abyss-dark font-semibold mb-1">Área Temática</label>
+              <select
+                v-model="filtroArea"
+                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+              >
+                <option value="">Todas</option>
+                <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
+                  {{ area.code }}
+                </option>
               </select>
             </div>
             <div class="flex flex-col min-w-[160px]">
@@ -90,18 +104,22 @@ import ProcessosGraficos from '../components/ProcessosGraficos.vue'
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
-import { buscarEtapasDoProcesso } from '../services/auth'
+import {
+  buscarEtapasDoProcesso,
+  buscarForcasResponsaveis,
+  buscarAreasTematicas,
+} from '../services/auth'
 
 // Opções de Ano do FAF (igual CadastroProcessoView.vue)
 const anoAtual = new Date().getFullYear()
 const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
 
-// Opções de Força (igual CadastroProcessoView.vue)
-const forcas = ['PMGO', 'PCGO', 'CBMGO', 'DGPP', 'SPTC', 'SSP']
-
+const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
+const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
 const filtroNome = ref('')
 const filtroAno = ref('')
 const filtroForca = ref('')
+const filtroArea = ref('')
 const filtroData = ref('')
 const mostrarConcluidos = ref(true)
 
@@ -126,6 +144,10 @@ interface Processo {
   status: string
   etapaAtual: number
   totalEtapas: number
+  forca_code: string
+  area_code: string
+  responsible_forces?: { id: number; code: string }
+  thematic_areas?: { id: number; code: string }
 }
 const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
@@ -144,9 +166,8 @@ async function carregarProcessos() {
   }
   const { data } = await supabase
     .from('processes')
-    .select('*')
+    .select('*, responsible_forces(id, code), thematic_areas(id, code)')
     .order('created_at', { ascending: false })
-  // Para cada processo, buscar o status e etapa atual reais
   if (data) {
     processos.value = await Promise.all(
       data.map(async (proc) => {
@@ -160,6 +181,8 @@ async function carregarProcessos() {
         }
         return {
           ...proc,
+          forca_code: proc.responsible_forces?.code || '',
+          area_code: proc.thematic_areas?.code || '',
           etapaAtual,
           totalEtapas,
           status: proc.status || 'Em Andamento',
@@ -172,24 +195,29 @@ async function carregarProcessos() {
   loadingProcessos.value = false
 }
 
-onMounted(() => {
-  carregarProcessos()
+onMounted(async () => {
+  await carregarProcessos()
+  const { data: forcas } = await buscarForcasResponsaveis()
+  if (forcas) forcasResponsaveis.value = forcas
+  const { data: areas } = await buscarAreasTematicas()
+  if (areas) areasTematicas.value = areas
 })
 
 const processosFiltrados = computed(() => {
   return processos.value.filter((proc) => {
-    const nomeMatch = (proc.nome_acao || proc.area_tematica || '')
+    const nomeMatch = (proc.nome_acao || proc.area_code || '')
       .toLowerCase()
       .includes(filtroNome.value.toLowerCase())
     const anoMatch = !filtroAno.value || proc.ano_faf === Number(filtroAno.value)
-    const forcaMatch = !filtroForca.value || proc.forca_responsavel === filtroForca.value
+    const forcaMatch =
+      !filtroForca.value || proc.responsible_forces?.id === Number(filtroForca.value)
+    const areaMatch = !filtroArea.value || proc.thematic_areas?.id === Number(filtroArea.value)
     const dataMatch =
       !filtroData.value ||
       (proc.data_encaminhamento_aprovacao &&
         proc.data_encaminhamento_aprovacao === filtroData.value)
-    // Adapte status conforme sua tabela
     const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
-    return nomeMatch && anoMatch && forcaMatch && dataMatch && statusMatch
+    return nomeMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
   })
 })
 </script>

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import ProcessosView from '../views/ProcessosView.vue'
 import LoginView from '../views/LoginView.vue'
 import CadastroProcessoView from '../views/CadastroProcessoView.vue'
+import AnalisesView from '../views/AnalisesView.vue'
 import { obterUsuario } from '../services/auth'
 
 const router = createRouter({
@@ -21,6 +22,11 @@ const router = createRouter({
       path: '/processos/novo',
       name: 'cadastro-processo',
       component: CadastroProcessoView,
+    },
+    {
+      path: '/analises',
+      name: 'analises',
+      component: AnalisesView,
     },
   ],
 })

@@ -1,17 +1,23 @@
 <template>
-  <nav class="flex gap-4 bg-abyss-dark p-4 rounded-lg shadow items-center">
+  <nav class="flex flex-col h-screen w-40 bg-abyss-dark p-6 shadow-lg">
     <router-link
       to="/"
-      class="text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+      class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
     >
       Processos
     </router-link>
-    <a href="#" class="text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+    <router-link
+      to="/analises"
+      class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+    >
+      Análises
+    </router-link>
+    <a href="#" class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
       >Minha Conta</a
     >
     <div class="flex-1"></div>
     <template v-if="user">
-      <span class="text-abyss-primary font-semibold mr-4"
+      <span class="text-abyss-primary font-semibold mb-4 block"
         >Olá, {{ user.user_metadata?.name || user.email }}</span
       >
       <button

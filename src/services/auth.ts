@@ -76,3 +76,46 @@ export async function avancarEtapa(processId: string, idxAtual: number, totalEta
     return { error: errorUltima || errorProc }
   }
 }
+
+// Buscar forças responsáveis
+export async function buscarForcasResponsaveis() {
+  const { data, error } = await supabase
+    .from('responsible_forces')
+    .select('id, code, name')
+    .order('name', { ascending: true })
+  return { data, error }
+}
+
+// Buscar áreas temáticas
+export async function buscarAreasTematicas() {
+  const { data, error } = await supabase
+    .from('thematic_areas')
+    .select('id, code, name')
+    .order('name', { ascending: true })
+  return { data, error }
+}
+
+// Registrar evento no histórico do processo
+export async function registrarEventoHistorico(processId: string, description: string) {
+  const { data: user } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('process_history')
+    .insert([
+      {
+        process_id: processId,
+        user_id: user?.user?.id,
+        description: description,
+      },
+    ])
+    .select()
+  return { data, error }
+}
+
+// Buscar histórico de um processo
+export async function buscarHistoricoProcesso(processId: string) {
+  return await supabase
+    .from('process_history')
+    .select('*')
+    .eq('process_id', processId)
+    .order('changed_at', { ascending: false })
+}
