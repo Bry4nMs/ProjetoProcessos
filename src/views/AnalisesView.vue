@@ -1,0 +1,383 @@
+<template>
+  <AppLayout>
+    <div class="min-h-screen flex flex-col items-center bg-abyss-deep px-8 py-8">
+      <!-- Painéis de Gráficos -->
+      <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+        <!-- Gráfico 1: Total de Processos por Força Responsável -->
+        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center min-h-[420px]">
+          <h2 class="text-2xl font-bold text-abyss-primary mb-6">
+            Total de Processos por Força Responsável
+          </h2>
+          <BarChart
+            v-if="dadosProcessosPorForca.length"
+            :data="chartDataForca"
+            :options="chartOptionsForca"
+            class="w-full h-96"
+          />
+          <div v-else class="text-gray-400 text-center py-12">Carregando gráfico...</div>
+        </div>
+        <!-- Gráfico 2: Tempo Médio Gasto por Etapa -->
+        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center min-h-[420px]">
+          <h2 class="text-2xl font-bold text-abyss-primary mb-6">Tempo Médio por Etapa (dias)</h2>
+          <div class="w-full overflow-x-auto">
+            <div :style="{ minWidth: chartWidthEtapa + 'px' }">
+              <BarChart
+                v-if="dadosTempoMedioEtapa.length"
+                :data="chartDataEtapa"
+                :options="chartOptionsEtapa"
+                class="w-full"
+                :height="350"
+                :width="chartWidthEtapa"
+              />
+              <div v-else class="text-gray-400 text-center py-12">Carregando gráfico...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha do Tempo e Seletor -->
+      <div class="w-full max-w-4xl bg-white shadow-lg p-10 rounded-xl">
+        <h1 class="text-3xl font-bold text-abyss-primary mb-4">Análises e Histórico</h1>
+        <p class="text-abyss-secondary mb-6">Visualize a linha do tempo de todos os processos.</p>
+        <!-- Seletor de Processo -->
+        <div class="mb-8">
+          <label class="block text-abyss-dark font-semibold mb-2">Selecionar Processo</label>
+          <select
+            v-model="processoSelecionado"
+            class="w-full md:w-96 px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+          >
+            <option value="">Selecione um processo</option>
+            <option v-for="processo in processos" :key="processo.id" :value="processo.id">
+              {{ processo.nome_acao || 'Processo sem nome' }} - {{ processo.area_code || 'N/A' }}
+            </option>
+          </select>
+        </div>
+        <!-- Estado de carregamento -->
+        <div v-if="loading" class="text-center py-12">
+          <span class="text-lg font-semibold text-abyss-primary">Carregando...</span>
+        </div>
+        <!-- Linha do Tempo -->
+        <div v-else-if="processoSelecionado && historico.length > 0" class="space-y-6">
+          <h2 class="text-2xl font-bold text-abyss-dark mb-4">Linha do Tempo do Processo</h2>
+          <div class="relative">
+            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-abyss-primary"></div>
+            <div class="space-y-6">
+              <div v-for="evento in historico" :key="evento.id" class="relative flex items-start">
+                <div
+                  class="absolute left-4 w-4 h-4 bg-abyss-primary rounded-full border-4 border-white shadow-lg z-10"
+                ></div>
+                <div class="ml-12 bg-gray-50 rounded-lg p-4 flex-1 shadow-sm">
+                  <div class="flex items-start justify-between mb-2">
+                    <h3 class="font-semibold text-abyss-dark">{{ evento.description }}</h3>
+                    <span class="text-sm text-gray-500">{{ formatarData(evento.changed_at) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-sm text-gray-600">
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    <span>{{ obterNomeUsuario(evento.user) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Estado vazio -->
+        <div
+          v-else-if="processoSelecionado && !loading && historico.length === 0"
+          class="text-center py-12"
+        >
+          <span class="text-lg font-semibold text-gray-500">Nenhum evento encontrado</span>
+        </div>
+        <div v-else class="text-center py-12">
+          <span class="text-lg font-semibold text-gray-500"
+            >Selecione um processo para ver o histórico</span
+          >
+        </div>
+      </div>
+    </div>
+  </AppLayout>
+</template>
+
+<script setup lang="ts">
+// IMPORTS
+import AppLayout from '../components/Layout.vue'
+import { ref, onMounted, watch, computed } from 'vue'
+import { supabase } from '../services/supabase'
+import { useAuth } from '../composables/useAuth'
+import { buscarHistoricoProcesso } from '../services/auth'
+
+// IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
+import { Bar } from 'vue-chartjs'
+import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+
+// COMPONENTE DE GRÁFICO REUTILIZÁVEL
+const BarChart = Bar
+
+// Tipos auxiliares para tipagem dos dados
+interface Processo {
+  id: string
+  nome_acao?: string
+  area_code?: string
+  thematic_areas?: { id: number; code: string } | { id: number; code: string }[]
+}
+interface EventoHistorico {
+  id: string
+  process_id: string
+  user_id: string
+  changed_at: string
+  description: string
+  user?: { name?: string }
+}
+
+// Novo tipo para força
+interface Forca {
+  id: number
+  code: string
+  name: string
+}
+// Novo tipo para etapa
+interface Etapa {
+  id: number
+  name: string
+}
+
+// --- DADOS E ESTADOS REATIVOS ---
+const { user, fetchUser } = useAuth()
+const processos = ref<Processo[]>([])
+const historico = ref<EventoHistorico[]>([])
+const processoSelecionado = ref('')
+const loading = ref(false)
+
+// Dados dos gráficos
+const dadosProcessosPorForca = ref<Array<{ code: string; total: number }>>([])
+const dadosTempoMedioEtapa = ref<Array<{ name: string; media_dias: number }>>([])
+
+// Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
+const chartWidthEtapa = computed(() => {
+  const itemsCount = dadosTempoMedioEtapa.value.length
+  if (itemsCount === 0) return 600
+  // 80px por etapa, mínimo 600px
+  return Math.max(itemsCount * 80, 600)
+})
+
+// --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
+
+// Busca todas as forças cadastradas
+async function fetchForcas() {
+  const { data } = await supabase
+    .from('responsible_forces')
+    .select('id, code, name')
+    .order('code', { ascending: true })
+  return (data as Forca[]) || []
+}
+
+// Busca todas as etapas cadastradas
+async function fetchEtapas() {
+  const { data } = await supabase
+    .from('step_templates')
+    .select('id, name')
+    .order('id', { ascending: true })
+  return (data as Etapa[]) || []
+}
+
+// Corrigida: conta processos por code da força e mostra todas as forças
+async function fetchProcessosPorForca() {
+  const forcas = await fetchForcas()
+  const { data, error } = await supabase
+    .from('processes')
+    .select('responsible_force_id')
+    .not('responsible_force_id', 'is', null)
+  // Conta por id
+  const contagem: Record<number, number> = {}
+  if (data) {
+    for (const proc of data) {
+      const id = proc.responsible_force_id
+      if (!contagem[id]) contagem[id] = 0
+      contagem[id]++
+    }
+  }
+  // Garante que todas as forças aparecem, mesmo com zero
+  dadosProcessosPorForca.value = forcas.map((f) => ({
+    code: f.code,
+    total: contagem[f.id] || 0,
+  }))
+  // Log para depuração
+  console.log('Forças:', forcas)
+  console.log('Processos:', data, error)
+  console.log('Contagem:', contagem)
+  console.log('dadosProcessosPorForca:', dadosProcessosPorForca.value)
+}
+
+// Corrigida: mostra todas as etapas cadastradas, mesmo com média zero
+async function fetchTempoMedioPorEtapa() {
+  const etapas = await fetchEtapas()
+  const { data } = await supabase
+    .from('process_steps')
+    .select('step_template_id, started_at, ended_at')
+    .not('ended_at', 'is', null)
+    .not('started_at', 'is', null)
+  // Agrupa por etapa e calcula média
+  const grupos: Record<number, { total: number; soma: number }> = {}
+  if (data) {
+    for (const step of data) {
+      const id = step.step_template_id
+      const start = new Date(step.started_at).getTime()
+      const end = new Date(step.ended_at).getTime()
+      const diffDias = (end - start) / (1000 * 60 * 60 * 24)
+      if (!grupos[id]) grupos[id] = { total: 0, soma: 0 }
+      grupos[id].total++
+      grupos[id].soma += diffDias
+    }
+  }
+  // Garante que todas as etapas aparecem, mesmo com média zero
+  dadosTempoMedioEtapa.value = etapas.map((e) => ({
+    name: e.name,
+    media_dias: grupos[e.id]?.total
+      ? Number((grupos[e.id].soma / grupos[e.id].total).toFixed(2))
+      : 0,
+  }))
+}
+
+// --- CHART DATA/OPTIONS PARA OS GRÁFICOS ---
+
+// Gráfico de barras de processos por força (usando code)
+const chartDataForca = computed(() => ({
+  labels: dadosProcessosPorForca.value.map((f) => f.code),
+  datasets: [
+    {
+      label: 'Total de Processos',
+      data: dadosProcessosPorForca.value.map((f) => f.total),
+      backgroundColor: 'rgba(59, 130, 246, 0.7)',
+      borderRadius: 8,
+    },
+  ],
+}))
+const chartOptionsForca = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true },
+  },
+  scales: {
+    y: { beginAtZero: true },
+  },
+}
+
+// Gráfico de barras horizontais de tempo médio por etapa
+const chartDataEtapa = computed(() => ({
+  labels: dadosTempoMedioEtapa.value.map((e) => e.name),
+  datasets: [
+    {
+      label: 'Média (dias)',
+      data: dadosTempoMedioEtapa.value.map((e) => e.media_dias),
+      backgroundColor: 'rgba(16, 185, 129, 0.7)', // verde Tailwind
+      borderRadius: 8,
+    },
+  ],
+}))
+const chartOptionsEtapa = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true },
+  },
+  scales: {
+    y: { beginAtZero: true },
+  },
+}
+
+// --- LINHA DO TEMPO (JÁ EXISTENTE) ---
+
+// Busca apenas o nome do usuário pela view 'users'
+async function buscarUsuarioPorId(userId: string) {
+  const { data } = await supabase.from('users').select('name').eq('id', userId).single()
+  return data
+}
+
+// Função dedicada para buscar o histórico de um processo e enriquecer com dados do usuário
+async function buscarHistorico(id: string) {
+  if (!id) {
+    historico.value = []
+    return
+  }
+  loading.value = true
+  const { data } = await buscarHistoricoProcesso(id)
+  if (data) {
+    for (const evento of data) {
+      evento.user = await buscarUsuarioPorId(evento.user_id)
+    }
+    historico.value = data
+  } else {
+    historico.value = []
+  }
+  loading.value = false
+}
+
+// WATCH: Observa mudanças no processoSelecionado e busca o histórico reativamente
+watch(processoSelecionado, (novoId) => {
+  buscarHistorico(novoId)
+})
+
+// Carrega a lista de processos e os gráficos ao montar o componente
+onMounted(async () => {
+  let usuario = user.value
+  if (!usuario) {
+    usuario = await fetchUser()
+  }
+  if (!usuario) {
+    processos.value = []
+    return
+  }
+  // Carrega processos para o dropdown
+  const { data } = await supabase
+    .from('processes')
+    .select('id, nome_acao, thematic_areas(id, code)')
+    .order('created_at', { ascending: false })
+  if (data) {
+    processos.value = (data as Processo[]).map((proc) => {
+      let area_code = ''
+      if (Array.isArray(proc.thematic_areas) && proc.thematic_areas.length > 0) {
+        area_code = proc.thematic_areas[0].code
+      } else if (proc.thematic_areas && typeof proc.thematic_areas === 'object') {
+        area_code = (proc.thematic_areas as { code: string }).code
+      }
+      return {
+        id: proc.id,
+        nome_acao: proc.nome_acao,
+        area_code,
+      }
+    })
+  }
+  // Carrega os dados dos gráficos
+  await fetchProcessosPorForca()
+  await fetchTempoMedioPorEtapa()
+})
+
+// Formata a data/hora para exibição amigável
+function formatarData(data: string) {
+  return new Date(data).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+// Obtém o nome do usuário para exibir na linha do tempo
+function obterNomeUsuario(user: { name?: string } | undefined) {
+  return user?.name || 'Usuário desconhecido'
+}
+</script>
