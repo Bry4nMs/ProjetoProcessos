@@ -311,18 +311,18 @@ onUnmounted(() => {
       @click.self="fecharEtapas"
     >
       <div
-        class="bg-white rounded-xl shadow-xl p-8 max-w-2xl w-full relative max-h-[80vh] overflow-y-auto"
+        class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-2xl w-full relative max-h-[80vh] overflow-y-auto"
       >
         <button
-          class="absolute top-2 right-2 text-gray-400 hover:text-abyss-primary text-2xl"
+          class="absolute top-2 right-2 p-2 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           @click="fecharEtapas"
         >
-          &times;
+          <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
         </button>
-        <h2 class="text-2xl font-bold text-abyss-primary mb-2">
+        <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
           {{ processo.nome_acao || 'Processo sem nome' }}
         </h2>
-        <div class="mb-4 text-gray-600">
+        <div class="mb-4 text-slate-300">
           Tempo total decorrido:
           <span class="font-semibold">{{ formatarSegundos(tempoTotal) }}</span>
         </div>
@@ -330,33 +330,33 @@ onUnmounted(() => {
           <div
             v-for="(etapa, idx) in etapas"
             :key="idx"
-            class="flex items-start gap-3 p-3 rounded-lg border border-gray-200 relative"
-            :class="{ 'border-abyss-primary bg-abyss-primary/10': idx === etapaAtual }"
+            class="flex items-start gap-3 p-3 rounded-lg border border-white/20 bg-white/10 shadow-sm relative"
+            :class="{ 'border-teal-400 bg-teal-600/10': idx === etapaAtual }"
           >
             <!-- Círculo colorido -->
             <div
               class="w-8 h-8 rounded-full flex items-center justify-center border-2"
               :style="{
-                borderColor: idx <= etapaAtual ? etapa.cor : '#e5e7eb',
-                background: idx < etapaAtual ? etapa.cor : '#fff',
-                color: idx < etapaAtual ? '#fff' : etapa.cor,
+                borderColor: idx <= etapaAtual ? '#14b8a6' : '#334155',
+                background: idx < etapaAtual ? 'linear-gradient(to right, #14b8a6cc, #06b6d4cc)' : '#1e293b',
+                color: idx < etapaAtual ? '#fff' : '#14b8a6',
               }"
             >
               <span class="font-bold">{{ idx + 1 }}</span>
             </div>
             <div class="flex-1">
-              <div class="font-semibold text-abyss-dark">{{ etapa.nome }}</div>
-              <div class="text-xs text-gray-500 mb-1">{{ etapa.descricao }}</div>
+              <div class="font-semibold text-white">{{ etapa.nome }}</div>
+              <div class="text-xs text-slate-400 mb-1">{{ etapa.descricao }}</div>
               <div
                 v-if="idx === etapaAtual && etapa.started_at && !etapa.ended_at && etapa.is_current"
-                class="text-xs text-abyss-primary font-bold"
+                class="text-xs text-teal-400 font-bold"
               >
                 Tempo nesta etapa:
                 <span>{{ formatarSegundos(tempoEtapaAtual) }}</span>
               </div>
               <div
                 v-else-if="etapa.started_at && etapa.ended_at"
-                class="text-xs text-abyss-primary font-bold"
+                class="text-xs text-teal-400 font-bold"
               >
                 Tempo gasto nessa etapa:
                 <span>{{
@@ -366,7 +366,7 @@ onUnmounted(() => {
             </div>
             <div
               v-if="idx === etapaAtual && etapa.is_current"
-              class="absolute top-2 right-2 text-xs font-bold text-abyss-primary"
+              class="absolute top-2 right-2 text-xs font-bold text-teal-400"
             >
               ATUAL
             </div>

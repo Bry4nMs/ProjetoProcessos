@@ -1,11 +1,11 @@
 <template>
   <AppLayout>
-    <div class="min-h-screen flex flex-col items-center bg-abyss-deep px-8 py-8">
+    <div class="min-h-screen flex flex-col items-center px-8 py-8">
       <!-- Painéis de Gráficos -->
       <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
         <!-- Gráfico 1: Total de Processos por Força Responsável -->
-        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center min-h-[420px]">
-          <h2 class="text-2xl font-bold text-abyss-primary mb-6">
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">
             Total de Processos por Força Responsável
           </h2>
           <BarChart
@@ -14,11 +14,11 @@
             :options="chartOptionsForca"
             class="w-full h-96"
           />
-          <div v-else class="text-gray-400 text-center py-12">Carregando gráfico...</div>
+          <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
         </div>
         <!-- Gráfico 2: Tempo Médio Gasto por Etapa -->
-        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center min-h-[420px]">
-          <h2 class="text-2xl font-bold text-abyss-primary mb-6">Tempo Médio por Etapa (dias)</h2>
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Tempo Médio por Etapa (dias)</h2>
           <div class="w-full overflow-x-auto">
             <div :style="{ minWidth: chartWidthEtapa + 'px' }">
               <BarChart
@@ -29,22 +29,23 @@
                 :height="350"
                 :width="chartWidthEtapa"
               />
-              <div v-else class="text-gray-400 text-center py-12">Carregando gráfico...</div>
+              <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- Linha do Tempo e Seletor -->
-      <div class="w-full max-w-4xl bg-white shadow-lg p-10 rounded-xl">
-        <h1 class="text-3xl font-bold text-abyss-primary mb-4">Análises e Histórico</h1>
-        <p class="text-abyss-secondary mb-6">Visualize a linha do tempo de todos os processos.</p>
+      <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Análises e Histórico</h1>
+        <p class="text-slate-300 mb-6">Visualize a linha do tempo de todos os processos.</p>
         <!-- Seletor de Processo -->
         <div class="mb-8">
-          <label class="block text-abyss-dark font-semibold mb-2">Selecionar Processo</label>
+          <label class="block text-white font-semibold mb-2">Selecionar Processo</label>
           <select
             v-model="processoSelecionado"
-            class="w-full md:w-96 px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+            class="w-full md:w-96 px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 appearance-none"
+            style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
           >
             <option value="">Selecione um processo</option>
             <option v-for="processo in processos" :key="processo.id" :value="processo.id">
@@ -54,24 +55,24 @@
         </div>
         <!-- Estado de carregamento -->
         <div v-if="loading" class="text-center py-12">
-          <span class="text-lg font-semibold text-abyss-primary">Carregando...</span>
+          <span class="text-lg font-semibold text-teal-400">Carregando...</span>
         </div>
         <!-- Linha do Tempo -->
         <div v-else-if="processoSelecionado && historico.length > 0" class="space-y-6">
-          <h2 class="text-2xl font-bold text-abyss-dark mb-4">Linha do Tempo do Processo</h2>
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Linha do Tempo do Processo</h2>
           <div class="relative">
-            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-abyss-primary"></div>
+            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
             <div class="space-y-6">
               <div v-for="evento in historico" :key="evento.id" class="relative flex items-start">
                 <div
-                  class="absolute left-4 w-4 h-4 bg-abyss-primary rounded-full border-4 border-white shadow-lg z-10"
+                  class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"
                 ></div>
-                <div class="ml-12 bg-gray-50 rounded-lg p-4 flex-1 shadow-sm">
+                <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
                   <div class="flex items-start justify-between mb-2">
-                    <h3 class="font-semibold text-abyss-dark">{{ evento.description }}</h3>
-                    <span class="text-sm text-gray-500">{{ formatarData(evento.changed_at) }}</span>
+                    <h3 class="font-semibold text-white">{{ evento.description }}</h3>
+                    <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
                   </div>
-                  <div class="flex items-center gap-2 text-sm text-gray-600">
+                  <div class="flex items-center gap-2 text-sm text-slate-300">
                     <svg
                       class="w-4 h-4"
                       fill="none"
@@ -97,10 +98,10 @@
           v-else-if="processoSelecionado && !loading && historico.length === 0"
           class="text-center py-12"
         >
-          <span class="text-lg font-semibold text-gray-500">Nenhum evento encontrado</span>
+          <span class="text-lg font-semibold text-slate-400">Nenhum evento encontrado</span>
         </div>
         <div v-else class="text-center py-12">
-          <span class="text-lg font-semibold text-gray-500"
+          <span class="text-lg font-semibold text-slate-400"
             >Selecione um processo para ver o histórico</span
           >
         </div>
@@ -259,7 +260,7 @@ const chartDataForca = computed(() => ({
     {
       label: 'Total de Processos',
       data: dadosProcessosPorForca.value.map((f) => f.total),
-      backgroundColor: 'rgba(59, 130, 246, 0.7)',
+      backgroundColor: '#2dd4bf', // teal-400 vibrante
       borderRadius: 8,
     },
   ],
@@ -268,10 +269,24 @@ const chartOptionsForca = {
   responsive: true,
   plugins: {
     legend: { display: false },
-    tooltip: { enabled: true },
+    tooltip: {
+      enabled: true,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      titleColor: '#fff',
+      bodyColor: '#fff',
+    },
+    title: { color: '#fff' },
   },
   scales: {
-    y: { beginAtZero: true },
+    y: {
+      beginAtZero: true,
+      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } }, // slate-400
+      grid: { color: 'rgba(255,255,255,0.1)' },
+    },
+    x: {
+      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+    },
   },
 }
 
@@ -282,7 +297,7 @@ const chartDataEtapa = computed(() => ({
     {
       label: 'Média (dias)',
       data: dadosTempoMedioEtapa.value.map((e) => e.media_dias),
-      backgroundColor: 'rgba(16, 185, 129, 0.7)', // verde Tailwind
+      backgroundColor: '#14b8a6', // teal-500 vibrante
       borderRadius: 8,
     },
   ],
@@ -291,10 +306,24 @@ const chartOptionsEtapa = {
   responsive: true,
   plugins: {
     legend: { display: false },
-    tooltip: { enabled: true },
+    tooltip: {
+      enabled: true,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      titleColor: '#fff',
+      bodyColor: '#fff',
+    },
+    title: { color: '#fff' },
   },
   scales: {
-    y: { beginAtZero: true },
+    y: {
+      beginAtZero: true,
+      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      grid: { color: 'rgba(255,255,255,0.1)' },
+    },
+    x: {
+      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+    },
   },
 }
 
