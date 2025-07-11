@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-abyss-deep flex flex-row">
+  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-teal-700 flex flex-row">
     <Menu />
     <main class="flex-1 flex flex-col items-center justify-center">
       <slot />

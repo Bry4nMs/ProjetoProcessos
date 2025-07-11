@@ -1,36 +1,40 @@
 <template>
   <AppLayout>
-    <div class="min-h-screen flex justify-center items-stretch bg-abyss-deep px-8">
-      <div class="w-full bg-white shadow-lg p-10 rounded-xl">
-        <ProcessosGraficos :processos="processos" />
+    <div class="min-h-screen flex justify-center items-stretch px-8">
+      <div class="w-full max-w-7xl mx-auto space-y-8">
+        <!-- Gráficos de Sumário -->
+        <div class="flex justify-center flex-wrap gap-8">
+          <ProcessosGraficos :processos="processos" />
+        </div>
+        <!-- Filtros -->
         <div class="w-full flex justify-center">
-          <div
-            class="w-full bg-white border border-abyss-primary rounded-lg shadow flex flex-wrap items-center gap-4 px-6 py-3 mb-8"
-          >
+          <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-lg flex flex-wrap items-center gap-4 px-6 py-3 mb-8">
             <div class="flex flex-col min-w-[180px]">
-              <label class="text-abyss-dark font-semibold mb-1">Pesquisar por Nome</label>
+              <label class="text-slate-200 font-semibold mb-1">Pesquisar por Nome</label>
               <input
                 v-model="filtroNome"
                 type="text"
                 placeholder="Digite o nome da ação"
-                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
               />
             </div>
             <div class="flex flex-col min-w-[120px]">
-              <label class="text-abyss-dark font-semibold mb-1">Ano do FAF</label>
+              <label class="text-slate-200 font-semibold mb-1">Ano do FAF</label>
               <select
                 v-model="filtroAno"
-                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
               >
                 <option value="">Todos</option>
                 <option v-for="ano in anos" :key="ano" :value="ano">{{ ano }}</option>
               </select>
             </div>
             <div class="flex flex-col min-w-[140px]">
-              <label class="text-abyss-dark font-semibold mb-1">Força</label>
+              <label class="text-slate-200 font-semibold mb-1">Força</label>
               <select
                 v-model="filtroForca"
-                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
               >
                 <option value="">Todas</option>
                 <option v-for="forca in forcasResponsaveis" :key="forca.id" :value="forca.id">
@@ -39,10 +43,11 @@
               </select>
             </div>
             <div class="flex flex-col min-w-[140px]">
-              <label class="text-abyss-dark font-semibold mb-1">Área Temática</label>
+              <label class="text-slate-200 font-semibold mb-1">Área Temática</label>
               <select
                 v-model="filtroArea"
-                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
               >
                 <option value="">Todas</option>
                 <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
@@ -51,11 +56,11 @@
               </select>
             </div>
             <div class="flex flex-col min-w-[160px]">
-              <label class="text-abyss-dark font-semibold mb-1">Data de Criação</label>
+              <label class="text-slate-200 font-semibold mb-1">Data de Criação</label>
               <input
                 v-model="filtroData"
                 type="date"
-                class="px-2 py-1 rounded border border-abyss-primary bg-white text-abyss-dark focus:outline-none focus:ring-2 focus:ring-abyss-primary w-full"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full custom-date-input"
               />
             </div>
             <div class="flex items-center gap-2 min-w-[170px] mt-5 md:mt-0">
@@ -63,26 +68,28 @@
                 id="chkConcluidos"
                 v-model="mostrarConcluidos"
                 type="checkbox"
-                class="accent-abyss-primary w-5 h-5"
+                class="accent-teal-500 w-5 h-5 border-white/20 bg-white/10"
               />
-              <label for="chkConcluidos" class="text-abyss-dark font-semibold select-none"
+              <label for="chkConcluidos" class="text-slate-200 font-semibold select-none"
                 >Mostrar Concluídos</label
               >
             </div>
+            <div class="flex-1 flex justify-end min-w-[200px]">
+              <router-link
+                to="/processos/novo"
+                class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
+              >
+                + Novo Processo
+              </router-link>
+            </div>
           </div>
         </div>
-        <div class="w-full flex justify-end mt-0 mb-2">
-          <router-link
-            to="/processos/novo"
-            class="px-4 py-2 bg-abyss-primary text-abyss-black rounded font-bold shadow hover:bg-abyss-secondary transition"
-          >
-            +Novo Processo
-          </router-link>
-        </div>
-        <h1 class="text-3xl font-bold text-abyss-primary mb-4">Página de Processos</h1>
-        <p class="text-abyss-secondary mb-6">Aqui você pode gerenciar seus processos.</p>
+        <!-- Título -->
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Página de Processos</h1>
+        <p class="text-slate-300 mb-6">Aqui você pode gerenciar seus processos.</p>
+        <!-- Cards de Processo -->
         <div class="flex justify-center w-full">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <ProcessoCard
               v-for="(processo, idx) in processosFiltrados"
               :key="idx"
@@ -221,3 +228,32 @@ const processosFiltrados = computed(() => {
   })
 })
 </script>
+
+<style scoped>
+/* Melhora a visibilidade do ícone do calendário no input de data */
+.custom-date-input::-webkit-calendar-picker-indicator {
+  filter: invert(1) sepia(1) saturate(5) hue-rotate(140deg);
+  opacity: 1;
+  cursor: pointer;
+}
+.custom-date-input:focus::-webkit-calendar-picker-indicator {
+  filter: invert(70%) sepia(1) saturate(8) hue-rotate(140deg) brightness(1.5);
+}
+.custom-date-input::-webkit-input-placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+.custom-date-input::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+/* Firefox */
+.custom-date-input::-moz-placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+.custom-date-input::-ms-input-placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+</style>

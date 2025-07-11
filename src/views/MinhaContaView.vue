@@ -38,6 +38,18 @@
                   placeholder="(00) 00000-0000"
                 />
               </div>
+              <div>
+                <label class="block text-abyss-dark font-medium mb-2">Setor</label>
+                <select
+                  v-model="userInfo.setor_id"
+                  class="w-full px-3 py-2 border border-abyss-primary rounded focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+                >
+                  <option value="">Selecione o setor</option>
+                  <option v-for="setor in setores" :key="setor.id" :value="setor.id">
+                    {{ setor.nome }}
+                  </option>
+                </select>
+              </div>
             </div>
             <button
               @click="salvarInformacoes"
@@ -113,8 +125,10 @@ const { user } = useAuth()
 const userInfo = ref({
   name: '',
   email: '',
-  phone: ''
+  phone: '',
+  setor_id: ''
 })
+const setores = ref<{ id: number; nome: string }[]>([])
 
 const novaSenha = ref('')
 const confirmarSenha = ref('')
@@ -129,8 +143,22 @@ onMounted(async () => {
   if (user.value) {
     userInfo.value.name = user.value.user_metadata?.name || ''
     userInfo.value.email = user.value.email || ''
-    userInfo.value.phone = user.value.user_metadata?.phone || ''
-
+    // Buscar perfil do usuário na tabela profiles
+    const { data: perfil } = await supabase
+      .from('profiles')
+      .select('telefone, setor_id')
+      .eq('id', user.value.id)
+      .single()
+    if (perfil) {
+      userInfo.value.phone = perfil.telefone || ''
+      userInfo.value.setor_id = perfil.setor_id || ''
+    }
+    // Buscar setores disponíveis
+    const { data: setoresData } = await supabase
+      .from('setores')
+      .select('id, nome')
+      .order('nome', { ascending: true })
+    if (setoresData) setores.value = setoresData
     await carregarEstatisticas()
   }
 })
@@ -152,17 +180,23 @@ async function carregarEstatisticas() {
 
 async function salvarInformacoes() {
   if (!user.value) return
-
   try {
-    const { error } = await supabase.auth.updateUser({
+    // Atualiza nome e telefone no auth (nome para user_metadata, telefone para profiles)
+    const { error: errorAuth } = await supabase.auth.updateUser({
       data: {
-        name: userInfo.value.name,
-        phone: userInfo.value.phone
+        name: userInfo.value.name
       }
     })
-
-    if (error) {
-      alert('Erro ao salvar informações: ' + error.message)
+    // Atualiza telefone e setor_id em profiles
+    const { error: errorProfile } = await supabase
+      .from('profiles')
+      .update({
+        telefone: userInfo.value.phone,
+        setor_id: userInfo.value.setor_id
+      })
+      .eq('id', user.value.id)
+    if (errorAuth || errorProfile) {
+      alert('Erro ao salvar informações: ' + (errorAuth?.message || errorProfile?.message))
     } else {
       alert('Informações salvas com sucesso!')
     }

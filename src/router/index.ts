@@ -11,6 +11,10 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      redirect: '/processos',
+    },
+    {
+      path: '/processos',
       name: 'processos',
       component: ProcessosView,
     },

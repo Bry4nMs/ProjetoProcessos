@@ -237,85 +237,66 @@ onUnmounted(() => {
   <div>
     <!-- Card -->
     <div
-      class="bg-white rounded-xl shadow-lg p-6 mb-6 hover:shadow-2xl transition relative border border-abyss-deep w-full h-full min-h-[320px]"
+      class="bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-xl p-6 mb-6 hover:bg-white/15 hover:scale-105 transition-all relative w-full h-full min-h-[320px]"
     >
       <!-- Barra de Progresso -->
-      <div class="w-full h-2 bg-gray-200 rounded mb-3 overflow-hidden">
+      <div class="w-full h-2 bg-white/10 rounded mb-3 overflow-hidden">
         <div
-          class="h-2 rounded bg-abyss-primary transition-all"
+          class="h-2 rounded bg-gradient-to-r from-teal-400 to-cyan-300 transition-all"
           :style="{ width: progresso + '%' }"
         ></div>
       </div>
       <div class="flex items-center justify-between mb-2">
-        <span class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">{{
-          processo.status
-        }}</span>
-        <span class="text-gray-400 text-xl">&#9825;</span>
+        <span :class="[
+          'text-xs font-bold px-3 py-1 rounded-full',
+          processo.status === 'Em Andamento'
+            ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white'
+            : 'bg-gradient-to-r from-green-600 to-emerald-500 text-white'
+        ]">
+          {{ processo.status }}
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="text-slate-400 hover:text-red-400 cursor-pointer transition-colors w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41 0.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
       </div>
-      <h2 class="text-xl font-bold text-abyss-dark mb-1">
+      <h2 class="text-xl font-bold text-white mb-1">
         {{ processo.nome_acao || 'Processo sem nome' }}
       </h2>
-      <p class="text-gray-600 mb-2">{{ processo.descricao_geral || 'Sem descrição' }}</p>
-      <div class="flex items-center gap-2 text-sm text-gray-500 mb-2">
-        <span class="inline-flex items-center gap-1">
-          <svg
-            class="w-4 h-4 text-abyss-primary"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"
-            />
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-          {{ processo.forca_code || 'Não definido' }}
-        </span>
+      <p class="text-slate-300 mb-2">{{ processo.descricao_geral || 'Sem descrição' }}</p>
+      <div class="flex items-center gap-2 text-sm text-slate-400 mb-2">
+        <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        {{ processo.forca_code || 'Não definido' }}
       </div>
-      <div class="flex items-center gap-2 mb-2">
-        <span class="text-green-700 font-bold text-lg">{{
-          formatarValor(processo.valor_inicial_padrao || 0)
-        }}</span>
+      <div class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
+        {{ formatarValor(processo.valor_inicial_padrao || 0) }}
       </div>
       <div class="flex flex-wrap gap-2 mb-2">
-        <span class="bg-abyss-primary/10 text-abyss-primary text-xs px-2 py-1 rounded">{{
-          processo.tipo_natureza_despesa || 'Não definido'
-        }}</span>
-        <span class="bg-abyss-primary/10 text-abyss-primary text-xs px-2 py-1 rounded">{{
-          processo.area_code || 'Não definido'
-        }}</span>
+        <span class="border border-teal-400/50 text-teal-300 bg-teal-500/10 text-xs px-2 py-1 rounded">
+          {{ processo.tipo_natureza_despesa || 'Não definido' }}
+        </span>
+        <span class="border border-cyan-400/50 text-cyan-300 bg-cyan-500/10 text-xs px-2 py-1 rounded">
+          {{ processo.area_code || 'Não definido' }}
+        </span>
       </div>
-      <div class="flex items-center justify-between text-xs text-gray-500 mt-4">
-        <span
-          >Criado em
-          {{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}</span
-        >
+      <div class="flex items-center justify-between text-xs text-slate-400 mt-4 border-t border-white/10 pt-2">
+        <span>Criado em {{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}</span>
         <span>Ano FAF: {{ processo.ano_faf || 'Não definido' }}</span>
       </div>
       <!-- Botões de Etapas -->
       <div class="flex gap-2 mt-4">
         <button
           v-if="processo.status !== 'Concluído'"
-          class="px-3 py-1 bg-abyss-primary text-white rounded font-semibold shadow hover:bg-abyss-secondary transition"
+          class="px-3 py-1 bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 text-white rounded font-semibold shadow flex-1"
           @click.stop="passarEtapa"
         >
           Passar Etapa
         </button>
         <button
-          class="px-3 py-1 bg-gray-200 text-abyss-dark rounded font-semibold shadow hover:bg-gray-300 transition"
+          class="px-3 py-1 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent rounded font-semibold shadow flex-1"
           @click.stop="abrirEtapas"
         >
           Ver Etapas
         </button>
         <button
-          class="px-3 py-1 bg-gray-100 text-abyss-dark rounded font-semibold shadow hover:bg-gray-200 transition"
+          class="px-3 py-1 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent rounded font-semibold shadow flex-1"
           @click.stop="abrirDetalhes"
         >
           Ver Detalhes
@@ -398,77 +379,97 @@ onUnmounted(() => {
     <div
       v-if="showModal"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
+      @click.self="fecharDetalhes"
     >
       <div
-        class="bg-white rounded-xl shadow-xl p-8 max-w-4xl w-full relative max-h-[90vh] overflow-y-auto"
+        class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] overflow-y-auto"
       >
         <button
-          class="absolute top-2 right-2 text-gray-400 hover:text-abyss-primary text-2xl"
+          class="absolute top-2 right-2 p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-teal-400 transition"
           @click="fecharDetalhes"
         >
-          &times;
+          <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
         </button>
 
         <!-- Informações do Processo -->
         <div class="mb-6">
-          <h2 class="text-2xl font-bold text-abyss-dark mb-4">
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
             {{ processo.nome_acao || 'Processo sem nome' }}
           </h2>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div><b>Área Temática:</b> {{ processo.area_code || 'Não definido' }}</div>
-            <div><b>Ano do FAF:</b> {{ processo.ano_faf || 'Não definido' }}</div>
-            <div>
-              <b>Tipo de Natureza:</b> {{ processo.tipo_natureza_despesa || 'Não definido' }}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-4">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Área Temática:</span>
+              <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.area_code || 'Não definido' }}</span>
             </div>
-            <div><b>Força Responsável:</b> {{ processo.forca_code || 'Não definido' }}</div>
-            <div><b>Valor Inicial:</b> {{ formatarValor(processo.valor_inicial_padrao || 0) }}</div>
-            <div>
-              <b>Data de Encaminhamento:</b>
-              {{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Ano do FAF:</span>
+              <span>{{ processo.ano_faf || 'Não definido' }}</span>
             </div>
-            <div>
-              <b>Código Transferegov:</b> {{ processo.codigo_transferegov || 'Não definido' }}
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Tipo de Natureza:</span>
+              <span class="text-white">{{ processo.tipo_natureza_despesa || 'Não definido' }}</span>
             </div>
-            <div><b>Quantidade de Itens:</b> {{ processo.qtd_itens || 'Não definido' }}</div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Força Responsável:</span>
+              <span>{{ processo.forca_code || 'Não definido' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Valor Inicial:</span>
+              <span class="font-bold text-teal-400">{{ formatarValor(processo.valor_inicial_padrao || 0) }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Data de Encaminhamento:</span>
+              <span>{{ formatarData(processo.data_encaminhamento_aprovacao || processo.created_at) }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Código Transferegov:</span>
+              <span>{{ processo.codigo_transferegov || 'Não definido' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Quantidade de Itens:</span>
+              <span>{{ processo.qtd_itens || 'Não definido' }}</span>
+            </div>
           </div>
 
-          <div class="mt-4">
-            <div><b>Descrição dos Itens:</b> {{ processo.descricao_itens || 'Não definido' }}</div>
-            <div class="mt-2">
-              <b>Destinação dos Itens:</b> {{ processo.destinacao_itens || 'Não definido' }}
+          <hr class="my-4 bg-white/20 h-px border-0" />
+
+          <div class="mb-4">
+            <div class="mb-2"><span class="text-slate-300">Descrição dos Itens:</span> <span class="text-white">{{ processo.descricao_itens || 'Não definido' }}</span></div>
+            <div class="mb-2"><span class="text-slate-300">Destinação dos Itens:</span> <span class="text-white">{{ processo.destinacao_itens || 'Não definido' }}</span></div>
+          </div>
+
+          <!-- Card Informações Financeiras -->
+          <div class="bg-white/5 rounded-lg p-4 mb-4">
+            <div class="font-bold text-teal-400 mb-4">Informações Financeiras</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="bg-white/5 rounded-lg p-4 text-center">
+                <div class="text-slate-300 text-xs mb-1">Valor de Rendimentos</div>
+                <div class="text-green-400 font-bold text-lg">{{ formatarValor(processo.valor_rendimentos || 0) }}</div>
+              </div>
+              <div class="bg-white/5 rounded-lg p-4 text-center">
+                <div class="text-slate-300 text-xs mb-1">Valor de Economicidade</div>
+                <div class="text-blue-400 font-bold text-lg">{{ formatarValor(processo.valor_economicidade || 0) }}</div>
+              </div>
+              <div class="bg-white/5 rounded-lg p-4 text-center">
+                <div class="text-slate-300 text-xs mb-1">Valor Total Destinado</div>
+                <div class="text-teal-400 font-bold text-lg">{{ formatarValor(processo.valor_total_destinado || 0) }}</div>
+              </div>
             </div>
-            <div class="mt-2">
-              <b>Valor de Rendimentos:</b> {{ formatarValor(processo.valor_rendimentos || 0) }}
-            </div>
-            <div class="mt-2">
-              <b>Valor de Economicidade:</b> {{ formatarValor(processo.valor_economicidade || 0) }}
-            </div>
-            <div class="mt-2">
-              <b>Valor Total Destinado:</b> {{ formatarValor(processo.valor_total_destinado || 0) }}
-            </div>
-            <div class="mt-2">
-              <b>Descrição Geral:</b> {{ processo.descricao_geral || 'Não definido' }}
-            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="text-slate-300 mb-1">Descrição Geral:</div>
+            <div class="bg-white/5 rounded px-3 py-2 text-white">{{ processo.descricao_geral || 'Não definido' }}</div>
           </div>
         </div>
 
+        <hr class="my-4 bg-white/20 h-px border-0" />
+
         <!-- Seção de Documentos -->
-        <div class="border-t pt-6">
-          <h3 class="text-xl font-bold text-abyss-dark mb-4 flex items-center gap-2">
-            <svg
-              class="w-6 h-6 text-abyss-primary"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
+        <div class="pt-2">
+          <h3 class="text-lg font-bold text-teal-400 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             Documentos Anexados
           </h3>
 
@@ -505,85 +506,39 @@ onUnmounted(() => {
             <div
               v-for="documento in documentos"
               :key="documento.id"
-              class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+              class="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center justify-between gap-4 hover:bg-white/10 transition"
             >
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center gap-3">
-                  <div
-                    class="w-10 h-10 bg-abyss-primary/10 rounded-lg flex items-center justify-center"
-                  >
-                    <svg
-                      class="w-6 h-6 text-abyss-primary"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 class="font-semibold text-abyss-dark text-sm">{{ documento.filename }}</h4>
-                    <p class="text-xs text-gray-500">
-                      {{ formatarTamanhoArquivo(documento.file_size) }}
-                    </p>
-                    <p class="text-xs text-gray-400">
-                      {{
-                        documento.created_at
-                          ? formatarData(documento.created_at)
-                          : 'Documento anexado'
-                      }}
-                    </p>
-                  </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-teal-600/10 rounded-lg flex items-center justify-center">
+                  <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-white text-sm">{{ documento.filename }}</h4>
+                  <p class="text-xs text-slate-400">
+                    {{ formatarTamanhoArquivo(documento.file_size) }}
+                  </p>
+                  <p class="text-xs text-slate-500">
+                    {{
+                      documento.created_at
+                        ? formatarData(documento.created_at)
+                        : 'Documento anexado'
+                    }}
+                  </p>
                 </div>
               </div>
-
               <div class="flex gap-2">
                 <button
                   @click="visualizarArquivo(documento.file_url)"
-                  class="flex-1 px-3 py-2 bg-abyss-primary text-white text-sm rounded font-semibold hover:bg-abyss-secondary transition flex items-center justify-center gap-1"
+                  class="px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm rounded font-semibold hover:from-teal-700 hover:to-cyan-600 transition flex items-center gap-1"
                 >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                    />
-                  </svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                   Visualizar
                 </button>
                 <button
                   @click="baixarArquivo(documento.file_url, documento.filename)"
-                  class="flex-1 px-3 py-2 bg-gray-200 text-abyss-dark text-sm rounded font-semibold hover:bg-gray-300 transition flex items-center justify-center gap-1"
+                  class="px-3 py-2 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent text-sm rounded font-semibold transition flex items-center gap-1"
                 >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                   Baixar
                 </button>
               </div>
@@ -593,7 +548,7 @@ onUnmounted(() => {
 
         <div class="flex justify-end mt-6">
           <button
-            class="px-4 py-2 bg-abyss-primary text-abyss-black rounded font-bold shadow hover:bg-abyss-secondary transition"
+            class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
             @click="fecharDetalhes"
           >
             Fechar
