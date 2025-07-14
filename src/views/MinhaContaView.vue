@@ -165,17 +165,40 @@ onMounted(async () => {
 })
 
 async function carregarEstatisticas() {
-  if (!user.value) return
+  if (!user.value) return;
 
+  // Passo 1: Obter todos os IDs de processos em que o usuário esteve envolvido
+  const { data: createdProcesses } = await supabase
+    .from('processes')
+    .select('id')
+    .eq('user_id', user.value.id);
+
+  const { data: historyProcesses } = await supabase
+    .from('process_history')
+    .select('process_id')
+    .eq('user_id', user.value.id);
+
+  // Unir e remover duplicatas
+  const createdIds = createdProcesses?.map(p => p.id) || [];
+  const historyIds = historyProcesses?.map(h => h.process_id) || [];
+  const involvedProcessIds = Array.from(new Set([...createdIds, ...historyIds]));
+
+  if (involvedProcessIds.length === 0) {
+    estatisticas.value = { totalProcessos: 0, processosAtivos: 0, processosConcluidos: 0 };
+    return;
+  }
+
+  // Passo 2: Buscar o status desses processos
   const { data: processos } = await supabase
     .from('processes')
     .select('status')
-    .eq('user_id', user.value.id)
+    .in('id', involvedProcessIds);
 
+  // Passo 3: Calcular as estatísticas
   if (processos) {
-    estatisticas.value.totalProcessos = processos.length
-    estatisticas.value.processosAtivos = processos.filter(p => p.status !== 'Concluído').length
-    estatisticas.value.processosConcluidos = processos.filter(p => p.status === 'Concluído').length
+    estatisticas.value.totalProcessos = processos.length;
+    estatisticas.value.processosAtivos = processos.filter(p => p.status !== 'Concluído').length;
+    estatisticas.value.processosConcluidos = processos.filter(p => p.status === 'Concluído').length;
   }
 }
 
