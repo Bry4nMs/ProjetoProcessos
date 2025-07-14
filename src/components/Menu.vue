@@ -1,22 +1,39 @@
 <template>
-  <nav class="flex flex-col h-screen w-40 bg-abyss-dark p-6 shadow-lg">
+  <nav class="flex flex-col h-screen w-64 bg-abyss-dark p-6 shadow-lg">
     <router-link
       to="/"
-      class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+      :class="$route.path === '/' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-teal-400'"
     >
-      Processos
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+      <span class="font-medium">Processos</span>
     </router-link>
     <router-link
       to="/analises"
-      class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+      :class="$route.path === '/analises' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-teal-400'"
     >
-      Análises
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+      <span class="font-medium">Análises</span>
     </router-link>
     <router-link
       to="/minha-conta"
-      class="mb-4 text-abyss-primary hover:text-abyss-secondary font-semibold transition"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+      :class="$route.path === '/minha-conta' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-teal-400'"
     >
-      Minha Conta
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+      <span class="font-medium">Minha Conta</span>
+    </router-link>
+    <router-link
+      to="/acompanhamento-especial"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+      :class="$route.path === '/acompanhamento-especial' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-teal-400'"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+      </svg>
+      <span class="font-medium">Acompanhamento Especial</span>
     </router-link>
     <div class="flex-1"></div>
     <template v-if="user">

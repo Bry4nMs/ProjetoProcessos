@@ -214,24 +214,25 @@ function handleFileSelected(event: Event) {
 
 <template>
   <AppLayout>
-    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-lg p-8 mt-8">
-      <h1 class="text-2xl font-bold text-abyss-primary mb-6">Cadastro de Novo Processo</h1>
+    <div class="max-w-3xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 mt-8">
+      <h1 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Cadastro de Novo Processo</h1>
       <form class="flex flex-col gap-6" @submit.prevent="registrarProcesso">
         <div>
-          <label class="block text-abyss-dark mb-1 font-semibold">Nome da Ação</label>
+          <label class="block text-slate-200 mb-1 font-semibold">Nome da Ação</label>
           <input
             v-model="nomeAcao"
             type="text"
-            class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+            class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
             placeholder="Digite o nome da ação"
           />
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Área Temática</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Área Temática</label>
             <select
               v-model="areaTematicaId"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+              style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
             >
               <option value="">Selecione</option>
               <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
@@ -240,33 +241,35 @@ function handleFileSelected(event: Event) {
             </select>
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Código Transferegov</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Processo SEI</label>
             <input
               v-model="codigoTransferegov"
               type="text"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="Digite o código"
             />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Ano do FAF</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Ano do FAF</label>
             <select
               v-model="anoFaf"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+              style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
             >
               <option value="">Selecione</option>
               <option v-for="ano in anos" :key="ano">{{ ano }}</option>
             </select>
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold"
+            <label class="block text-slate-200 mb-1 font-semibold"
               >Tipo de Natureza de Despesa</label
             >
             <select
               v-model="tipoNatureza"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+              style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
             >
               <option value="">Selecione</option>
               <option>Custeio</option>
@@ -276,10 +279,11 @@ function handleFileSelected(event: Event) {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Força Responsável</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Força Responsável</label>
             <select
               v-model="forcaResponsavelId"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+              style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
             >
               <option value="">Selecione</option>
               <option v-for="forca in forcasResponsaveis" :key="forca.id" :value="forca.id">
@@ -288,106 +292,106 @@ function handleFileSelected(event: Event) {
             </select>
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold"
+            <label class="block text-slate-200 mb-1 font-semibold"
               >Data de Encaminhamento para Aprovação do MJSP</label
             >
             <input
               v-model="dataCriacao"
               type="date"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Quantidade de Itens</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Quantidade de Itens</label>
             <input
               v-model="quantidadeItens"
               type="number"
               min="0"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Descrição dos Itens</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Descrição dos Itens</label>
             <textarea
               v-model="descricaoItens"
               rows="2"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             ></textarea>
           </div>
         </div>
         <div>
-          <label class="block text-abyss-dark mb-1 font-semibold">Destinação dos Itens</label>
+          <label class="block text-slate-200 mb-1 font-semibold">Destinação dos Itens</label>
           <textarea
             v-model="destinacaoItens"
             rows="2"
-            class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+            class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
           ></textarea>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Valor Inicial Padrão</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Valor Inicial Padrão</label>
             <input
               v-model="valor"
               type="text"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="R$ 0,00"
             />
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Valor de Rendimentos</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Valor de Rendimentos</label>
             <input
               v-model="valorRendimentos"
               type="text"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="R$ 0,00"
             />
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold">Valor de Economicidade</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Valor de Economicidade</label>
             <input
               v-model="valorEconomicidade"
               type="text"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="R$ 0,00"
             />
           </div>
           <div>
-            <label class="block text-abyss-dark mb-1 font-semibold"
+            <label class="block text-slate-200 mb-1 font-semibold"
               >Valor Total Destinado à Ação</label
             >
             <input
               v-model="valorTotal"
               type="text"
-              class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
               placeholder="R$ 0,00"
             />
           </div>
         </div>
         <div>
-          <label class="block text-abyss-dark mb-1 font-semibold">Descrição Geral da Ação</label>
+          <label class="block text-slate-200 mb-1 font-semibold">Descrição Geral da Ação</label>
           <textarea
             v-model="descricaoGeral"
             rows="4"
-            class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep focus:outline-none focus:ring-2 focus:ring-abyss-primary"
+            class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
           ></textarea>
         </div>
         <div>
-          <label class="block text-abyss-dark mb-1 font-semibold"
+          <label class="block text-slate-200 mb-1 font-semibold"
             >Anexar Nota Técnica ou Documento de Aprovação</label
           >
           <input
             type="file"
             multiple
-            class="w-full px-4 py-2 rounded bg-white text-abyss-dark border border-abyss-deep file:bg-abyss-primary file:text-abyss-black file:rounded file:px-4 file:py-2 file:mr-4"
+            class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 file:bg-gradient-to-r file:from-teal-600 file:to-cyan-500 file:text-white file:font-semibold file:border-none file:px-4 file:py-2 file:mr-4 file:rounded-lg file:cursor-pointer"
             @change="handleFileSelected"
           />
         </div>
         <div class="flex justify-end">
           <button
             type="submit"
-            class="px-6 py-3 bg-abyss-primary text-abyss-black rounded-lg shadow hover:bg-abyss-secondary transition font-bold"
+            class="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg shadow hover:from-teal-700 hover:to-cyan-600 transition font-bold"
             :disabled="loading"
           >
             Registrar Ação
@@ -396,7 +400,7 @@ function handleFileSelected(event: Event) {
         <div
           v-if="feedback"
           class="mt-4 text-center font-semibold"
-          :class="feedback.includes('sucesso') ? 'text-green-600' : 'text-red-600'"
+          :class="feedback.includes('sucesso') ? 'text-green-400' : 'text-red-400'"
         >
           {{ feedback }}
         </div>

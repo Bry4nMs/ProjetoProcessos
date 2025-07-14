@@ -38,6 +38,11 @@ const router = createRouter({
       name: 'minha-conta',
       component: MinhaContaView,
     },
+    {
+      path: '/acompanhamento-especial',
+      name: 'AcompanhamentoEspecial',
+      component: () => import('../views/AcompanhamentoEspecialView.vue'),
+    },
   ],
 })
 

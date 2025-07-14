@@ -1,11 +1,7 @@
 <template>
   <AppLayout>
-    <div class="min-h-screen flex justify-center items-stretch px-8">
+    <div class="min-h-screen flex justify-center items-stretch px-8 py-8">
       <div class="w-full max-w-7xl mx-auto space-y-8">
-        <!-- Gráficos de Sumário -->
-        <div class="flex justify-center flex-wrap gap-8">
-          <ProcessosGraficos :processos="processos" />
-        </div>
         <!-- Filtros -->
         <div class="w-full flex justify-center">
           <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-lg flex flex-wrap items-center gap-4 px-6 py-3 mb-8">
@@ -56,6 +52,15 @@
               </select>
             </div>
             <div class="flex flex-col min-w-[160px]">
+              <label class="text-slate-200 font-semibold mb-1">Processo SEI</label>
+              <input
+                v-model="filtroSEI"
+                type="text"
+                placeholder="Digite o número SEI"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
+              />
+            </div>
+            <div class="flex flex-col min-w-[160px]">
               <label class="text-slate-200 font-semibold mb-1">Data de Criação</label>
               <input
                 v-model="filtroData"
@@ -74,19 +79,11 @@
                 >Mostrar Concluídos</label
               >
             </div>
-            <div class="flex-1 flex justify-end min-w-[200px]">
-              <router-link
-                to="/processos/novo"
-                class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
-              >
-                + Novo Processo
-              </router-link>
-            </div>
           </div>
         </div>
         <!-- Título -->
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Página de Processos</h1>
-        <p class="text-slate-300 mb-6">Aqui você pode gerenciar seus processos.</p>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Acompanhamento Especial</h1>
+        <p class="text-slate-300 mb-6">Aqui você acompanha apenas os processos que marcou como favoritos.</p>
         <!-- Cards de Processo -->
         <div class="flex justify-center w-full">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -107,7 +104,6 @@
 <script setup lang="ts">
 import AppLayout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
-import ProcessosGraficos from '../components/ProcessosGraficos.vue'
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
@@ -117,10 +113,6 @@ import {
   buscarAreasTematicas,
 } from '../services/auth'
 
-// Opções de Ano do FAF (igual CadastroProcessoView.vue)
-const anoAtual = new Date().getFullYear()
-const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
-
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
 const filtroNome = ref('')
@@ -129,6 +121,8 @@ const filtroForca = ref('')
 const filtroArea = ref('')
 const filtroData = ref('')
 const mostrarConcluidos = ref(true)
+const filtroSEI = ref('')
+const anos = Array.from({ length: 10 }, (_, i) => 2019 + i)
 
 interface Processo {
   id: string
@@ -172,16 +166,16 @@ async function carregarProcessos() {
     loadingProcessos.value = false
     return
   }
-  // Buscar favoritos do usuário
-  const { data: favorites } = await supabase.from('user_favorites').select('process_id').eq('user_id', usuario.id)
-  const favoriteIds = new Set((favorites || []).map(f => f.process_id))
+  // Buscar apenas processos favoritados
   const { data } = await supabase
-    .from('processes')
-    .select('*, responsible_forces(id, code), thematic_areas(id, code)')
-    .order('created_at', { ascending: false })
+    .from('user_favorites')
+    .select('*, processes(*, responsible_forces(id, code), thematic_areas(id, code))')
+    .eq('user_id', usuario.id)
+    .order('created_at', { referencedTable: 'processes', ascending: false })
   if (data) {
+    const processosFavoritados = data.map(fav => fav.processes)
     processos.value = await Promise.all(
-      data.map(async (proc) => {
+      processosFavoritados.map(async (proc) => {
         const { data: etapas } = await buscarEtapasDoProcesso(proc.id)
         let etapaAtual = 0
         let totalEtapas = 0
@@ -197,9 +191,9 @@ async function carregarProcessos() {
           etapaAtual,
           totalEtapas,
           status: proc.status || 'Em Andamento',
-          is_favorited: favoriteIds.has(proc.id),
+          is_favorited: true,
         }
-      }),
+      })
     )
   } else {
     processos.value = []
@@ -220,6 +214,7 @@ const processosFiltrados = computed(() => {
     const nomeMatch = (proc.nome_acao || proc.area_code || '')
       .toLowerCase()
       .includes(filtroNome.value.toLowerCase())
+    const seiMatch = !filtroSEI.value || (proc.codigo_transferegov || '').toLowerCase().includes(filtroSEI.value.toLowerCase())
     const anoMatch = !filtroAno.value || proc.ano_faf === Number(filtroAno.value)
     const forcaMatch =
       !filtroForca.value || proc.responsible_forces?.id === Number(filtroForca.value)
@@ -229,36 +224,7 @@ const processosFiltrados = computed(() => {
       (proc.data_encaminhamento_aprovacao &&
         proc.data_encaminhamento_aprovacao === filtroData.value)
     const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
-    return nomeMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
+    return nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
   })
 })
 </script>
-
-<style scoped>
-/* Melhora a visibilidade do ícone do calendário no input de data */
-.custom-date-input::-webkit-calendar-picker-indicator {
-  filter: invert(1) sepia(1) saturate(5) hue-rotate(140deg);
-  opacity: 1;
-  cursor: pointer;
-}
-.custom-date-input:focus::-webkit-calendar-picker-indicator {
-  filter: invert(70%) sepia(1) saturate(8) hue-rotate(140deg) brightness(1.5);
-}
-.custom-date-input::-webkit-input-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-.custom-date-input::placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-/* Firefox */
-.custom-date-input::-moz-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-.custom-date-input::-ms-input-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-</style>
