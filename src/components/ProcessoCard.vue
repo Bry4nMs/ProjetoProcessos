@@ -179,24 +179,29 @@ function baixarArquivo(url: string, filename: string) {
 }
 
 async function passarEtapa(e) {
-  e.stopPropagation()
-  if (!props.processo.id) return
+  e.stopPropagation();
+  if (!props.processo.id) return;
 
-  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id })
+  // Verifica se esta é a última etapa ANTES de chamar o RPC
+  const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
+
+  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
 
   if (!error) {
-    // Buscar a nova etapa atual para registrar no histórico
-    const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id)
-    if (etapas && etapas.length > 0) {
-      const etapaAtual = etapas.findIndex((e: { is_current: boolean }) => e.is_current)
-      if (etapaAtual >= 0 && etapaAtual < etapas.length) {
-        const nomeNovaEtapa = etapas[etapaAtual].step_templates?.name || 'Etapa ' + (etapaAtual + 1)
-        await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`)
+    if (isFinalStep) {
+      await registrarEventoHistorico(props.processo.id, 'Processo Concluído.');
+    } else {
+      // Lógica que já existe para buscar o nome da nova etapa e registrar
+      const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
+      if (etapas && etapas.length > 0) {
+        const etapaAtualIdx = etapas.findIndex(e => e.is_current);
+        if (etapaAtualIdx !== -1) {
+          const nomeNovaEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
+          await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`);
+        }
       }
     }
-
-    await carregarEtapas()
-    emit('atualizar-processo')
+    emit('atualizar-processo');
   }
 }
 
@@ -316,7 +321,7 @@ async function toggleFavorite() {
           class="px-3 py-1 bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 text-white rounded font-semibold shadow flex-1"
           @click.stop="passarEtapa"
         >
-          Passar Etapa
+          {{ (processo.etapaAtual === processo.totalEtapas - 1 && processo.totalEtapas > 0) ? 'Concluir Processo' : 'Passar Etapa' }}
         </button>
         <button
           class="px-3 py-1 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent rounded font-semibold shadow flex-1"
