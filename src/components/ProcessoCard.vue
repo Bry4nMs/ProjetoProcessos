@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted, watch } from 'vue'
+import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted, watch, reactive } from 'vue'
 import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../composables/useEtapaTimer'
 import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
@@ -28,6 +28,7 @@ interface Documento {
   mime_type?: string
   storage_path: string
   created_at?: string
+  description?: string
 }
 
 const etapas = ref<Etapa[]>([])
@@ -51,6 +52,68 @@ const emit = defineEmits(['atualizar-processo'])
 
 const isFavorited = ref(props.processo.is_favorited)
 watch(() => props.processo.is_favorited, (val) => { isFavorited.value = val })
+
+const isEditing = ref(false)
+const editableData = reactive({
+  qtd_itens: null,
+  descricao_itens: '',
+  destinacao_itens: '',
+  descricao_geral: '',
+  valor_inicial_padrao: null,
+  valor_rendimentos: null,
+  valor_economicidade: null,
+  valor_total_destinado: null
+})
+const editLoading = ref(false)
+const editError = ref('')
+
+const novoAnexo = ref<File|null>(null)
+const novoAnexoDesc = ref('')
+const uploadLoading = ref(false)
+const uploadError = ref('')
+
+// Debug: garantir que iniciarEdicao e salvarAlteracoes são chamados
+function iniciarEdicao() {
+  console.log('Entrou em iniciarEdicao');
+  isEditing.value = true
+  Object.assign(editableData, {
+    qtd_itens: props.processo.qtd_itens,
+    descricao_itens: props.processo.descricao_itens,
+    destinacao_itens: props.processo.destinacao_itens,
+    descricao_geral: props.processo.descricao_geral,
+    valor_inicial_padrao: props.processo.valor_inicial_padrao,
+    valor_rendimentos: props.processo.valor_rendimentos,
+    valor_economicidade: props.processo.valor_economicidade,
+    valor_total_destinado: props.processo.valor_total_destinado
+  })
+  editError.value = ''
+}
+
+async function salvarAlteracoes() {
+  console.log('Entrou em salvarAlteracoes', editableData)
+  editLoading.value = true
+  editError.value = ''
+  const { error } = await supabase
+    .from('processes')
+    .update({
+      qtd_itens: editableData.qtd_itens,
+      descricao_itens: editableData.descricao_itens,
+      destinacao_itens: editableData.destinacao_itens,
+      descricao_geral: editableData.descricao_geral,
+      valor_inicial_padrao: editableData.valor_inicial_padrao,
+      valor_rendimentos: editableData.valor_rendimentos,
+      valor_economicidade: editableData.valor_economicidade,
+      valor_total_destinado: editableData.valor_total_destinado
+    })
+    .eq('id', props.processo.id)
+  editLoading.value = false
+  if (!error) {
+    isEditing.value = false
+    emit('atualizar-processo')
+  } else {
+    editError.value = 'Erro ao salvar alterações'
+  }
+}
 
 async function carregarEtapas() {
   carregandoEtapas.value = true
@@ -122,6 +185,53 @@ async function carregarDocumentos() {
   }
 
   carregandoDocumentos.value = false
+}
+
+async function adicionarAnexo() {
+  if (!novoAnexo.value || novoAnexo.value.size === 0) {
+    uploadError.value = 'Selecione um arquivo válido.'
+    return
+  }
+  uploadLoading.value = true
+  uploadError.value = ''
+  try {
+    const file = novoAnexo.value
+    // Sanitizar nome do arquivo
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const filePath = `${props.processo.id}/${Date.now()}_${sanitizedFileName}`
+    // Upload com opções
+    const { error: uploadErrorObj } = await supabase.storage.from('documents').upload(filePath, file, { cacheControl: '3600', upsert: false })
+    if (uploadErrorObj) throw uploadErrorObj
+    // Obter URL pública
+    const { data: publicUrlData } = supabase.storage.from('documents').getPublicUrl(filePath)
+    // Inserir registro na tabela documents
+    const { error: insertError } = await supabase.from('documents').insert([{
+      process_id: props.processo.id,
+      filename: file.name,
+      file_url: publicUrlData.publicUrl,
+      file_size: file.size,
+      mime_type: file.type,
+      storage_path: filePath,
+      description: novoAnexoDesc.value
+    }])
+    if (insertError) {
+      // Remover arquivo do storage se o insert falhar
+      await supabase.storage.from('documents').remove([filePath])
+      throw insertError
+    }
+    // Atualizar lista de documentos
+    await carregarDocumentos()
+    novoAnexo.value = null
+    novoAnexoDesc.value = ''
+  } catch (e: unknown) {
+    if (typeof e === 'object' && e && 'message' in e) {
+      uploadError.value = (e as { message: string }).message || 'Erro ao anexar o documento.'
+    } else {
+      uploadError.value = 'Erro ao anexar o documento.'
+    }
+  } finally {
+    uploadLoading.value = false
+  }
 }
 
 function formatarValor(valor: number | null | undefined) {
@@ -258,6 +368,15 @@ async function toggleFavorite() {
     isFavorited.value = true
   }
   emit('atualizar-processo')
+}
+
+function onNovoAnexoChange(e: Event) {
+  const target = e.target as HTMLInputElement;
+  if (target.files && target.files.length > 0) {
+    novoAnexo.value = target.files[0];
+  } else {
+    novoAnexo.value = null;
+  }
 }
 </script>
 
@@ -426,18 +545,33 @@ async function toggleFavorite() {
       <div
         class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] overflow-y-auto"
       >
-        <button
-          class="absolute top-2 right-2 p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-teal-400 transition"
-          @click="fecharDetalhes"
-        >
-          <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
-        </button>
+        <!-- Painel de Controle dos Botões -->
+        <div class="absolute top-4 right-6 flex items-center gap-4 z-20">
+          <button
+            @click.stop="isEditing ? salvarAlteracoes() : iniciarEdicao()"
+            class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-teal-400 transition flex items-center"
+            :disabled="editLoading"
+            title="Atualizar Dados"
+          >
+            <svg v-if="!isEditing" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+          </button>
+          <button
+            @click="fecharDetalhes"
+            class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-red-400 transition"
+            title="Fechar"
+          >
+            <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
+          </button>
+        </div>
+        <div class="flex items-center gap-2 mb-4">
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+            {{ processo.nome_acao || 'Processo sem nome' }}
+          </h2>
+        </div>
 
         <!-- Informações do Processo -->
         <div class="mb-6">
-          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-            {{ processo.nome_acao || 'Processo sem nome' }}
-          </h2>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-4">
             <div class="flex justify-between items-center">
@@ -458,7 +592,8 @@ async function toggleFavorite() {
             </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Valor Inicial:</span>
-              <span class="font-bold text-teal-400">{{ formatarValor(processo.valor_inicial_padrao || 0) }}</span>
+              <span v-if="!isEditing" class="font-bold text-teal-400">{{ formatarValor(processo.valor_inicial_padrao || 0) }}</span>
+              <input v-else v-model.number="editableData.valor_inicial_padrao" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-32 text-teal-400 font-bold" />
             </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Data de Encaminhamento:</span>
@@ -470,15 +605,16 @@ async function toggleFavorite() {
             </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Quantidade de Itens:</span>
-              <span>{{ processo.qtd_itens || 'Não definido' }}</span>
+              <span v-if="!isEditing">{{ processo.qtd_itens || 'Não definido' }}</span>
+              <input v-else v-model="editableData.qtd_itens" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-24 text-white" />
             </div>
           </div>
 
           <hr class="my-4 bg-white/20 h-px border-0" />
 
           <div class="mb-4">
-            <div class="mb-2"><span class="text-slate-300">Descrição dos Itens:</span> <span class="text-white">{{ processo.descricao_itens || 'Não definido' }}</span></div>
-            <div class="mb-2"><span class="text-slate-300">Destinação dos Itens:</span> <span class="text-white">{{ processo.destinacao_itens || 'Não definido' }}</span></div>
+            <div class="mb-2"><span class="text-slate-300">Descrição dos Itens:</span> <span class="text-white" v-if="!isEditing">{{ processo.descricao_itens || 'Não definido' }}</span><textarea v-else v-model="editableData.descricao_itens" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white"></textarea></div>
+            <div class="mb-2"><span class="text-slate-300">Destinação dos Itens:</span> <span class="text-white" v-if="!isEditing">{{ processo.destinacao_itens || 'Não definido' }}</span><textarea v-else v-model="editableData.destinacao_itens" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white"></textarea></div>
           </div>
 
           <!-- Card Informações Financeiras -->
@@ -487,22 +623,26 @@ async function toggleFavorite() {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div class="bg-white/5 rounded-lg p-4 text-center">
                 <div class="text-slate-300 text-xs mb-1">Valor de Rendimentos</div>
-                <div class="text-green-400 font-bold text-lg">{{ formatarValor(processo.valor_rendimentos || 0) }}</div>
+                <div v-if="!isEditing" class="text-green-400 font-bold text-lg">{{ formatarValor(processo.valor_rendimentos || 0) }}</div>
+                <input v-else v-model.number="editableData.valor_rendimentos" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-green-400 font-bold text-lg" />
               </div>
               <div class="bg-white/5 rounded-lg p-4 text-center">
                 <div class="text-slate-300 text-xs mb-1">Valor de Economicidade</div>
-                <div class="text-blue-400 font-bold text-lg">{{ formatarValor(processo.valor_economicidade || 0) }}</div>
+                <div v-if="!isEditing" class="text-blue-400 font-bold text-lg">{{ formatarValor(processo.valor_economicidade || 0) }}</div>
+                <input v-else v-model.number="editableData.valor_economicidade" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-blue-400 font-bold text-lg" />
               </div>
               <div class="bg-white/5 rounded-lg p-4 text-center">
                 <div class="text-slate-300 text-xs mb-1">Valor Total Destinado</div>
-                <div class="text-teal-400 font-bold text-lg">{{ formatarValor(processo.valor_total_destinado || 0) }}</div>
+                <div v-if="!isEditing" class="text-teal-400 font-bold text-lg">{{ formatarValor(processo.valor_total_destinado || 0) }}</div>
+                <input v-else v-model.number="editableData.valor_total_destinado" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-teal-400 font-bold text-lg" />
               </div>
             </div>
           </div>
 
           <div class="mb-4">
             <div class="text-slate-300 mb-1">Descrição Geral:</div>
-            <div class="bg-white/5 rounded px-3 py-2 text-white">{{ processo.descricao_geral || 'Não definido' }}</div>
+            <div v-if="!isEditing" class="bg-white/5 rounded px-3 py-2 text-white">{{ processo.descricao_geral || 'Não definido' }}</div>
+            <textarea v-else v-model="editableData.descricao_geral" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white"></textarea>
           </div>
         </div>
 
@@ -516,74 +656,66 @@ async function toggleFavorite() {
           </h3>
 
           <div v-if="carregandoDocumentos" class="text-center py-4">
-            <div
-              class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-abyss-primary"
-            ></div>
-            <p class="mt-2 text-gray-600">Carregando documentos...</p>
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-400"></div>
           </div>
-
-          <div v-else-if="erroDocumentos" class="text-red-600 text-center py-4">
+          <div v-else-if="erroDocumentos" class="text-red-400 text-center py-4">
             {{ erroDocumentos }}
           </div>
-
-          <div v-else-if="documentos.length === 0" class="text-center py-8 text-gray-500">
-            <svg
-              class="w-16 h-16 mx-auto text-gray-300 mb-4"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <p class="text-lg font-semibold">Nenhum documento anexado</p>
-            <p class="text-sm">Este processo ainda não possui documentos anexados.</p>
+          <div v-else-if="documentos.length === 0" class="text-center py-8 text-slate-500">
+            <svg class="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p class="font-semibold">Nenhum documento anexado.</p>
+          </div>
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div v-for="documento in documentos" :key="documento.id" class="bg-white/5 border border-white/10 rounded-lg p-4 flex flex-col justify-between hover:bg-white/10 transition">
+                <div class="flex items-start gap-3 flex-1">
+                    <div class="w-10 h-10 bg-teal-600/10 rounded-lg flex-shrink-0 flex items-center justify-center mt-1">
+                        <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    </div>
+                    <div class="flex flex-col flex-1 min-w-0">
+                        <h4 class="font-semibold text-white text-sm break-words">{{ documento.filename }}</h4>
+                        <p v-if="documento.description" class="text-xs text-slate-300 mt-1 italic break-words">"{{ documento.description }}"</p>
+                        <p class="text-xs text-slate-400 mt-1">{{ formatarTamanhoArquivo(documento.file_size) }}</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ documento.created_at ? formatarData(documento.created_at) : 'Documento anexado' }}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-4 self-end">
+                    <button @click="visualizarArquivo(documento.file_url)" class="px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm rounded font-semibold hover:from-teal-700 hover:to-cyan-600 transition flex items-center gap-1">Visualizar</button>
+                    <button @click="baixarArquivo(documento.file_url, documento.filename)" class="px-3 py-2 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent text-sm rounded font-semibold transition flex items-center gap-1">Baixar</button>
+                </div>
+            </div>
           </div>
 
-          <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div
-              v-for="documento in documentos"
-              :key="documento.id"
-              class="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center justify-between gap-4 hover:bg-white/10 transition"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-teal-600/10 rounded-lg flex items-center justify-center">
-                  <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                </div>
-                <div>
-                  <h4 class="font-semibold text-white text-sm">{{ documento.filename }}</h4>
-                  <p class="text-xs text-slate-400">
-                    {{ formatarTamanhoArquivo(documento.file_size) }}
-                  </p>
-                  <p class="text-xs text-slate-500">
-                    {{
-                      documento.created_at
-                        ? formatarData(documento.created_at)
-                        : 'Documento anexado'
-                    }}
-                  </p>
-                </div>
+          <div class="mt-6 pt-6 border-t border-white/10">
+            <h4 class="font-semibold text-white mb-3">Adicionar Novo Anexo</h4>
+            <div class="space-y-4">
+
+              <div class="flex items-center gap-4">
+                <label for="novo-anexo-input" class="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold cursor-pointer hover:bg-white/20 transition">
+                  Escolher arquivo
+                </label>
+                <input id="novo-anexo-input" type="file" @change="onNovoAnexoChange" class="hidden" />
+                <span class="text-sm text-slate-300 truncate">{{ novoAnexo?.name || 'Nenhum arquivo selecionado.' }}</span>
               </div>
-              <div class="flex gap-2">
+
+              <textarea
+                v-model="novoAnexoDesc"
+                placeholder="Descrição do anexo (opcional)"
+                rows="2"
+                class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              ></textarea>
+
+              <div class="flex items-center gap-4">
                 <button
-                  @click="visualizarArquivo(documento.file_url)"
-                  class="px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm rounded font-semibold hover:from-teal-700 hover:to-cyan-600 transition flex items-center gap-1"
+                  @click="adicionarAnexo"
+                  :disabled="uploadLoading || !novoAnexo"
+                  class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                  Visualizar
+                  Anexar
                 </button>
-                <button
-                  @click="baixarArquivo(documento.file_url, documento.filename)"
-                  class="px-3 py-2 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent text-sm rounded font-semibold transition flex items-center gap-1"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                  Baixar
-                </button>
+                <div v-if="uploadLoading" class="w-5 h-5 border-b-2 border-white rounded-full animate-spin"></div>
+                <span v-if="uploadError" class="text-red-400 text-sm">{{ uploadError }}</span>
               </div>
+
             </div>
           </div>
         </div>
@@ -596,6 +728,7 @@ async function toggleFavorite() {
             Fechar
           </button>
         </div>
+        <div v-if="editError" class="text-red-500 text-sm mt-2">{{ editError }}</div>
       </div>
     </div>
   </div>

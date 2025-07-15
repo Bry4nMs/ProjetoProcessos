@@ -30,7 +30,7 @@ const valorTotal = ref('')
 const descricaoGeral = ref('')
 const feedback = ref('')
 const loading = ref(false)
-const arquivos = ref<File[]>([])
+const arquivos = ref<{ file: File, description: string }[]>([])
 const areaTematicaId = ref('')
 const forcaResponsavelId = ref('')
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
@@ -97,25 +97,25 @@ async function registrarProcesso() {
 
   console.log('Iniciando upload de arquivos:', arquivos.value.length, 'arquivos')
 
-  for (const file of arquivos.value) {
+  for (const item of arquivos.value) {
     try {
-      console.log('Processando arquivo:', file.name, 'Tamanho:', file.size, 'Tipo:', file.type)
+      console.log('Processando arquivo:', item.file.name, 'Tamanho:', item.file.size, 'Tipo:', item.file.type)
 
       // Verificar se o arquivo é válido
-      if (!file || file.size === 0) {
-        console.error('Arquivo inválido:', file)
+      if (!item.file || item.file.size === 0) {
+        console.error('Arquivo inválido:', item.file)
         arquivosComErro++
-        feedback.value += `\nArquivo inválido: ${file.name}`
+        feedback.value += `\nArquivo inválido: ${item.file.name}`
         continue
       }
 
-      const filePath = `${processoId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      const filePath = `${processoId}/${Date.now()}_${item.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
       console.log('Caminho do arquivo:', filePath)
 
       // Upload para o storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('documents')
-        .upload(filePath, file, {
+        .upload(filePath, item.file, {
           cacheControl: '3600',
           upsert: false,
         })
@@ -123,7 +123,7 @@ async function registrarProcesso() {
       if (uploadError) {
         console.error('Erro no upload:', uploadError)
         arquivosComErro++
-        feedback.value += `\nFalha ao enviar ${file.name}: ${uploadError.message}`
+        feedback.value += `\nFalha ao enviar ${item.file.name}: ${uploadError.message}`
         continue
       }
 
@@ -138,18 +138,19 @@ async function registrarProcesso() {
       const { data: insertData, error: insertError } = await supabase.from('documents').insert([
         {
           process_id: processoId,
-          filename: file.name,
+          filename: item.file.name,
           file_url: fileUrl,
-          file_size: file.size,
-          mime_type: file.type,
+          file_size: item.file.size,
+          mime_type: item.file.type,
           storage_path: filePath,
+          description: item.description,
         },
       ])
 
       if (insertError) {
         console.error('Erro ao inserir no banco:', insertError)
         arquivosComErro++
-        feedback.value += `\nFalha ao registrar ${file.name} no banco: ${insertError.message}`
+        feedback.value += `\nFalha ao registrar ${item.file.name} no banco: ${insertError.message}`
 
         // Tentar deletar o arquivo do storage se falhou no banco
         await supabase.storage.from('documents').remove([filePath])
@@ -160,7 +161,7 @@ async function registrarProcesso() {
     } catch (error) {
       console.error('Erro geral no processamento do arquivo:', error)
       arquivosComErro++
-      feedback.value += `\nErro inesperado ao processar ${file.name}: ${(error as Error).message}`
+      feedback.value += `\nErro inesperado ao processar ${item.file.name}: ${(error as Error).message}`
     }
   }
 
@@ -202,12 +203,14 @@ function limparFormulario() {
 }
 
 function handleFileSelected(event: Event) {
-  const target = event.target as HTMLInputElement
+  const target = event.target as HTMLInputElement;
   if (target.files) {
-    arquivos.value = Array.from(target.files)
-    console.log('Arquivos selecionados:', arquivos.value.length)
+    arquivos.value = Array.from(target.files).map(file => ({
+      file: file,
+      description: ''
+    }));
   } else {
-    arquivos.value = []
+    arquivos.value = [];
   }
 }
 </script>
@@ -387,6 +390,10 @@ function handleFileSelected(event: Event) {
             class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 file:bg-gradient-to-r file:from-teal-600 file:to-cyan-500 file:text-white file:font-semibold file:border-none file:px-4 file:py-2 file:mr-4 file:rounded-lg file:cursor-pointer"
             @change="handleFileSelected"
           />
+        </div>
+        <div v-for="(item, idx) in arquivos" :key="item.file.name" class="mt-2 flex flex-col gap-1">
+          <span class="text-xs text-slate-400">{{ item.file.name }}</span>
+          <textarea v-model="item.description" placeholder="Descrição do anexo (opcional)" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white text-xs"></textarea>
         </div>
         <div class="flex justify-end">
           <button
