@@ -18,6 +18,15 @@
                 class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
               />
             </div>
+            <div class="flex flex-col min-w-[180px]">
+              <label class="text-slate-200 font-semibold mb-1">Processo SEI</label>
+              <input
+                v-model="filtroSEI"
+                type="text"
+                placeholder="Digite o número SEI"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
+              />
+            </div>
             <div class="flex flex-col min-w-[120px]">
               <label class="text-slate-200 font-semibold mb-1">Ano do FAF</label>
               <select
@@ -85,8 +94,7 @@
           </div>
         </div>
         <!-- Título -->
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Página de Processos</h1>
-        <p class="text-slate-300 mb-6">Aqui você pode gerenciar seus processos.</p>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Acompanhamento de Processos</h1>
         <!-- Cards de Processo -->
         <div class="flex justify-center w-full">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -124,6 +132,7 @@ const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
 const filtroNome = ref('')
+const filtroSEI = ref('')
 const filtroAno = ref('')
 const filtroForca = ref('')
 const filtroArea = ref('')
@@ -220,6 +229,7 @@ const processosFiltrados = computed(() => {
     const nomeMatch = (proc.nome_acao || proc.area_code || '')
       .toLowerCase()
       .includes(filtroNome.value.toLowerCase())
+    const seiMatch = !filtroSEI.value || (proc.codigo_transferegov || '').toLowerCase().includes(filtroSEI.value.toLowerCase())
     const anoMatch = !filtroAno.value || proc.ano_faf === Number(filtroAno.value)
     const forcaMatch =
       !filtroForca.value || proc.responsible_forces?.id === Number(filtroForca.value)
@@ -229,7 +239,7 @@ const processosFiltrados = computed(() => {
       (proc.data_encaminhamento_aprovacao &&
         proc.data_encaminhamento_aprovacao === filtroData.value)
     const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
-    return nomeMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
+    return nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
   })
 })
 </script>

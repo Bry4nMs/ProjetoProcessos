@@ -234,7 +234,9 @@ watchEffect(() => {
   startTimer()
 })
 
+// Chamar carregarEtapas ao montar o componente para exibir etapa atual no card
 onMounted(() => {
+  carregarEtapas()
   startTimer()
 })
 
@@ -263,9 +265,15 @@ async function toggleFavorite() {
   <div>
     <!-- Card -->
     <div
-      class="bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-xl p-6 mb-6 hover:bg-white/15 hover:scale-105 transition-all relative w-full h-full min-h-[320px]"
+      class="bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-xl p-6 mb-6 hover:bg-white/15 hover:scale-105 transition-all relative w-full h-full min-h-[350px]"
     >
-      <!-- Remover o botão do canto superior direito -->
+      <!-- Etapa Atual -->
+      <div class="flex items-center justify-center mb-2">
+        <svg class="w-5 h-5 mr-2 text-cyan-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/></svg>
+        <span class="text-sm text-slate-200 font-semibold text-center">
+          {{ etapas[etapaAtual]?.nome ? `Etapa Atual: ${etapas[etapaAtual].nome}` : 'Etapa Atual: Não definida' }}
+        </span>
+      </div>
       <!-- Barra de Progresso -->
       <div class="w-full h-2 bg-white/10 rounded mb-3 overflow-hidden">
         <div

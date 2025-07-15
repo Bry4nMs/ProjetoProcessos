@@ -15,7 +15,7 @@
                 <input
                   v-model="userInfo.name"
                   type="text"
-                  class="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
+                  class="w-full px-3 py-2 bg-slate-900 border border-teal-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
                   placeholder="Seu nome completo"
                 />
               </div>
@@ -24,7 +24,7 @@
                 <input
                   v-model="userInfo.email"
                   type="email"
-                  class="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
+                  class="w-full px-3 py-2 bg-slate-900 border border-teal-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
                   placeholder="seu@email.com"
                   disabled
                 />
@@ -34,7 +34,7 @@
                 <input
                   v-model="userInfo.phone"
                   type="tel"
-                  class="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
+                  class="w-full px-3 py-2 bg-slate-900 border border-teal-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
                   placeholder="(00) 00000-0000"
                 />
               </div>
@@ -69,7 +69,7 @@
                 <input
                   v-model="novaSenha"
                   type="password"
-                  class="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
+                  class="w-full px-3 py-2 bg-slate-900 border border-teal-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
                   placeholder="Nova senha"
                 />
               </div>
@@ -78,7 +78,7 @@
                 <input
                   v-model="confirmarSenha"
                   type="password"
-                  class="w-full px-3 py-2 bg-white/10 border border-white/20 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
+                  class="w-full px-3 py-2 bg-slate-900 border border-teal-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 placeholder:text-slate-400"
                   placeholder="Confirme a nova senha"
                 />
               </div>

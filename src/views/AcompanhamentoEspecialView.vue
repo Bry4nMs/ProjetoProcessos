@@ -82,9 +82,7 @@
           </div>
         </div>
         <!-- Título -->
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Acompanhamento Especial</h1>
-        <p class="text-slate-300 mb-6">Aqui você acompanha apenas os processos que marcou como favoritos.</p>
-        <!-- Cards de Processo -->
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Acompanhamento Especial</h1>        <!-- Cards de Processo -->
         <div class="flex justify-center w-full">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <ProcessoCard

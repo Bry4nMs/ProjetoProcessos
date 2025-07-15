@@ -4,35 +4,62 @@
       <!-- Painéis de Gráficos -->
       <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
         <!-- Gráfico 1: Total de Processos por Força Responsável -->
-        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
-          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">
-            Total de Processos por Força Responsável
-          </h2>
-          <BarChart
-            v-if="dadosProcessosPorForca.length"
-            :data="chartDataForca"
-            :options="chartOptionsForca"
-            class="w-full h-96"
-          />
-          <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[420px]">
+          <div class="flex items-center gap-3 mb-4">
+            <svg class="w-7 h-7 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+              Processos por Força Responsável
+            </h2>
+          </div>
+          <div v-if="dadosProcessosPorForca.length > 0" class="text-center mb-4">
+            <div class="text-5xl font-bold text-white">{{ totalProcessosGrafico }}</div>
+            <div class="text-sm text-slate-400">Total de Processos</div>
+          </div>
+          <div class="flex-1 w-full flex items-center justify-center">
+            <BarChart
+              v-if="dadosProcessosPorForca.length > 0 && !loading"
+              :data="chartDataForca"
+              :options="chartOptionsForca"
+              class="w-full h-full"
+            />
+            <div v-else-if="loading" class="text-center">
+              <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
+              <p class="text-slate-400 mt-2">Carregando...</p>
+            </div>
+            <div v-else class="text-center">
+              <svg class="w-16 h-16 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+              <p class="text-slate-400 mt-2">Nenhum processo para exibir.</p>
+            </div>
+          </div>
         </div>
         <!-- Gráfico 2: Tempo Médio Gasto por Etapa -->
         <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
-          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Tempo Médio por Etapa (dias)</h2>
-          <div class="w-full overflow-x-auto">
-            <div :style="{ minWidth: chartWidthEtapa + 'px' }">
-              <BarChart
+
+    <div class="flex items-center gap-3 mb-4 self-start">
+        <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+            Análise de Tempo por Etapa
+        </h2>
+    </div>
+
+    <div class="flex-1 w-full overflow-x-auto">
+        <div :style="{ minWidth: chartWidthEtapa + 'px' }">
+            <BarChart
                 v-if="dadosTempoMedioEtapa.length"
                 :data="chartDataEtapa"
                 :options="chartOptionsEtapa"
                 class="w-full"
-                :height="350"
+                :height="320"
                 :width="chartWidthEtapa"
-              />
-              <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
-            </div>
-          </div>
+            />
+            <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
         </div>
+    </div>
+</div>
       </div>
 
       <!-- Linha do Tempo e Seletor -->
@@ -164,6 +191,7 @@ const loading = ref(false)
 // Dados dos gráficos
 const dadosProcessosPorForca = ref<Array<{ code: string; total: number }>>([])
 const dadosTempoMedioEtapa = ref<Array<{ name: string; media_dias: number }>>([])
+const totalProcessosGrafico = computed(() => dadosProcessosPorForca.value.reduce((acc, f) => acc + f.total, 0))
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
 const chartWidthEtapa = computed(() => {

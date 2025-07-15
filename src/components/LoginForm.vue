@@ -9,7 +9,7 @@ const password = ref('')
 const confirmPassword = ref('')
 const nome = ref('')
 
-const { login, criarConta, loading, error } = useAuth()
+const { login, criarConta, error } = useAuth()
 const feedback = ref('')
 const router = useRouter()
 
@@ -68,84 +68,60 @@ async function handleRegister(e: Event) {
       </button>
     </div>
     <div v-if="tab === 'login'">
-      <form class="flex flex-col gap-4" @submit="handleLogin">
-        <div>
-          <label class="block text-gray-700 mb-1">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <div>
-          <label class="block text-gray-700 mb-1">Senha</label>
-          <input
-            v-model="password"
-            type="password"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          class="mt-2 px-4 py-2 bg-abyss-primary text-white rounded font-bold shadow hover:bg-abyss-secondary transition"
-          :disabled="loading"
-        >
-          Entrar
-        </button>
-        <div v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</div>
-        <div v-if="feedback && !error" class="text-green-600 text-sm mt-2">{{ feedback }}</div>
-      </form>
+      <div class="w-full max-w-md bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl shadow-2xl p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">GECARE Processos</h1>
+        <p class="text-center text-black font-bold">Faça login para continuar</p>
+        <form @submit.prevent="handleLogin" class="space-y-4">
+          <div>
+            <label for="email" class="block mb-1 text-slate-800 font-semibold font-bold">Email</label>
+            <input id="email" v-model="email" type="email" required class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400" placeholder="Digite seu email" />
+          </div>
+          <div>
+            <label for="password" class="block mb-1 text-slate-800 font-semibold font-bold">Senha</label>
+            <input id="password" v-model="password" type="password" required class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400" placeholder="Digite sua senha" />
+          </div>
+          <button type="submit" class="w-full px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-bold shadow-lg hover:from-teal-700 hover:to-cyan-600 transition">Entrar</button>
+          <div class="flex justify-end">
+            <a href="#" class="text-sm text-cyan-300 hover:underline">Esqueci minha senha</a>
+          </div>
+        </form>
+      </div>
     </div>
     <div v-else>
-      <form class="flex flex-col gap-4" @submit="handleRegister">
-        <div>
-          <label class="block text-gray-700 mb-1">Nome</label>
-          <input
-            v-model="nome"
-            type="text"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <div>
-          <label class="block text-gray-700 mb-1">Email</label>
-          <input
-            v-model="email"
-            type="email"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <div>
-          <label class="block text-gray-700 mb-1">Senha</label>
-          <input
-            v-model="password"
-            type="password"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <div>
-          <label class="block text-gray-700 mb-1">Confirmar Senha</label>
-          <input
-            v-model="confirmPassword"
-            type="password"
-            class="w-full px-4 py-2 rounded bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-abyss-primary focus:border-abyss-primary"
-            required
-          />
-        </div>
-        <button
-          type="submit"
-          class="mt-2 px-4 py-2 bg-abyss-primary text-white rounded font-bold shadow hover:bg-abyss-secondary transition"
-          :disabled="loading"
-        >
-          Criar Conta
-        </button>
-        <div v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</div>
-        <div v-if="feedback && !error" class="text-green-600 text-sm mt-2">{{ feedback }}</div>
-      </form>
+      <div class="w-full max-w-md bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl shadow-2xl p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">GECARE Processos</h1>
+        <p class="text-center text-black font-bold">Crie sua conta para acessar</p>
+        <form class="space-y-4" @submit.prevent="handleRegister">
+          <div>
+            <label class="block mb-1 text-slate-800 font-semibold font-bold">Nome</label>
+            <input v-model="nome" type="text" required class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400" placeholder="Digite seu nome" />
+          </div>
+          <div>
+            <label class="block mb-1 text-slate-800 font-semibold font-bold">Email</label>
+            <input v-model="email" type="email" required class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400" placeholder="Digite seu email" />
+          </div>
+          <div>
+            <label class="block mb-1 text-slate-800 font-semibold font-bold">Senha</label>
+            <input v-model="password" type="password" required class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400" placeholder="Digite sua senha" />
+          </div>
+          <div>
+            <label class="block mb-1 text-slate-800 font-semibold font-bold">Confirmar Senha</label>
+            <input
+              v-model="confirmPassword"
+              type="password"
+              class="w-full px-4 py-2 bg-white/80 border border-cyan-400 text-slate-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-400 placeholder:text-slate-400"
+              required
+              placeholder="Confirme sua senha"
+            />
+          </div>
+          <button type="submit" class="w-full px-4 py-3 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-bold shadow-lg hover:from-teal-700 hover:to-cyan-600 transition">Criar Conta</button>
+          <div class="flex justify-end">
+            <a href="#" class="text-sm text-cyan-300 hover:underline" @click.prevent="tab = 'login'">Já tem uma conta? Faça login</a>
+          </div>
+          <div v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</div>
+          <div v-if="feedback && !error" class="text-green-600 text-sm mt-2">{{ feedback }}</div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
