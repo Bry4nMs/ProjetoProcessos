@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppLayout from '../components/Layout.vue'
 import { ref, onMounted } from 'vue'
+import { useDropZone } from '@vueuse/core'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
@@ -35,6 +36,15 @@ const areaTematicaId = ref('')
 const forcaResponsavelId = ref('')
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
+const dropZoneRef = ref<HTMLDivElement | null>(null)
+const fileUpload = ref<HTMLInputElement | null>(null)
+function onDrop(files: File[] | null) {
+  if (files) {
+    arquivos.value = files.map(file => ({ file, description: '' }))
+  }
+}
+const dropZone = useDropZone(dropZoneRef, { onDrop })
+const isOver = dropZone && 'isOver' in dropZone ? dropZone.isOver : ref(false)
 
 const { user, fetchUser } = useAuth()
 
@@ -381,19 +391,29 @@ function handleFileSelected(event: Event) {
           ></textarea>
         </div>
         <div>
-          <label class="block text-slate-200 mb-1 font-semibold"
-            >Anexar Nota Técnica ou Documento de Aprovação</label
+          <label class="block text-slate-200 mb-1 font-semibold">
+            Anexar Nota Técnica ou Documento de Aprovação
+          </label>
+          <div
+            ref="dropZoneRef"
+            class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors"
+            :class="isOver ? 'border-teal-400 bg-teal-500/10' : 'border-white/20 hover:bg-white/5'"
+            @click="fileUpload && fileUpload.click()"
           >
-          <input
-            type="file"
-            multiple
-            class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 file:bg-gradient-to-r file:from-teal-600 file:to-cyan-500 file:text-white file:font-semibold file:border-none file:px-4 file:py-2 file:mr-4 file:rounded-lg file:cursor-pointer"
-            @change="handleFileSelected"
-          />
+            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+              <svg class="w-8 h-8 mb-3 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4a1 1 0 011-1h8a1 1 0 011 1v12M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <p class="mb-2 text-sm text-slate-400">
+                <span class="font-semibold text-teal-400">Clique para escolher</span> ou arraste e solte os arquivos aqui
+              </p>
+              <input id="file-upload" ref="fileUpload" type="file" multiple class="hidden" @change="handleFileSelected" />
+            </div>
+          </div>
+          <div v-if="arquivos.length > 0" class="mt-4 space-y-2">
+            <div v-for="item in arquivos" :key="item.file.name" class="flex flex-col gap-1">
+              <span class="text-sm text-white font-bold">{{ item.file.name }}</span>
+              <textarea v-model="item.description" placeholder="Descrição do anexo (opcional)" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white text-sm"></textarea>
+            </div>
         </div>
-        <div v-for="(item, idx) in arquivos" :key="item.file.name" class="mt-2 flex flex-col gap-1">
-          <span class="text-xs text-slate-400">{{ item.file.name }}</span>
-          <textarea v-model="item.description" placeholder="Descrição do anexo (opcional)" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-white text-xs"></textarea>
         </div>
         <div class="flex justify-end">
           <button

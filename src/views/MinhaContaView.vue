@@ -205,20 +205,21 @@ async function carregarEstatisticas() {
 async function salvarInformacoes() {
   if (!user.value) return
   try {
-    // Atualiza nome e telefone no auth (nome para user_metadata, telefone para profiles)
+    // Atualiza nome no auth (user_metadata)
     const { error: errorAuth } = await supabase.auth.updateUser({
       data: {
         name: userInfo.value.name
       }
     })
-    // Atualiza telefone e setor_id em profiles
+    // Faz upsert no profile: se não existir, cria; se existir, atualiza
     const { error: errorProfile } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: user.value.id,
+        nome: userInfo.value.name, // salva nome também na tabela profiles
         telefone: userInfo.value.phone,
         setor_id: userInfo.value.setor_id
-      })
-      .eq('id', user.value.id)
+      }, { onConflict: 'id' })
     if (errorAuth || errorProfile) {
       alert('Erro ao salvar informações: ' + (errorAuth?.message || errorProfile?.message))
     } else {

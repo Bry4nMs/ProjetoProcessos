@@ -4,6 +4,7 @@ import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../compos
 import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import { useDropZone } from '@vueuse/core'
 const { user, fetchUser } = useAuth()
 
 const showModal = ref(false)
@@ -71,6 +72,15 @@ const novoAnexo = ref<File|null>(null)
 const novoAnexoDesc = ref('')
 const uploadLoading = ref(false)
 const uploadError = ref('')
+
+const dropZoneModalRef = ref<HTMLDivElement | null>(null)
+function onModalDrop(files: File[] | null) {
+  if (files && files.length > 0) {
+    novoAnexo.value = files[0]
+  }
+}
+const dropZoneModal = useDropZone(dropZoneModalRef, { onDrop: onModalDrop })
+const isOverModal = dropZoneModal && 'isOver' in dropZoneModal ? dropZoneModal.isOver : ref(false)
 
 // Debug: garantir que iniciarEdicao e salvarAlteracoes são chamados
 function iniciarEdicao() {
@@ -262,10 +272,68 @@ function fecharEtapas() {
   showEtapas.value = false
 }
 
+const activeModalTab = ref('detalhes') // 'detalhes' ou 'comentarios'
+const comments = ref([])
+const newComment = ref('')
+const loadingComments = ref(false)
+const editingCommentId = ref<string | null>(null)
+const editingCommentText = ref('')
+
+async function fetchComments() {
+  loadingComments.value = true;
+  const { data } = await supabase
+    .from('process_comments')
+    .select('*, profiles(nome)')
+    .eq('process_id', props.processo.id)
+    .order('created_at', { ascending: false });
+  if (data) comments.value = data;
+  loadingComments.value = false;
+}
+async function postComment() {
+  if (!newComment.value.trim()) return;
+  const { data: user } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase.from('process_comments').insert({
+    process_id: props.processo.id,
+    user_id: user.user.id,
+    comment_text: newComment.value
+  });
+  newComment.value = '';
+  await fetchComments();
+}
+
+function startEdit(comment: { id: string; comment_text: string }) {
+  editingCommentId.value = comment.id;
+  editingCommentText.value = comment.comment_text;
+}
+function cancelEdit() {
+  editingCommentId.value = null;
+  editingCommentText.value = '';
+}
+async function saveComment() {
+  if (!editingCommentText.value.trim() || !editingCommentId.value) return;
+  await supabase
+    .from('process_comments')
+    .update({ comment_text: editingCommentText.value })
+    .eq('id', editingCommentId.value);
+  cancelEdit();
+  await fetchComments();
+}
+async function deleteComment(commentId: string) {
+  if (!window.confirm('Tem certeza que deseja excluir este comentário?')) return;
+  await supabase
+    .from('process_comments')
+    .delete()
+    .eq('id', commentId);
+  await fetchComments();
+}
+
 function abrirDetalhes(e) {
-  e.stopPropagation()
-  showModal.value = true
-  carregarDocumentos()
+  e.stopPropagation();
+  activeModalTab.value = 'detalhes';
+  showModal.value = true;
+  carregarDocumentos();
+  fetchComments();
 }
 
 function fecharDetalhes() {
@@ -298,10 +366,11 @@ async function passarEtapa(e) {
   const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
 
   if (!error) {
+    // Sempre registra o evento, independente do usuário
     if (isFinalStep) {
       await registrarEventoHistorico(props.processo.id, 'Processo Concluído.');
     } else {
-      // Lógica que já existe para buscar o nome da nova etapa e registrar
+      // Buscar o nome da nova etapa e registrar
       const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
       if (etapas && etapas.length > 0) {
         const etapaAtualIdx = etapas.findIndex(e => e.is_current);
@@ -376,6 +445,39 @@ function onNovoAnexoChange(e: Event) {
     novoAnexo.value = target.files[0];
   } else {
     novoAnexo.value = null;
+  }
+}
+
+// Função para exclusão de documento
+async function excluirDocumento(documento: Documento) {
+  // 1. Confirmação do usuário
+  if (!window.confirm(`Tem certeza que deseja excluir o arquivo "${documento.filename}"? Esta ação não pode ser desfeita.`)) {
+    return;
+  }
+  try {
+    carregandoDocumentos.value = true;
+    // 2. Excluir do storage primeiro
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([documento.storage_path]);
+    if (storageError) {
+      throw storageError;
+    }
+    // 3. Excluir do banco de dados
+    const { error: dbError } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', documento.id);
+    if (dbError) {
+      throw dbError;
+    }
+    // 4. Atualizar a interface
+    await carregarDocumentos();
+  } catch (error) {
+    console.error('Erro ao excluir documento:', error);
+    alert('Falha ao excluir o documento. Tente novamente.');
+  } finally {
+    carregandoDocumentos.value = false;
   }
 }
 </script>
@@ -545,7 +647,7 @@ function onNovoAnexoChange(e: Event) {
       <div
         class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] overflow-y-auto"
       >
-        <!-- Painel de Controle dos Botões -->
+        <!-- Painel de Controle dos Botões e Abas -->
         <div class="absolute top-4 right-6 flex items-center gap-4 z-20">
           <button
             @click.stop="isEditing ? salvarAlteracoes() : iniciarEdicao()"
@@ -564,6 +666,17 @@ function onNovoAnexoChange(e: Event) {
             <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
           </button>
         </div>
+        <!-- Abas -->
+        <div class="flex gap-2 mb-4 mt-2">
+          <button @click="activeModalTab = 'detalhes'" :class="['p-2 rounded transition', activeModalTab === 'detalhes' ? 'text-teal-400 bg-white/10 font-bold' : 'text-slate-400 hover:text-teal-400']" title="Detalhes">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16V4a2 2 0 012-2h8a2 2 0 012 2v12M4 20h16M8 20v-4a2 2 0 012-2h4a2 2 0 012 2v4"/></svg>
+          </button>
+          <button @click="activeModalTab = 'comentarios'" :class="['p-2 rounded transition', activeModalTab === 'comentarios' ? 'text-teal-400 bg-white/10 font-bold' : 'text-slate-400 hover:text-teal-400']" title="Comentários">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </button>
+        </div>
+        <!-- Conteúdo das Abas -->
+        <div v-if="activeModalTab === 'detalhes'">
         <div class="flex items-center gap-2 mb-4">
           <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
             {{ processo.nome_acao || 'Processo sem nome' }}
@@ -681,6 +794,13 @@ function onNovoAnexoChange(e: Event) {
                 <div class="flex gap-2 mt-4 self-end">
                     <button @click="visualizarArquivo(documento.file_url)" class="px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm rounded font-semibold hover:from-teal-700 hover:to-cyan-600 transition flex items-center gap-1">Visualizar</button>
                     <button @click="baixarArquivo(documento.file_url, documento.filename)" class="px-3 py-2 border border-white/20 text-slate-300 hover:bg-white/10 bg-transparent text-sm rounded font-semibold transition flex items-center gap-1">Baixar</button>
+                      <button
+                        @click="excluirDocumento(documento)"
+                        class="p-2 border border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent rounded font-semibold transition flex items-center"
+                        title="Excluir Documento"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 18h6l3-18H3zM5 6h14M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-6 6v6m4-6v6"></path></svg>
+                      </button>
                 </div>
             </div>
           </div>
@@ -689,14 +809,19 @@ function onNovoAnexoChange(e: Event) {
             <h4 class="font-semibold text-white mb-3">Adicionar Novo Anexo</h4>
             <div class="space-y-4">
 
+                <div
+                  ref="dropZoneModalRef"
+                  class="p-4 border-2 border-dashed rounded-lg transition-colors"
+                  :class="isOverModal ? 'border-teal-400 bg-teal-500/10' : 'border-white/20'"
+                >
               <div class="flex items-center gap-4">
                 <label for="novo-anexo-input" class="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold cursor-pointer hover:bg-white/20 transition">
                   Escolher arquivo
                 </label>
                 <input id="novo-anexo-input" type="file" @change="onNovoAnexoChange" class="hidden" />
-                <span class="text-sm text-slate-300 truncate">{{ novoAnexo?.name || 'Nenhum arquivo selecionado.' }}</span>
+                    <span class="text-sm text-slate-300 truncate">{{ novoAnexo?.name || 'Arraste um arquivo aqui...' }}</span>
+                  </div>
               </div>
-
               <textarea
                 v-model="novoAnexoDesc"
                 placeholder="Descrição do anexo (opcional)"
@@ -729,6 +854,58 @@ function onNovoAnexoChange(e: Event) {
           </button>
         </div>
         <div v-if="editError" class="text-red-500 text-sm mt-2">{{ editError }}</div>
+        </div>
+        <div v-else-if="activeModalTab === 'comentarios'">
+          <div class="mb-4">
+            <h3 class="text-lg font-bold text-teal-400 mb-2 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              Comentários do Processo
+            </h3>
+            <div v-if="loadingComments" class="text-center py-4">
+              <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-teal-400"></div>
+            </div>
+            <div v-else-if="comments.length === 0" class="text-slate-400 text-center py-4">
+              Nenhum comentário ainda.
+            </div>
+            <div v-else class="space-y-4 max-h-64 overflow-y-auto">
+              <div v-for="comment in comments" :key="comment.id" class="flex items-start gap-3 py-3 border-b border-white/10">
+                <div class="flex-shrink-0 w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center font-bold">
+                  {{ comment.profiles?.nome?.charAt(0) || 'U' }}
+                </div>
+                <div class="flex-1">
+                  <div class="flex justify-between items-center">
+                    <p class="font-semibold text-white">{{ comment.profiles?.nome || 'Usuário' }}</p>
+                    <div v-if="user && user.id === comment.user_id && editingCommentId !== comment.id" class="flex items-center gap-2">
+                      <button @click="startEdit(comment)" title="Editar">
+                        <svg class="w-4 h-4 text-slate-400 hover:text-teal-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6 6M3 17v4h4l10.293-10.293a1 1 0 00-1.414-1.414L3 17z"/></svg>
+                      </button>
+                      <button @click="deleteComment(comment.id)" title="Excluir">
+                        <svg class="w-4 h-4 text-slate-400 hover:text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-xs text-slate-500">{{ formatarData(comment.created_at) }}</p>
+                  <div v-if="editingCommentId !== comment.id" class="text-slate-200 mt-2 whitespace-pre-wrap">
+                    {{ comment.comment_text }}
+                  </div>
+                  <div v-else class="mt-2">
+                    <textarea v-model="editingCommentText" rows="3" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"></textarea>
+                    <div class="flex gap-2 mt-2">
+                      <button @click="saveComment" class="px-3 py-1 bg-teal-600 text-white rounded font-bold">Salvar</button>
+                      <button @click="cancelEdit" class="px-3 py-1 bg-slate-600 text-white rounded font-bold">Cancelar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="mt-6">
+              <textarea v-model="newComment" rows="2" placeholder="Escreva um comentário..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"></textarea>
+              <div class="flex justify-end mt-2">
+                <button @click="postComment" :disabled="!newComment.trim()" class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow disabled:opacity-50 disabled:cursor-not-allowed transition">Enviar</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
