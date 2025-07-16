@@ -19,6 +19,7 @@ interface Etapa {
   step_order?: number
   inicio?: number | null
   fim?: number | null
+  accumulated_duration_seconds?: number // <-- Adicionado para tipagem correta
 }
 
 interface Documento {
@@ -141,6 +142,7 @@ async function carregarEtapas() {
         ended_at?: string
         is_current?: boolean
         step_order?: number
+        accumulated_duration_seconds?: number
       }) => ({
         nome: e.step_templates?.name || '',
         descricao: '', // Adapte se quiser descrição
@@ -151,6 +153,7 @@ async function carregarEtapas() {
         step_order: e.step_order,
         inicio: e.started_at ? new Date(e.started_at).getTime() : null, // Para o timer
         fim: e.ended_at ? new Date(e.ended_at).getTime() : null, // Opcional
+        accumulated_duration_seconds: e.accumulated_duration_seconds || 0,
       }),
     )
     etapaAtual.value = data.findIndex((e: { is_current: boolean }) => e.is_current)
@@ -480,6 +483,15 @@ async function excluirDocumento(documento: Documento) {
     carregandoDocumentos.value = false;
   }
 }
+
+async function voltarEtapa() {
+  if (!props.processo.id) return;
+  const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
+  if (!error) {
+    await carregarEtapas();
+    emit('atualizar-processo');
+  }
+}
 </script>
 
 <template>
@@ -589,6 +601,15 @@ async function excluirDocumento(documento: Documento) {
           Tempo total decorrido:
           <span class="font-semibold">{{ formatarSegundos(tempoTotal) }}</span>
         </div>
+        <div class="flex justify-end mb-4">
+          <button
+            v-if="etapaAtual > 0 && processo.status !== 'Concluído'"
+            @click="voltarEtapa"
+            class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-lg font-semibold shadow hover:from-cyan-600 hover:to-teal-600 transition"
+          >
+            Voltar à Etapa Anterior
+          </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div
             v-for="(etapa, idx) in etapas"
@@ -615,16 +636,14 @@ async function excluirDocumento(documento: Documento) {
                 class="text-xs text-teal-400 font-bold"
               >
                 Tempo nesta etapa:
-                <span>{{ formatarSegundos(tempoEtapaAtual) }}</span>
+                <span>{{ formatarSegundos((etapa.accumulated_duration_seconds || 0) + Math.floor((Date.now() - new Date(etapa.started_at).getTime()) / 1000)) }}</span>
               </div>
               <div
                 v-else-if="etapa.started_at && etapa.ended_at"
                 class="text-xs text-teal-400 font-bold"
               >
                 Tempo gasto nessa etapa:
-                <span>{{
-                  formatarSegundos(tempoGastoEtapa(etapa.started_at, etapa.ended_at))
-                }}</span>
+                <span>{{ formatarSegundos(etapa.accumulated_duration_seconds || 0) }}</span>
               </div>
             </div>
             <div
