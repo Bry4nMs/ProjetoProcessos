@@ -35,6 +35,15 @@
       </svg>
       <span class="font-medium">Acompanhamento Especial</span>
     </router-link>
+    <!-- Botão de Admin -->
+    <router-link
+      v-if="isAdmin"
+      to="/admin"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2 bg-gradient-to-r from-amber-600 to-yellow-500 text-white shadow-lg"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V6a2 2 0 012-2h12a2 2 0 012 2v8c0 2.21-3.582 4-8 4z"/></svg>
+      <span class="font-medium">Administração</span>
+    </router-link>
     <div class="flex-1"></div>
     <template v-if="user">
       <span class="text-abyss-primary font-semibold mb-4 block"
@@ -51,11 +60,27 @@
 </template>
 
 <script setup lang="ts">
+import { watch, ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useRouter } from 'vue-router'
+import { supabase } from '../services/supabase'
 
 const { user, logout } = useAuth()
 const router = useRouter()
+const isAdmin = ref(false)
+
+async function fetchProfileRole() {
+  if (!user.value) {
+    isAdmin.value = false
+    return
+  }
+  const { data } = await supabase.from('profiles').select('role').eq('id', user.value.id).single()
+  isAdmin.value = data?.role === 'admin'
+}
+
+watch(user, () => {
+  fetchProfileRole()
+}, { immediate: true })
 
 async function handleLogout() {
   await logout()

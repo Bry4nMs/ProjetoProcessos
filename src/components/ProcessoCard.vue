@@ -104,6 +104,38 @@ async function salvarAlteracoes() {
   console.log('Entrou em salvarAlteracoes', editableData)
   editLoading.value = true
   editError.value = ''
+  // Adicionar updated_by com o id do usuário logado
+  let usuario = user.value
+  if (!usuario) usuario = await fetchUser()
+  if (!usuario) {
+    editLoading.value = false
+    editError.value = 'Usuário não autenticado.'
+    return
+  }
+
+  // 1. Comparar campos e montar array de alterações
+  const camposParaLog = [
+    'qtd_itens',
+    'descricao_itens',
+    'destinacao_itens',
+    'descricao_geral',
+    'valor_inicial_padrao',
+    'valor_rendimentos',
+    'valor_economicidade',
+    'valor_total_destinado'
+  ];
+  const alteracoes = [];
+  camposParaLog.forEach(campo => {
+    if (editableData[campo] !== props.processo[campo]) {
+      alteracoes.push({
+        campo,
+        valor_antigo: props.processo[campo],
+        valor_novo: editableData[campo]
+      });
+    }
+  });
+
+  // 2. Atualizar processo normalmente
   const { error } = await supabase
     .from('processes')
     .update({
@@ -114,15 +146,38 @@ async function salvarAlteracoes() {
       valor_inicial_padrao: editableData.valor_inicial_padrao,
       valor_rendimentos: editableData.valor_rendimentos,
       valor_economicidade: editableData.valor_economicidade,
-      valor_total_destinado: editableData.valor_total_destinado
+      valor_total_destinado: editableData.valor_total_destinado,
+      updated_by: usuario.id
     })
     .eq('id', props.processo.id)
   editLoading.value = false
   if (!error) {
+    // 3. Se houve alterações, registrar log
+    if (alteracoes.length > 0) {
+      try {
+        const logs = alteracoes.map(alt => ({
+          process_id: props.processo.id,
+          user_id: usuario.id,
+          field_name: alt.campo,
+          old_value: alt.valor_antigo !== undefined && alt.valor_antigo !== null ? String(alt.valor_antigo) : null,
+          new_value: alt.valor_novo !== undefined && alt.valor_novo !== null ? String(alt.valor_novo) : null,
+          changed_at: new Date().toISOString()
+        }));
+        await supabase.from('audit_log').insert(logs);
+      } catch (e) {
+        console.error('Erro ao registrar log de auditoria:', e)
+      }
+    }
     isEditing.value = false
     emit('atualizar-processo')
+    // Emitir evento global para atualizar timeline
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('refresh-historico'))
+    }
   } else {
-    editError.value = 'Erro ao salvar alterações'
+    console.error('Erro ao salvar alterações:', error)
+    editError.value = 'Erro ao salvar alterações: ' + (error.message || error.details || 'Erro desconhecido')
+    alert('Erro ao salvar alterações: ' + (error.message || error.details || 'Erro desconhecido'))
   }
 }
 
@@ -488,6 +543,15 @@ async function voltarEtapa() {
   if (!props.processo.id) return;
   const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
   if (!error) {
+    // Buscar etapas atualizadas
+    const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
+    if (etapas && etapas.length > 0) {
+      const etapaAtualIdx = etapas.findIndex(e => e.is_current);
+      if (etapaAtualIdx !== -1) {
+        const nomeEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
+        await registrarEventoHistorico(props.processo.id, `Etapa devolvida para "${nomeEtapa}".`);
+      }
+    }
     await carregarEtapas();
     emit('atualizar-processo');
   }
@@ -546,9 +610,6 @@ async function voltarEtapa() {
       <div class="flex flex-wrap gap-2 mb-2">
         <span class="border border-teal-400/50 text-teal-300 bg-teal-500/10 text-xs px-2 py-1 rounded">
           {{ processo.tipo_natureza_despesa || 'Não definido' }}
-        </span>
-        <span class="border border-cyan-400/50 text-cyan-300 bg-cyan-500/10 text-xs px-2 py-1 rounded">
-          {{ processo.area_code || 'Não definido' }}
         </span>
       </div>
       <div class="flex items-center justify-between text-xs text-slate-400 mt-4 border-t border-white/10 pt-2">
@@ -708,7 +769,7 @@ async function voltarEtapa() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-4">
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Área Temática:</span>
-              <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.area_code || 'Não definido' }}</span>
+              <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.thematic_area_id || 'Não definido' }}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Ano do FAF:</span>

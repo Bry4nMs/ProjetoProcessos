@@ -124,6 +124,7 @@ import {
   buscarForcasResponsaveis,
   buscarAreasTematicas,
 } from '../services/auth'
+import { useDashboardFilters } from '../composables/useDashboardFilters'
 
 // Opções de Ano do FAF (igual CadastroProcessoView.vue)
 const anoAtual = new Date().getFullYear()
@@ -216,7 +217,14 @@ async function carregarProcessos() {
   loadingProcessos.value = false
 }
 
+const { filtroForcaId, limparFiltros } = useDashboardFilters()
+
 onMounted(async () => {
+  // Se vier filtro global do dashboard, aplicar e limpar
+  if (filtroForcaId.value) {
+    filtroForca.value = String(filtroForcaId.value)
+    limparFiltros()
+  }
   await carregarProcessos()
   const { data: forcas } = await buscarForcasResponsaveis()
   if (forcas) forcasResponsaveis.value = forcas

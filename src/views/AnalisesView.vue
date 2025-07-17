@@ -95,26 +95,28 @@
                   class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"
                 ></div>
                 <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
-                  <div class="flex items-start justify-between mb-2">
-                    <h3 class="font-semibold text-white">{{ evento.description }}</h3>
-                    <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
-                  </div>
-                  <div class="flex items-center gap-2 text-sm text-slate-300">
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                      />
-                    </svg>
-                    <span>{{ obterNomeUsuario(evento.user) }}</span>
-                  </div>
+                  <template v-if="evento.type === 'history'">
+                    <div class="flex items-start justify-between mb-2">
+                      <h3 class="font-semibold text-white">{{ evento.description }}</h3>
+                      <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-slate-300">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span>{{ obterNomeUsuario(evento.profiles) }}</span>
+                    </div>
+                  </template>
+                  <template v-else-if="evento.type === 'audit'">
+                    <div class="flex items-start justify-between mb-2">
+                      <h3 class="font-semibold text-white">
+                        {{ obterNomeUsuario(evento.user) || 'Sistema' }} alterou <b>{{ (evento as EventoAudit).field_name }}</b>
+                        de <span class="text-red-400">'{{ (evento as EventoAudit).old_value }}'</span>
+                        para <span class="text-green-400">'{{ (evento as EventoAudit).new_value }}'</span>
+                      </h3>
+                      <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
+                    </div>
+                  </template>
                 </div>
               </div>
             </div>
@@ -143,7 +145,8 @@ import AppLayout from '../components/Layout.vue'
 import { ref, onMounted, watch, computed } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
-import { buscarHistoricoProcesso } from '../services/auth'
+import { useDashboardFilters } from '../composables/useDashboardFilters'
+import { useRouter } from 'vue-router'
 
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
 import { Bar } from 'vue-chartjs'
@@ -166,7 +169,19 @@ interface EventoHistorico {
   user_id: string
   changed_at: string
   description: string
-  user?: { name?: string }
+  profiles?: { nome?: string }
+  type?: 'history'
+}
+interface EventoAudit {
+  id: string
+  process_id: string
+  user_id: string | null
+  changed_at: string
+  field_name: string
+  old_value: string | null
+  new_value: string | null
+  user?: { nome?: string }
+  type?: 'audit'
 }
 
 // Novo tipo para força
@@ -181,10 +196,12 @@ interface Etapa {
   name: string
 }
 
+// Remover interfaces não utilizadas
+
 // --- DADOS E ESTADOS REATIVOS ---
 const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
-const historico = ref<EventoHistorico[]>([])
+const historico = ref<(EventoHistorico | EventoAudit)[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
 
@@ -203,13 +220,20 @@ const chartWidthEtapa = computed(() => {
 
 // --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
 
-// Busca todas as forças cadastradas
+const router = useRouter()
+const { setFiltroForca } = useDashboardFilters()
+
+// Array de forças para mapear code -> id
+const forcasMem = ref<Forca[]>([])
+
+// Atualizar forcasMem ao buscar forças
 async function fetchForcas() {
   const { data } = await supabase
     .from('responsible_forces')
     .select('id, code, name')
     .order('code', { ascending: true })
-  return (data as Forca[]) || []
+  forcasMem.value = (data as Forca[]) || []
+  return forcasMem.value
 }
 
 // Busca todas as etapas cadastradas
@@ -316,6 +340,16 @@ const chartOptionsForca = {
       grid: { color: 'rgba(255,255,255,0.05)' },
     },
   },
+  onClick: (event, elements, chart) => {
+    if (!elements.length) return
+    const idx = elements[0].index
+    const code = chart.data.labels[idx]
+    const forca = forcasMem.value.find(f => f.code === code)
+    if (forca) {
+      setFiltroForca(forca.id)
+      router.push('/')
+    }
+  },
 }
 
 // Gráfico de barras horizontais de tempo médio por etapa
@@ -357,35 +391,59 @@ const chartOptionsEtapa = {
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
-// Busca apenas o nome do usuário pela view 'users'
-async function buscarUsuarioPorId(userId: string) {
-  const { data } = await supabase.from('users').select('name').eq('id', userId).single()
-  return data
-}
-
 // Função dedicada para buscar o histórico de um processo e enriquecer com dados do usuário
 async function buscarHistorico(id: string) {
+  console.log('Buscando histórico para processoSelecionado:', id);
   if (!id) {
-    historico.value = []
-    return
+    historico.value = [];
+    return;
   }
-  loading.value = true
-  const { data } = await buscarHistoricoProcesso(id)
-  if (data) {
-    for (const evento of data) {
-      evento.user = await buscarUsuarioPorId(evento.user_id)
-    }
-    historico.value = data
-  } else {
-    historico.value = []
-  }
-  loading.value = false
+  loading.value = true;
+
+  // Consulta corrigida para process_history
+  const { data: historyData } = await supabase
+    .from('process_history')
+    .select('*, profiles(id, nome)')
+    .eq('process_id', id);
+  console.log('Dados process_history:', historyData);
+
+  // Consulta audit_log sem join para garantir que sempre retorna
+  const { data: auditData } = await supabase
+    .from('audit_log')
+    .select('*')
+    .eq('process_id', id);
+  console.log('Dados audit_log (sem join):', auditData);
+
+  // Adiciona o tipo para renderização condicional
+  const historyItems = (historyData || []).map(item => ({ ...item, type: 'history' }));
+  const auditItems = (auditData || []).map(item => ({
+    ...item,
+    user: { nome: 'Usuário desconhecido' },
+    type: 'audit'
+  }));
+  console.log('auditItems:', auditItems);
+
+  // Junta e ordena por data
+  historico.value = [...historyItems, ...auditItems].sort((a, b) =>
+    new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime()
+  );
+  console.log('historico final para timeline:', historico.value);
+  loading.value = false;
 }
 
 // WATCH: Observa mudanças no processoSelecionado e busca o histórico reativamente
 watch(processoSelecionado, (novoId) => {
   buscarHistorico(novoId)
 })
+
+// Adiciona um event listener global para refresh
+if (typeof window !== 'undefined') {
+  window.addEventListener('refresh-historico', () => {
+    if (processoSelecionado.value) {
+      buscarHistorico(processoSelecionado.value)
+    }
+  })
+}
 
 // Carrega a lista de processos e os gráficos ao montar o componente
 onMounted(async () => {
@@ -420,6 +478,7 @@ onMounted(async () => {
   // Carrega os dados dos gráficos
   await fetchProcessosPorForca()
   await fetchTempoMedioPorEtapa()
+  await fetchForcas() // popula forcasMem
 })
 
 // Formata a data/hora para exibição amigável
@@ -433,8 +492,8 @@ function formatarData(data: string) {
   })
 }
 
-// Obtém o nome do usuário para exibir na linha do tempo
-function obterNomeUsuario(user: { name?: string } | undefined) {
-  return user?.name || 'Usuário desconhecido'
+// Função para obter nome do usuário
+function obterNomeUsuario(user: { nome?: string } | null | undefined) {
+  return user?.nome || 'Usuário desconhecido'
 }
 </script>

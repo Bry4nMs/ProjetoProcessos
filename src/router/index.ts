@@ -43,6 +43,11 @@ const router = createRouter({
       name: 'AcompanhamentoEspecial',
       component: () => import('../views/AcompanhamentoEspecialView.vue'),
     },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue'),
+    },
   ],
 })
 
