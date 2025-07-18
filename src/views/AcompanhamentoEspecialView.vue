@@ -106,7 +106,6 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
-  buscarEtapasDoProcesso,
   buscarForcasResponsaveis,
   buscarAreasTematicas,
 } from '../services/auth'
@@ -164,35 +163,27 @@ async function carregarProcessos() {
     loadingProcessos.value = false
     return
   }
-  // Buscar apenas processos favoritados
-  const { data } = await supabase
-    .from('user_favorites')
-    .select('*, processes(*, responsible_forces(id, code), thematic_areas(id, code))')
-    .eq('user_id', usuario.id)
-    .order('created_at', { referencedTable: 'processes', ascending: false })
+
+  // Chamada única para a função RPC otimizada
+  const { data, error } = await supabase.rpc('get_favorited_processes_with_progress', { p_user_id: usuario.id })
+
+  if (error) {
+    console.error('Erro ao buscar processos favoritados com RPC:', error)
+    processos.value = []
+    loadingProcessos.value = false
+    return
+  }
+
   if (data) {
-    const processosFavoritados = data.map(fav => fav.processes)
-    processos.value = await Promise.all(
-      processosFavoritados.map(async (proc) => {
-        const { data: etapas } = await buscarEtapasDoProcesso(proc.id)
-        let etapaAtual = 0
-        let totalEtapas = 0
-        if (etapas && etapas.length > 0) {
-          etapaAtual = etapas.findIndex((e: { is_current: boolean }) => e.is_current)
-          if (etapaAtual === -1) etapaAtual = 0
-          totalEtapas = etapas.length
-        }
-        return {
+    processos.value = data.map(proc => ({
           ...proc,
           forca_code: proc.responsible_forces?.code || '',
           area_code: proc.thematic_areas?.code || '',
-          etapaAtual,
-          totalEtapas,
+      etapaAtual: proc.etapaAtual,
+      totalEtapas: proc.totalEtapas,
           status: proc.status || 'Em Andamento',
           is_favorited: true,
-        }
-      })
-    )
+    }))
   } else {
     processos.value = []
   }

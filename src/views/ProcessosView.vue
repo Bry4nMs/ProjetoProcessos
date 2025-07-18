@@ -120,7 +120,6 @@ import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
-  buscarEtapasDoProcesso,
   buscarForcasResponsaveis,
   buscarAreasTematicas,
 } from '../services/auth'
@@ -172,49 +171,52 @@ const processos = ref<Processo[]>([])
 const loadingProcessos = ref(false)
 
 async function carregarProcessos() {
-  loadingProcessos.value = true
-  let usuario = user.value
+  loadingProcessos.value = true;
+  let usuario = user.value;
   if (!usuario) {
-    usuario = await fetchUser()
+    usuario = await fetchUser();
   }
   if (!usuario) {
-    processos.value = []
-    loadingProcessos.value = false
-    return
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
   }
-  // Buscar favoritos do usuário
-  const { data: favorites } = await supabase.from('user_favorites').select('process_id').eq('user_id', usuario.id)
-  const favoriteIds = new Set((favorites || []).map(f => f.process_id))
-  const { data } = await supabase
-    .from('processes')
-    .select('*, responsible_forces(id, code), thematic_areas(id, code)')
-    .order('created_at', { ascending: false })
+
+  // 1. Buscar favoritos do usuário (continua igual)
+  const { data: favorites } = await supabase
+    .from('user_favorites')
+    .select('process_id')
+    .eq('user_id', usuario.id);
+  const favoriteIds = new Set((favorites || []).map(f => f.process_id));
+
+  // 2. CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
+  const { data, error } = await supabase.rpc('get_processes_with_progress');
+
+  if (error) {
+    console.error('Erro ao buscar processos com RPC:', error);
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
+  }
+
   if (data) {
-    processos.value = await Promise.all(
-      data.map(async (proc) => {
-        const { data: etapas } = await buscarEtapasDoProcesso(proc.id)
-        let etapaAtual = 0
-        let totalEtapas = 0
-        if (etapas && etapas.length > 0) {
-          etapaAtual = etapas.findIndex((e: { is_current: boolean }) => e.is_current)
-          if (etapaAtual === -1) etapaAtual = 0
-          totalEtapas = etapas.length
-        }
-        return {
+    // 3. Mapeamento simples dos dados já processados
+    processos.value = data.map(proc => ({
           ...proc,
+      // Os dados de `forca` e `area` já vêm no formato correto do RPC
           forca_code: proc.responsible_forces?.code || '',
           area_code: proc.thematic_areas?.code || '',
-          etapaAtual,
-          totalEtapas,
+      // `etapaAtual` e `totalEtapas` já são calculados no back-end!
+      etapaAtual: proc.etapaAtual,
+      totalEtapas: proc.totalEtapas,
+      // O restante da lógica permanece
           status: proc.status || 'Em Andamento',
           is_favorited: favoriteIds.has(proc.id),
-        }
-      }),
-    )
+    }));
   } else {
-    processos.value = []
+    processos.value = [];
   }
-  loadingProcessos.value = false
+  loadingProcessos.value = false;
 }
 
 const { filtroForcaId, limparFiltros } = useDashboardFilters()

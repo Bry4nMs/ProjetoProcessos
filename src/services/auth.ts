@@ -28,12 +28,13 @@ export async function obterUsuario() {
 
 // Buscar etapas de um processo
 export async function buscarEtapasDoProcesso(processId: string) {
-  const { data, error } = await supabase
+  // A consulta agora busca as etapas e, para cada uma, seus itens de checklist associados
+  return await supabase
     .from('process_steps')
-    .select('*, step_templates(name)')
+    .select('*, step_templates(name), step_checklist_items(*)') // <--- MUDANÇA AQUI
     .eq('process_id', processId)
     .order('step_order', { ascending: true })
-  return { data, error }
+    .order('created_at', { referencedTable: 'step_checklist_items', ascending: true }); // Ordena os itens do checklist
 }
 
 // Avançar etapa do processo

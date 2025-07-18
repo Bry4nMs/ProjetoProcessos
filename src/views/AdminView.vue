@@ -84,6 +84,10 @@
                 <option v-for="user in usuarios" :key="user.id" :value="user.id">{{ user.nome }}</option>
               </select>
             </div>
+            <div v-if="form.action_type === 'assign_user'" class="mb-4">
+              <label class="block text-slate-300 mb-1">Mensagem da Notificação</label>
+              <textarea v-model="form.action_message" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" rows="2" placeholder="Mensagem que será enviada ao usuário ao ser atribuído à etapa."></textarea>
+            </div>
             <div v-if="form.action_type === 'send_notification'" class="mb-4">
               <label class="block text-slate-300 mb-1">Destinatário</label>
               <select v-model="form.action_notification_target" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
@@ -101,6 +105,9 @@
               <label class="block text-slate-300 mb-1 mt-2">Mensagem</label>
               <textarea v-model="form.action_notification_message" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" rows="2" required></textarea>
             </div>
+            <div v-if="saveError" class="mt-4 text-center p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p class="text-red-400 text-sm font-semibold">{{ saveError }}</p>
+            </div>
             <div class="flex justify-end gap-2 mt-6">
               <button type="button" @click="fecharModal" class="px-4 py-2 bg-slate-700 text-white rounded font-bold">Cancelar</button>
               <button type="submit" class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition">Salvar</button>
@@ -117,12 +124,26 @@ import AppLayout from '../components/Layout.vue'
 import { ref, reactive, onMounted } from 'vue'
 import { supabase } from '../services/supabase'
 
-const regras = ref<any[]>([])
-const etapas = ref<any[]>([])
-const usuarios = ref<any[]>([])
+// Tipos explícitos para evitar 'any'
+interface Regra {
+  id: number;
+  rule_name: string;
+  trigger_type: string;
+  trigger_metadata?: Record<string, unknown>;
+  action_type: string;
+  action_metadata?: Record<string, unknown>;
+  is_active: boolean;
+}
+interface Etapa { id: number; name: string }
+interface Usuario { id: string; nome: string }
+
+const regras = ref<Regra[]>([])
+const etapas = ref<Etapa[]>([])
+const usuarios = ref<Usuario[]>([])
 const showModal = ref(false)
 const editandoRegra = ref(false)
 const regraEditadaId = ref<number | null>(null)
+const saveError = ref('');
 
 const form = reactive({
   rule_name: '',
@@ -131,6 +152,7 @@ const form = reactive({
   trigger_delay_days: null as number | null,
   action_type: '',
   action_user_id: '',
+  action_message: '', // <-- novo campo
   action_notification_target: '',
   action_notification_user_id: '',
   action_notification_message: '',
@@ -144,6 +166,7 @@ function resetForm() {
   form.trigger_delay_days = null
   form.action_type = ''
   form.action_user_id = ''
+  form.action_message = '' // <-- novo campo
   form.action_notification_target = ''
   form.action_notification_user_id = ''
   form.action_notification_message = ''
@@ -157,24 +180,25 @@ function abrirModalCriar() {
   showModal.value = true
 }
 
-function abrirModalEditar(regra: any) {
+function abrirModalEditar(regra: Regra) {
   resetForm()
   editandoRegra.value = true
   regraEditadaId.value = regra.id
   form.rule_name = regra.rule_name
   form.trigger_type = regra.trigger_type
   if (regra.trigger_metadata) {
-    const meta = regra.trigger_metadata
-    form.trigger_step_template_id = meta.step_template_id || ''
-    form.trigger_delay_days = meta.delay_days || null
+    const meta = regra.trigger_metadata as Record<string, unknown>
+    form.trigger_step_template_id = meta.step_template_id as string || ''
+    form.trigger_delay_days = meta.delay_days as number || null
   }
   form.action_type = regra.action_type
   if (regra.action_metadata) {
-    const meta = regra.action_metadata
-    form.action_user_id = meta.user_id || ''
-    form.action_notification_target = meta.target || ''
-    form.action_notification_user_id = meta.user_id || ''
-    form.action_notification_message = meta.message || ''
+    const meta = regra.action_metadata as Record<string, unknown>
+    form.action_user_id = meta.user_id as string || ''
+    form.action_message = meta.message as string || '' // <-- novo campo
+    form.action_notification_target = meta.target as string || ''
+    form.action_notification_user_id = meta.user_id as string || ''
+    form.action_notification_message = meta.message as string || ''
   }
   form.is_active = regra.is_active
   showModal.value = true
@@ -199,39 +223,63 @@ async function fetchUsuarios() {
   usuarios.value = data || []
 }
 
-function descricaoGatilho(regra: any) {
+function descricaoGatilho(regra: Regra): string {
+  const metadata = regra.trigger_metadata as Record<string, unknown>;
+  if (!metadata) return '-';
+
+  const etapaId = metadata.step_template_id;
+  const etapa = etapas.value.find(e => e.id === etapaId);
+  const nomeEtapa = etapa ? `'${etapa.name}'` : `ID ${etapaId}`;
+
   if (regra.trigger_type === 'on_step_entry') {
-    return `Ao entrar na etapa ID ${regra.trigger_metadata?.step_template_id}`
+    return `Ao entrar na etapa ${nomeEtapa}`;
   }
   if (regra.trigger_type === 'after_delay') {
-    return `Após ${regra.trigger_metadata?.delay_days} dias na etapa ID ${regra.trigger_metadata?.step_template_id}`
+    return `Após ${metadata.delay_days} dias na etapa ${nomeEtapa}`;
   }
-  return '-'
+  return 'Gatilho desconhecido';
 }
 
-function descricaoAcao(regra: any) {
+function descricaoAcao(regra: Regra): string {
+  const metadata = regra.action_metadata as Record<string, unknown>;
+  if (!metadata) return '-';
+
   if (regra.action_type === 'assign_user') {
-    return `Atribuir ao usuário ID ${regra.action_metadata?.user_id}`
+    const usuarioId = metadata.user_id;
+    const usuario = usuarios.value.find(u => u.id === usuarioId);
+    const nomeUsuario = usuario ? `'${usuario.nome}'` : `ID ${usuarioId}`;
+    return `Atribuir ao usuário ${nomeUsuario}`;
   }
+
   if (regra.action_type === 'send_notification') {
-    return `Notificar ${regra.action_metadata?.target} - "${regra.action_metadata?.message}"`
+    let destinatario = '';
+    if (metadata.target === 'owner') {
+      destinatario = 'dono do processo';
+    } else if (metadata.target === 'user') {
+      const usuarioId = metadata.user_id;
+      const usuario = usuarios.value.find(u => u.id === usuarioId);
+      destinatario = usuario ? `usuário '${usuario.nome}'` : `usuário ID ${usuarioId}`;
+    }
+    return `Notificar ${destinatario}: "${metadata.message}"`;
   }
-  return '-'
+  return 'Ação desconhecida';
 }
 
 async function handleSaveRule() {
+  saveError.value = '';
   // Montar metadados
-  let trigger_metadata: any = {}
+  let trigger_metadata: Record<string, unknown> = {};
   if (form.trigger_type === 'on_step_entry') {
-    trigger_metadata = { step_template_id: Number(form.trigger_step_template_id) }
+    trigger_metadata = { step_template_id: Number(form.trigger_step_template_id) };
   } else if (form.trigger_type === 'after_delay') {
-    trigger_metadata = { step_template_id: Number(form.trigger_step_template_id), delay_days: form.trigger_delay_days }
+    trigger_metadata = { step_template_id: Number(form.trigger_step_template_id), delay_days: form.trigger_delay_days };
   }
-  let action_metadata: any = {}
+  let action_metadata: Record<string, unknown> = {};
   if (form.action_type === 'assign_user') {
-    action_metadata = { user_id: form.action_user_id }
+    action_metadata = { user_id: form.action_user_id };
+    if (form.action_message) action_metadata.message = form.action_message;
   } else if (form.action_type === 'send_notification') {
-    action_metadata = { target: form.action_notification_target, user_id: form.action_notification_user_id, message: form.action_notification_message }
+    action_metadata = { target: form.action_notification_target, user_id: form.action_notification_user_id, message: form.action_notification_message };
   }
   const payload = {
     rule_name: form.rule_name,
@@ -240,16 +288,19 @@ async function handleSaveRule() {
     action_type: form.action_type,
     action_metadata,
     is_active: form.is_active,
-  }
-  let res
+  };
+  let res;
   if (editandoRegra.value && regraEditadaId.value) {
-    res = await supabase.from('automation_rules').update(payload).eq('id', regraEditadaId.value)
+    res = await supabase.from('automation_rules').update(payload).eq('id', regraEditadaId.value);
   } else {
-    res = await supabase.from('automation_rules').insert([payload])
+    res = await supabase.from('automation_rules').insert([payload]);
   }
-  if (!res.error) {
-    showModal.value = false
-    await fetchRules()
+  if (res.error) {
+    console.error("Erro ao salvar regra:", res.error);
+    saveError.value = `Falha ao salvar: ${res.error.message}`;
+  } else {
+    showModal.value = false;
+    await fetchRules();
   }
 }
 
@@ -259,7 +310,7 @@ async function excluirRegra(id: number) {
   await fetchRules()
 }
 
-async function toggleAtivo(regra: any) {
+async function toggleAtivo(regra: Regra) {
   await supabase.from('automation_rules').update({ is_active: regra.is_active }).eq('id', regra.id)
 }
 
@@ -280,5 +331,18 @@ th, td {
 }
 th:last-child, td:last-child {
   border-right: none;
+}
+
+/* Melhora contraste do <select> e <option> no modal */
+select, select option {
+  background-color: #1e293b !important; /* Fundo escuro */
+  color: #fff !important;               /* Texto branco */
+}
+select:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 2px #14b8a6aa;
+}
+option[value=''] {
+  color: #94a3b8 !important; /* Placeholder mais claro */
 }
 </style>

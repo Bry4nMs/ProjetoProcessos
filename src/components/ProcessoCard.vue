@@ -1,25 +1,37 @@
 <script setup lang="ts">
-import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted, watch, reactive } from 'vue'
+import { ref, defineProps, computed, watchEffect, onMounted, onUnmounted, watch, reactive, nextTick } from 'vue'
 import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../composables/useEtapaTimer'
 import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import { useDropZone } from '@vueuse/core'
+import Tribute from 'tributejs'
+import 'tributejs/dist/tribute.css'
 const { user, fetchUser } = useAuth()
 
 const showModal = ref(false)
 const showEtapas = ref(false)
+// NOVA interface para o item do checklist
+interface ChecklistItem {
+  id: string;
+  task_description: string;
+  is_completed: boolean;
+  process_step_id: string;
+}
+// ATUALIZE a interface Etapa para incluir o checklist
 interface Etapa {
-  nome: string
-  descricao: string
-  cor: string
-  started_at?: string
-  ended_at?: string
-  is_current?: boolean
-  step_order?: number
-  inicio?: number | null
-  fim?: number | null
-  accumulated_duration_seconds?: number // <-- Adicionado para tipagem correta
+  id: string;
+  nome: string;
+  descricao: string;
+  cor: string;
+  started_at?: string;
+  ended_at?: string;
+  is_current?: boolean;
+  step_order?: number;
+  inicio?: number | null;
+  fim?: number | null;
+  accumulated_duration_seconds?: number;
+  checklist: ChecklistItem[];
 }
 
 interface Documento {
@@ -42,6 +54,11 @@ const erroEtapas = ref('')
 const erroDocumentos = ref('')
 const tempoEtapaAtual = ref(0)
 let timerInterval = null
+
+// NOVOS estados para controlar a UI do checklist
+const etapaExpandidaId = ref<string | null>(null)
+const novaSubEtapaTexto = ref('')
+const carregandoChecklist = ref(false)
 
 const props = defineProps({
   processo: {
@@ -153,21 +170,6 @@ async function salvarAlteracoes() {
   editLoading.value = false
   if (!error) {
     // 3. Se houve alterações, registrar log
-    if (alteracoes.length > 0) {
-      try {
-        const logs = alteracoes.map(alt => ({
-          process_id: props.processo.id,
-          user_id: usuario.id,
-          field_name: alt.campo,
-          old_value: alt.valor_antigo !== undefined && alt.valor_antigo !== null ? String(alt.valor_antigo) : null,
-          new_value: alt.valor_novo !== undefined && alt.valor_novo !== null ? String(alt.valor_novo) : null,
-          changed_at: new Date().toISOString()
-        }));
-        await supabase.from('audit_log').insert(logs);
-      } catch (e) {
-        console.error('Erro ao registrar log de auditoria:', e)
-      }
-    }
     isEditing.value = false
     emit('atualizar-processo')
     // Emitir evento global para atualizar timeline
@@ -191,27 +193,22 @@ async function carregarEtapas() {
     erroEtapas.value = 'Erro ao buscar etapas: ' + error.message
   } else if (data && data.length > 0) {
     etapas.value = data.map(
-      (e: {
-        step_templates?: { name?: string }
-        started_at?: string
-        ended_at?: string
-        is_current?: boolean
-        step_order?: number
-        accumulated_duration_seconds?: number
-      }) => ({
-        nome: e.step_templates?.name || '',
-        descricao: '', // Adapte se quiser descrição
-        cor: '#2196f3', // Adapte se quiser cor
-        started_at: e.started_at,
-        ended_at: e.ended_at,
-        is_current: e.is_current,
-        step_order: e.step_order,
-        inicio: e.started_at ? new Date(e.started_at).getTime() : null, // Para o timer
-        fim: e.ended_at ? new Date(e.ended_at).getTime() : null, // Opcional
-        accumulated_duration_seconds: e.accumulated_duration_seconds || 0,
-      }),
+      (e: Record<string, unknown>) => ({
+        id: e.id as string,
+        nome: (e.step_templates && typeof e.step_templates === 'object' && 'name' in e.step_templates) ? (e.step_templates as { name?: string }).name || '' : '',
+        descricao: '',
+        cor: '#2196f3',
+        started_at: e.started_at as string | undefined,
+        ended_at: e.ended_at as string | undefined,
+        is_current: e.is_current as boolean | undefined,
+        step_order: e.step_order as number | undefined,
+        inicio: e.started_at ? new Date(e.started_at as string).getTime() : null,
+        fim: e.ended_at ? new Date(e.ended_at as string).getTime() : null,
+        accumulated_duration_seconds: e.accumulated_duration_seconds as number || 0,
+        checklist: Array.isArray(e.step_checklist_items) ? e.step_checklist_items as ChecklistItem[] : [],
+      })
     )
-    etapaAtual.value = data.findIndex((e: { is_current: boolean }) => e.is_current)
+    etapaAtual.value = data.findIndex((e: Record<string, unknown>) => Boolean(e.is_current))
     if (etapaAtual.value === -1) etapaAtual.value = 0
   }
   carregandoEtapas.value = false
@@ -347,17 +344,69 @@ async function fetchComments() {
   if (data) comments.value = data;
   loadingComments.value = false;
 }
+
+const allUsers = ref<{ id: string, nome: string }[]>([])
+const newCommentTextarea = ref<HTMLTextAreaElement | null>(null)
+let tributeInstance: Tribute<Record<string, unknown>> | null = null
+
+async function fetchAllUsers() {
+  const { data } = await supabase.from('profiles').select('id, nome')
+  console.log('Usuários carregados:', data)
+  if (data) allUsers.value = data
+}
+
+function initTribute() {
+  nextTick(() => {
+    if (newCommentTextarea.value) {
+      if (tributeInstance) {
+        tributeInstance.detach(newCommentTextarea.value)
+        tributeInstance = null
+      }
+      tributeInstance = new Tribute({
+        trigger: '@',
+        values: allUsers.value.map(u => ({
+          key: u.nome,
+          value: u.nome,
+          id: u.id
+        })),
+        selectTemplate: function (item) {
+          return '@' + item.original.key
+        }
+      })
+      tributeInstance.attach(newCommentTextarea.value)
+      console.log('Tribute inicializado:', tributeInstance)
+    }
+  })
+}
+
+// Inicializa Tribute ao abrir modal na aba de comentários
+watch([showModal, activeModalTab], async ([modal, tab]) => {
+  if (modal && tab === 'comentarios') {
+    await fetchAllUsers()
+    initTribute()
+  }
+})
+
+// Desanexa Tribute ao fechar modal
+watch(showModal, (val) => {
+  if (!val && tributeInstance && newCommentTextarea.value) {
+    tributeInstance.detach(newCommentTextarea.value)
+    tributeInstance = null
+  }
+})
+
 async function postComment() {
   if (!newComment.value.trim()) return;
-  const { data: user } = await supabase.auth.getUser();
-  if (!user) return;
-  await supabase.from('process_comments').insert({
-    process_id: props.processo.id,
-    user_id: user.user.id,
-    comment_text: newComment.value
+  const { error } = await supabase.rpc('post_comment_with_mentions', {
+    p_process_id: props.processo.id,
+    p_comment_text: newComment.value
   });
-  newComment.value = '';
-  await fetchComments();
+  if (!error) {
+    newComment.value = '';
+    await fetchComments();
+  } else {
+    console.error("Erro ao postar comentário com menção:", error);
+  }
 }
 
 function startEdit(comment: { id: string; comment_text: string }) {
@@ -556,6 +605,60 @@ async function voltarEtapa() {
     emit('atualizar-processo');
   }
 }
+
+// Função para expandir/recolher uma etapa
+function toggleEtapa(etapaId: string) {
+  if (etapaExpandidaId.value === etapaId) {
+    etapaExpandidaId.value = null;
+  } else {
+    etapaExpandidaId.value = etapaId;
+  }
+}
+// Função para adicionar uma nova subtarefa
+async function adicionarSubEtapa(etapa: Etapa) {
+  if (!novaSubEtapaTexto.value.trim()) return;
+  carregandoChecklist.value = true;
+  const { data, error } = await supabase
+    .from('step_checklist_items')
+    .insert({
+      process_step_id: etapa.id,
+      task_description: novaSubEtapaTexto.value
+    })
+    .select()
+    .single();
+  if (error) {
+    console.error('Erro ao adicionar subtarefa:', error);
+  } else if (data) {
+    etapa.checklist.push(data);
+    novaSubEtapaTexto.value = '';
+  }
+  carregandoChecklist.value = false;
+}
+// Função para marcar/desmarcar um item do checklist
+async function toggleChecklistItem(item: ChecklistItem) {
+  const { error } = await supabase
+    .from('step_checklist_items')
+    .update({ is_completed: item.is_completed })
+    .eq('id', item.id);
+  if (error) {
+    console.error('Erro ao atualizar subtarefa:', error);
+    item.is_completed = !item.is_completed;
+  }
+}
+// Função para excluir uma subtarefa
+async function excluirSubEtapa(etapa: Etapa, itemId: string) {
+  if (!window.confirm('Tem certeza que deseja excluir esta subtarefa?')) return;
+  const { error } = await supabase
+    .from('step_checklist_items')
+    .delete()
+    .eq('id', itemId);
+  if (!error) {
+    const index = etapa.checklist.findIndex(i => i.id === itemId);
+    if (index > -1) etapa.checklist.splice(index, 1);
+  } else {
+    console.error('Erro ao excluir subtarefa:', error);
+  }
+}
 </script>
 
 <template>
@@ -672,46 +775,82 @@ async function voltarEtapa() {
           </button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div
-            v-for="(etapa, idx) in etapas"
-            :key="idx"
-            class="flex items-start gap-3 p-3 rounded-lg border border-white/20 bg-white/10 shadow-sm relative"
-            :class="{ 'border-teal-400 bg-teal-600/10': idx === etapaAtual }"
-          >
-            <!-- Círculo colorido -->
+          <div v-for="(etapa, idx) in etapas" :key="etapa.id">
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center border-2"
-              :style="{
-                borderColor: idx <= etapaAtual ? '#14b8a6' : '#334155',
-                background: idx < etapaAtual ? 'linear-gradient(to right, #14b8a6cc, #06b6d4cc)' : '#1e293b',
-                color: idx < etapaAtual ? '#fff' : '#14b8a6',
-              }"
+              @click="toggleEtapa(etapa.id)"
+              class="flex items-start gap-3 p-3 rounded-lg border border-white/20 bg-white/10 shadow-sm relative cursor-pointer hover:border-teal-400/50 transition-all"
+              :class="{ 'border-teal-400 bg-teal-600/20': idx === etapaAtual }"
             >
-              <span class="font-bold">{{ idx + 1 }}</span>
-            </div>
-            <div class="flex-1">
-              <div class="font-semibold text-white">{{ etapa.nome }}</div>
-              <div class="text-xs text-slate-400 mb-1">{{ etapa.descricao }}</div>
+              <!-- Círculo colorido -->
               <div
-                v-if="idx === etapaAtual && etapa.started_at && !etapa.ended_at && etapa.is_current"
-                class="text-xs text-teal-400 font-bold"
+                class="w-8 h-8 rounded-full flex items-center justify-center border-2"
+                :style="{
+                  borderColor: idx <= etapaAtual ? '#14b8a6' : '#334155',
+                  background: idx < etapaAtual ? 'linear-gradient(to right, #14b8a6cc, #06b6d4cc)' : '#1e293b',
+                  color: idx < etapaAtual ? '#fff' : '#14b8a6',
+                }"
               >
-                Tempo nesta etapa:
-                <span>{{ formatarSegundos((etapa.accumulated_duration_seconds || 0) + Math.floor((Date.now() - new Date(etapa.started_at).getTime()) / 1000)) }}</span>
+                <span class="font-bold">{{ idx + 1 }}</span>
+              </div>
+              <div class="flex-1">
+                <div class="font-semibold text-white">{{ etapa.nome }}</div>
+                <div class="text-xs text-slate-400 mb-1">{{ etapa.descricao }}</div>
+                <div
+                  v-if="idx === etapaAtual && etapa.started_at && !etapa.ended_at && etapa.is_current"
+                  class="text-xs text-teal-400 font-bold"
+                >
+                  Tempo nesta etapa:
+                  <span>{{ formatarSegundos((etapa.accumulated_duration_seconds || 0) + Math.floor((Date.now() - new Date(etapa.started_at).getTime()) / 1000)) }}</span>
+                </div>
+                <div
+                  v-else-if="etapa.started_at && etapa.ended_at"
+                  class="text-xs text-teal-400 font-bold"
+                >
+                  Tempo gasto nessa etapa:
+                  <span>{{ formatarSegundos(etapa.accumulated_duration_seconds || 0) }}</span>
+                </div>
               </div>
               <div
-                v-else-if="etapa.started_at && etapa.ended_at"
-                class="text-xs text-teal-400 font-bold"
+                v-if="idx === etapaAtual && etapa.is_current"
+                class="absolute top-2 right-2 text-xs font-bold text-teal-400"
               >
-                Tempo gasto nessa etapa:
-                <span>{{ formatarSegundos(etapa.accumulated_duration_seconds || 0) }}</span>
+                ATUAL
               </div>
             </div>
-            <div
-              v-if="idx === etapaAtual && etapa.is_current"
-              class="absolute top-2 right-2 text-xs font-bold text-teal-400"
-            >
-              ATUAL
+            <div v-if="etapaExpandidaId === etapa.id" class="pl-8 pr-2 pt-3 pb-2 bg-slate-800/50 rounded-b-lg">
+              <div v-if="etapa.checklist && etapa.checklist.length > 0" class="space-y-2 mb-3">
+                <div v-for="item in etapa.checklist" :key="item.id" class="flex items-center justify-between group">
+                  <label class="flex items-center gap-3 text-sm text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      v-model="item.is_completed"
+                      @change="toggleChecklistItem(item)"
+                      @click.stop
+                      class="w-5 h-5 accent-teal-500 bg-slate-700 border-slate-600 rounded"
+                    />
+                    <span :class="{ 'line-through text-slate-500': item.is_completed }">
+                      {{ item.task_description }}
+                    </span>
+                  </label>
+                  <button @click.stop="excluirSubEtapa(etapa, item.id)" class="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </div>
+              <p v-else class="text-sm text-slate-500 text-center mb-3">Nenhuma subtarefa adicionada.</p>
+              <div class="flex items-center gap-2">
+                <input
+                  v-model="novaSubEtapaTexto"
+                  @keyup.enter="adicionarSubEtapa(etapa)"
+                  @click.stop
+                  type="text"
+                  placeholder="Adicionar nova subtarefa..."
+                  class="flex-1 px-2 py-1 bg-slate-900/80 border border-slate-600 rounded text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-400 text-sm"
+                />
+                <button @click.stop="adicionarSubEtapa(etapa)" :disabled="carregandoChecklist" class="px-3 py-1 bg-teal-600 text-white rounded text-sm font-semibold hover:bg-teal-500 disabled:opacity-50">
+                  Add
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -979,7 +1118,7 @@ async function voltarEtapa() {
               </div>
             </div>
             <div class="mt-6">
-              <textarea v-model="newComment" rows="2" placeholder="Escreva um comentário..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"></textarea>
+              <textarea ref="newCommentTextarea" v-model="newComment" rows="2" placeholder="Escreva um comentário..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"></textarea>
               <div class="flex justify-end mt-2">
                 <button @click="postComment" :disabled="!newComment.trim()" class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow disabled:opacity-50 disabled:cursor-not-allowed transition">Enviar</button>
               </div>

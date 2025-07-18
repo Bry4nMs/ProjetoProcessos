@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <div class="min-h-screen flex flex-col items-center px-8 py-8">
+    TEMOS<div class="min-h-screen flex flex-col items-center px-8 py-8">
       <!-- Painéis de Gráficos -->
       <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
         <!-- Gráfico 1: Total de Processos por Força Responsável -->
@@ -80,59 +80,92 @@
             </option>
           </select>
         </div>
-        <!-- Estado de carregamento -->
+
         <div v-if="loading" class="text-center py-12">
-          <span class="text-lg font-semibold text-teal-400">Carregando...</span>
+          <span class="text-lg font-semibold text-teal-400">Carregando histórico...</span>
         </div>
-        <!-- Linha do Tempo -->
-        <div v-else-if="processoSelecionado && historico.length > 0" class="space-y-6">
-          <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Linha do Tempo do Processo</h2>
+
+        <div v-else-if="processoSelecionado">
+          <div class="mb-6 flex justify-center border-b border-white/20">
+            <button
+              @click="abaAtiva = 'etapas'"
+              :class="[
+                'px-6 py-2 text-lg font-semibold transition-colors duration-200',
+                abaAtiva === 'etapas'
+                  ? 'text-teal-300 border-b-2 border-teal-300'
+                  : 'text-slate-400 hover:text-white'
+              ]"
+            >
+              Etapas
+            </button>
+            <button
+              @click="abaAtiva = 'alteracoes'"
+              :class="[
+                'px-6 py-2 text-lg font-semibold transition-colors duration-200',
+                abaAtiva === 'alteracoes'
+                  ? 'text-teal-300 border-b-2 border-teal-300'
+                  : 'text-slate-400 hover:text-white'
+              ]"
+            >
+              Alterações
+            </button>
+          </div>
+
+          <div v-if="abaAtiva === 'etapas'">
+            <div v-if="historicoEtapas.length > 0" class="space-y-6">
           <div class="relative">
             <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
             <div class="space-y-6">
-              <div v-for="evento in historico" :key="evento.id" class="relative flex items-start">
-                <div
-                  class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"
-                ></div>
+                  <div v-for="evento in historicoEtapas" :key="evento.id" class="relative flex items-start">
+                    <div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
                 <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
-                  <template v-if="evento.type === 'history'">
                     <div class="flex items-start justify-between mb-2">
                       <h3 class="font-semibold text-white">{{ evento.description }}</h3>
                       <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
                     </div>
                     <div class="flex items-center gap-2 text-sm text-slate-300">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                       <span>{{ obterNomeUsuario(evento.profiles) }}</span>
+                      </div>
                     </div>
-                  </template>
-                  <template v-else-if="evento.type === 'audit'">
-                    <div class="flex items-start justify-between mb-2">
-                      <h3 class="font-semibold text-white">
-                        {{ obterNomeUsuario(evento.user) || 'Sistema' }} alterou <b>{{ (evento as EventoAudit).field_name }}</b>
-                        de <span class="text-red-400">'{{ (evento as EventoAudit).old_value }}'</span>
-                        para <span class="text-green-400">'{{ (evento as EventoAudit).new_value }}'</span>
-                      </h3>
-                      <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
-                    </div>
-                  </template>
+                  </div>
                 </div>
               </div>
             </div>
+            <div v-else class="text-center py-12">
+              <span class="text-lg font-semibold text-slate-400">Nenhum histórico de etapas encontrado.</span>
+            </div>
+          </div>
+
+          <div v-if="abaAtiva === 'alteracoes'">
+            <div v-if="historicoAlteracoes.length > 0" class="space-y-6">
+              <div class="relative">
+                <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
+                <div class="space-y-6">
+                  <div v-for="evento in historicoAlteracoes" :key="evento.id" class="relative flex items-start">
+                    <div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
+                    <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
+                      <div class="flex items-start justify-between">
+                        <p class="font-semibold text-white text-base leading-relaxed">
+                          <span class="text-slate-300">{{ obterNomeUsuario(evento.user) }}</span> alterou <b>{{ evento.field_name }}</b> de
+                          <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ evento.old_value || 'vazio' }}'</span> para
+                          <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ evento.new_value || 'vazio' }}'</span>.
+                        </p>
+                        <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarData(evento.changed_at) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-12">
+              <span class="text-lg font-semibold text-slate-400">Nenhum log de alterações encontrado.</span>
+            </div>
           </div>
         </div>
-        <!-- Estado vazio -->
-        <div
-          v-else-if="processoSelecionado && !loading && historico.length === 0"
-          class="text-center py-12"
-        >
-          <span class="text-lg font-semibold text-slate-400">Nenhum evento encontrado</span>
-        </div>
+
         <div v-else class="text-center py-12">
-          <span class="text-lg font-semibold text-slate-400"
-            >Selecione um processo para ver o histórico</span
-          >
+          <span class="text-lg font-semibold text-slate-400">Selecione um processo para ver o histórico</span>
         </div>
       </div>
     </div>
@@ -201,9 +234,15 @@ interface Etapa {
 // --- DADOS E ESTADOS REATIVOS ---
 const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
-const historico = ref<(EventoHistorico | EventoAudit)[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
+
+// NOVO: Estado para controlar a aba ativa
+const abaAtiva = ref<'etapas' | 'alteracoes'>('etapas')
+
+// NOVO: Arrays de histórico separados
+const historicoEtapas = ref<EventoHistorico[]>([])
+const historicoAlteracoes = ref<EventoAudit[]>([])
 
 // Dados dos gráficos
 const dadosProcessosPorForca = ref<Array<{ code: string; total: number }>>([])
@@ -278,17 +317,17 @@ async function fetchTempoMedioPorEtapa() {
   const etapas = await fetchEtapas()
   const { data } = await supabase
     .from('process_steps')
-    .select('step_template_id, started_at, ended_at')
+    .select('step_template_id, started_at, ended_at, accumulated_duration_seconds')
     .not('ended_at', 'is', null)
     .not('started_at', 'is', null)
   // Agrupa por etapa e calcula média
   const grupos: Record<number, { total: number; soma: number }> = {}
   if (data) {
     for (const step of data) {
+      const diffDias = step.accumulated_duration_seconds
+        ? step.accumulated_duration_seconds / (60 * 60 * 24)
+        : (new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / (1000 * 60 * 60 * 24)
       const id = step.step_template_id
-      const start = new Date(step.started_at).getTime()
-      const end = new Date(step.ended_at).getTime()
-      const diffDias = (end - start) / (1000 * 60 * 60 * 24)
       if (!grupos[id]) grupos[id] = { total: 0, soma: 0 }
       grupos[id].total++
       grupos[id].soma += diffDias
@@ -391,49 +430,76 @@ const chartOptionsEtapa = {
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
-// Função dedicada para buscar o histórico de um processo e enriquecer com dados do usuário
+// ATUALIZADO: Função para buscar os dois tipos de histórico
 async function buscarHistorico(id: string) {
   console.log('Buscando histórico para processoSelecionado:', id);
   if (!id) {
-    historico.value = [];
+    historicoEtapas.value = [];
+    historicoAlteracoes.value = [];
     return;
   }
   loading.value = true;
+  // Reseta os arrays e a aba
+  historicoEtapas.value = [];
+  historicoAlteracoes.value = [];
+  abaAtiva.value = 'etapas'; // Volta para a aba padrão
 
-  // Consulta corrigida para process_history
+  // 1. Busca o histórico de etapas (process_history)
   const { data: historyData } = await supabase
     .from('process_history')
     .select('*, profiles(id, nome)')
-    .eq('process_id', id);
-  console.log('Dados process_history:', historyData);
+    .eq('process_id', id)
+    .order('changed_at', { ascending: false });
 
-  // Consulta audit_log sem join para garantir que sempre retorna
+  if (historyData) {
+    historicoEtapas.value = historyData;
+  }
+
+  // 2. Busca o log de auditoria (audit_log)
+  //    Busca sem join, depois busca nomes manualmente
   const { data: auditData } = await supabase
     .from('audit_log')
     .select('*')
-    .eq('process_id', id);
-  console.log('Dados audit_log (sem join):', auditData);
+    .eq('process_id', id)
+    .order('changed_at', { ascending: false });
 
-  // Adiciona o tipo para renderização condicional
-  const historyItems = (historyData || []).map(item => ({ ...item, type: 'history' }));
-  const auditItems = (auditData || []).map(item => ({
+  if (auditData && auditData.length > 0) {
+    // Buscar todos os user_ids únicos (compatível com targets antigos)
+    const userIds = auditData
+      .map(item => item.user_id)
+      .filter((id, idx, arr) => id && arr.indexOf(id) === idx);
+    let userMap = {};
+    if (userIds.length > 0) {
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('id, nome')
+        .in('id', userIds);
+      if (users) {
+        userMap = Object.fromEntries(users.map(u => [u.id, u.nome]));
+      }
+    }
+    // Adicionar o nome ao log
+    historicoAlteracoes.value = auditData.map(item => ({
     ...item,
-    user: { nome: 'Usuário desconhecido' },
-    type: 'audit'
-  }));
-  console.log('auditItems:', auditItems);
+      user: { nome: userMap[item.user_id] || 'Usuário desconhecido' }
+    }));
+  } else {
+    historicoAlteracoes.value = [];
+  }
 
-  // Junta e ordena por data
-  historico.value = [...historyItems, ...auditItems].sort((a, b) =>
-    new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime()
-  );
-  console.log('historico final para timeline:', historico.value);
+  console.log('Histórico de Etapas:', historicoEtapas.value);
+  console.log('Histórico de Alterações:', historicoAlteracoes.value);
   loading.value = false;
 }
 
-// WATCH: Observa mudanças no processoSelecionado e busca o histórico reativamente
+// WATCH: Observa mudanças no processoSelecionado
 watch(processoSelecionado, (novoId) => {
-  buscarHistorico(novoId)
+  if (novoId) {
+    buscarHistorico(novoId);
+  } else {
+    historicoEtapas.value = [];
+    historicoAlteracoes.value = [];
+  }
 })
 
 // Adiciona um event listener global para refresh
@@ -492,8 +558,9 @@ function formatarData(data: string) {
   })
 }
 
-// Função para obter nome do usuário
-function obterNomeUsuario(user: { nome?: string } | null | undefined) {
-  return user?.nome || 'Usuário desconhecido'
+// ATUALIZADO: Função para obter nome do usuário (mais robusta)
+function obterNomeUsuario(profileOrId: { nome?: string } | string | null | undefined) {
+  if (typeof profileOrId === 'string') return profileOrId || 'Usuário desconhecido';
+  return profileOrId?.nome || 'Usuário desconhecido';
 }
 </script>
