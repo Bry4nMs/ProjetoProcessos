@@ -7,6 +7,9 @@ import { useAuth } from '../composables/useAuth'
 import { useDropZone } from '@vueuse/core'
 import Tribute from 'tributejs'
 import 'tributejs/dist/tribute.css'
+import RelatorioProcesso from './RelatorioProcesso.vue'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 const { user, fetchUser } = useAuth()
 
 const showModal = ref(false)
@@ -591,19 +594,27 @@ async function excluirDocumento(documento: Documento) {
 async function voltarEtapa() {
   if (!props.processo.id) return;
   const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
-  if (!error) {
-    // Buscar etapas atualizadas
-    const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
-    if (etapas && etapas.length > 0) {
-      const etapaAtualIdx = etapas.findIndex(e => e.is_current);
-      if (etapaAtualIdx !== -1) {
-        const nomeEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
-        await registrarEventoHistorico(props.processo.id, `Etapa devolvida para "${nomeEtapa}".`);
-      }
-    }
-    await carregarEtapas();
-    emit('atualizar-processo');
+  if (error) {
+    console.error('Erro ao voltar etapa:', error);
+    alert('Erro ao voltar etapa: ' + (error.message || error.details || 'Erro desconhecido'));
+    return;
   }
+  // Buscar etapas atualizadas
+  const { data: etapasData, error: etapasError } = await buscarEtapasDoProcesso(props.processo.id);
+  if (etapasError) {
+    console.error('Erro ao buscar etapas após voltar:', etapasError);
+    alert('Erro ao buscar etapas: ' + (etapasError.message || etapasError.details || 'Erro desconhecido'));
+    return;
+  }
+  if (etapasData && etapasData.length > 0) {
+    const etapaAtualIdx = etapasData.findIndex(e => e.is_current);
+    if (etapaAtualIdx !== -1) {
+      const nomeEtapa = etapasData[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
+      await registrarEventoHistorico(props.processo.id, `Etapa devolvida para "${nomeEtapa}".`);
+    }
+  }
+  await carregarEtapas();
+  emit('atualizar-processo');
 }
 
 // Função para expandir/recolher uma etapa
@@ -658,6 +669,72 @@ async function excluirSubEtapa(etapa: Etapa, itemId: string) {
   } else {
     console.error('Erro ao excluir subtarefa:', error);
   }
+}
+
+// [ADICIONAR REFS PARA O RELATÓRIO]
+// [DEFINIR INTERFACE PARA O RELATÓRIO]
+interface RelatorioProps {
+  processo: Record<string, unknown>;
+  historicoEtapas: Record<string, unknown>[];
+  historicoAlteracoes: Record<string, unknown>[];
+  documentos: Record<string, unknown>[];
+  checklists: Record<string, unknown>[];
+}
+// [TIPAR O REF CORRETAMENTE]
+const dadosRelatorio = ref<RelatorioProps | null>(null)
+const gerandoPDF = ref(false)
+
+// [ADICIONAR REFS PARA HISTÓRICO DE ETAPAS E ALTERAÇÕES]
+const historicoAlteracoes = ref<Record<string, unknown>[]>([])
+
+// [FUNÇÃO PARA BUSCAR TODOS OS CHECKLISTS DE TODAS AS ETAPAS]
+async function fetchAllChecklists() {
+  // Busca todas as etapas do processo e concatena os checklists
+  const { data, error } = await buscarEtapasDoProcesso(props.processo.id)
+  if (error || !data) return []
+  // Cada etapa pode ter step_checklist_items
+  const all = []
+  for (const etapa of data) {
+    if (Array.isArray(etapa.step_checklist_items)) {
+      for (const item of etapa.step_checklist_items) {
+        all.push({ ...item, etapa_nome: etapa.step_templates?.name || etapa.step_template_id })
+      }
+    }
+  }
+  return all
+}
+
+// [FUNÇÃO DE GERAÇÃO DE PDF]
+async function gerarRelatorioPDF() {
+  gerandoPDF.value = true
+  // Buscar todos os dados necessários
+  const checklists = await fetchAllChecklists()
+  // Montar objeto de dados
+  dadosRelatorio.value = {
+    processo: props.processo as Record<string, unknown>,
+    historicoEtapas: etapas.value.map(etapa => ({
+      description: etapa.nome,
+      started_at: etapa.started_at,
+      ended_at: etapa.ended_at,
+      accumulated_duration_seconds: etapa.accumulated_duration_seconds
+    })),
+    historicoAlteracoes: historicoAlteracoes.value as Record<string, unknown>[],
+    documentos: documentos.value as Record<string, unknown>[],
+    checklists: checklists as Record<string, unknown>[]
+  }
+  await nextTick()
+  const elemento = document.getElementById('relatorio-processo')
+  if (elemento) {
+    const canvas = await html2canvas(elemento, { scale: 2 })
+    const imgData = canvas.toDataURL('image/png')
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+    pdf.save(`relatorio-processo-${props.processo.id}.pdf`)
+  }
+  dadosRelatorio.value = null
+  gerandoPDF.value = false
 }
 </script>
 
@@ -1064,14 +1141,22 @@ async function excluirSubEtapa(etapa: Etapa, itemId: string) {
           </div>
         </div>
 
-        <div class="flex justify-end mt-6">
-          <button
-            class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
-            @click="fecharDetalhes"
-          >
-            Fechar
-          </button>
-        </div>
+        <div class="flex justify-between mt-6 w-full">
+        <button
+          @click="gerarRelatorioPDF"
+          :disabled="gerandoPDF"
+          class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          <span v-if="gerandoPDF">Gerando PDF...</span>
+          <span v-else>Gerar Relatório (PDF)</span>
+        </button>
+        <button
+          class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
+          @click="fecharDetalhes"
+        >
+          Fechar
+        </button>
+      </div>
         <div v-if="editError" class="text-red-500 text-sm mt-2">{{ editError }}</div>
         </div>
         <div v-else-if="activeModalTab === 'comentarios'">
@@ -1125,6 +1210,15 @@ async function excluirSubEtapa(etapa: Etapa, itemId: string) {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Componente de relatório oculto para captura do PDF -->
+      <div style="position: fixed; left: -9999px; top: 0; width: 800px;">
+        <RelatorioProcesso
+          v-if="dadosRelatorio"
+          v-bind="dadosRelatorio"
+          :responsavelNome="(props.processo.responsavel_nome || props.processo.nome_responsavel || props.processo.profiles?.nome || '') as string"
+        />
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    TEMOS<div class="min-h-screen flex flex-col items-center px-8 py-8">
+    <div class="min-h-screen flex flex-col items-center px-8 py-8">
       <!-- Painéis de Gráficos -->
       <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
         <!-- Gráfico 1: Total de Processos por Força Responsável -->
@@ -33,6 +33,19 @@
               <p class="text-slate-400 mt-2">Nenhum processo para exibir.</p>
             </div>
           </div>
+          <div class="flex items-center gap-3 mt-4">
+            <button
+              @click="exportToCSV(
+                ['Forca_Responsavel', 'Total_Processos'],
+                dadosProcessosPorForca.map(item => ({
+                  'Forca_Responsavel': item.code,
+                  'Total_Processos': item.total
+                })),
+                'processos_por_forca.csv'
+              )"
+              class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition"
+            >Exportar (CSV)</button>
+          </div>
         </div>
         <!-- Gráfico 2: Tempo Médio Gasto por Etapa -->
         <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
@@ -58,6 +71,19 @@
             />
             <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
         </div>
+    </div>
+    <div class="flex items-center gap-3 mt-4">
+        <button
+            @click="exportToCSV(
+              ['Etapa', 'Media_Horas'],
+              dadosTempoMedioEtapa.map(item => ({
+                'Etapa': item.name,
+                'Media_Horas': item.media_horas
+              })),
+              'tempo_medio_por_etapa.csv'
+            )"
+            class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition"
+        >Exportar (CSV)</button>
     </div>
 </div>
       </div>
@@ -246,7 +272,7 @@ const historicoAlteracoes = ref<EventoAudit[]>([])
 
 // Dados dos gráficos
 const dadosProcessosPorForca = ref<Array<{ code: string; total: number }>>([])
-const dadosTempoMedioEtapa = ref<Array<{ name: string; media_dias: number }>>([])
+const dadosTempoMedioEtapa = ref<Array<{ name: string; media_horas: number }>>([])
 const totalProcessosGrafico = computed(() => dadosProcessosPorForca.value.reduce((acc, f) => acc + f.total, 0))
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
@@ -291,6 +317,7 @@ async function fetchProcessosPorForca() {
     .from('processes')
     .select('responsible_force_id')
     .not('responsible_force_id', 'is', null)
+    .is('deleted_at', null)
   // Conta por id
   const contagem: Record<number, number> = {}
   if (data) {
@@ -317,29 +344,36 @@ async function fetchTempoMedioPorEtapa() {
   const etapas = await fetchEtapas()
   const { data } = await supabase
     .from('process_steps')
-    .select('step_template_id, started_at, ended_at, accumulated_duration_seconds')
+    .select('step_template_id, started_at, ended_at, accumulated_duration_seconds, processes(deleted_at)')
     .not('ended_at', 'is', null)
     .not('started_at', 'is', null)
+  // Não filtra por processos excluídos, considera todas as etapas
+  const etapasAtivas = data;
+  // LOGS DE DEPURAÇÃO
+  console.log('Etapas cadastradas:', etapas);
+  console.log('Etapas ativas para o gráfico:', etapasAtivas);
   // Agrupa por etapa e calcula média
   const grupos: Record<number, { total: number; soma: number }> = {}
-  if (data) {
-    for (const step of data) {
-      const diffDias = step.accumulated_duration_seconds
-        ? step.accumulated_duration_seconds / (60 * 60 * 24)
-        : (new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / (1000 * 60 * 60 * 24)
+  if (etapasAtivas) {
+    for (const step of etapasAtivas) {
+      const diffHoras = step.accumulated_duration_seconds !== undefined && step.accumulated_duration_seconds !== null
+        ? Math.abs(step.accumulated_duration_seconds) / (60 * 60)
+        : Math.abs(new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / (1000 * 60 * 60)
       const id = step.step_template_id
       if (!grupos[id]) grupos[id] = { total: 0, soma: 0 }
       grupos[id].total++
-      grupos[id].soma += diffDias
+      grupos[id].soma += diffHoras
     }
   }
+  console.log('Grupos calculados:', grupos);
   // Garante que todas as etapas aparecem, mesmo com média zero
   dadosTempoMedioEtapa.value = etapas.map((e) => ({
     name: e.name,
-    media_dias: grupos[e.id]?.total
+    media_horas: grupos[e.id]?.total
       ? Number((grupos[e.id].soma / grupos[e.id].total).toFixed(2))
       : 0,
   }))
+  console.log('Dados finais do gráfico:', dadosTempoMedioEtapa.value);
 }
 
 // --- CHART DATA/OPTIONS PARA OS GRÁFICOS ---
@@ -396,9 +430,9 @@ const chartDataEtapa = computed(() => ({
   labels: dadosTempoMedioEtapa.value.map((e) => e.name),
   datasets: [
     {
-      label: 'Média (dias)',
-      data: dadosTempoMedioEtapa.value.map((e) => e.media_dias),
-      backgroundColor: '#14b8a6', // teal-500 vibrante
+      label: 'Média (horas)',
+      data: dadosTempoMedioEtapa.value.map((e) => e.media_horas),
+      backgroundColor: '#14b8a6',
       borderRadius: 8,
     },
   ],
@@ -525,6 +559,7 @@ onMounted(async () => {
   const { data } = await supabase
     .from('processes')
     .select('id, nome_acao, thematic_areas(id, code)')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false })
   if (data) {
     processos.value = (data as Processo[]).map((proc) => {
@@ -562,5 +597,32 @@ function formatarData(data: string) {
 function obterNomeUsuario(profileOrId: { nome?: string } | string | null | undefined) {
   if (typeof profileOrId === 'string') return profileOrId || 'Usuário desconhecido';
   return profileOrId?.nome || 'Usuário desconhecido';
+}
+
+// [FUNÇÃO UTILITÁRIA DE EXPORTAÇÃO CSV]
+function exportToCSV(headers: string[], rows: Array<Record<string, unknown>>, filename: string) {
+  if (!rows || rows.length === 0) return;
+  // Cabeçalho
+  const headerLine = headers.join(',');
+  // Linhas de dados
+  const dataLines = rows.map(row =>
+    headers.map(h => {
+      let val = row[h] !== undefined && row[h] !== null ? String(row[h]) : '';
+      if (val.includes(',') || val.includes('"')) {
+        val = '"' + val.replace(/"/g, '""') + '"';
+      }
+      return val;
+    }).join(',')
+  );
+  const csvContent = [headerLine, ...dataLines].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 </script>
