@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import { ref, onMounted } from 'vue'
 import { useDropZone } from '@vueuse/core'
 import { supabase } from '../services/supabase'
@@ -226,7 +226,7 @@ function handleFileSelected(event: Event) {
 </script>
 
 <template>
-  <AppLayout>
+  <Layout>
     <div class="max-w-3xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 mt-8">
       <h1 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Cadastro de Novo Processo</h1>
       <form class="flex flex-col gap-6" @submit.prevent="registrarProcesso">
@@ -433,5 +433,5 @@ function handleFileSelected(event: Event) {
         </div>
       </form>
     </div>
-  </AppLayout>
+  </Layout>
 </template>

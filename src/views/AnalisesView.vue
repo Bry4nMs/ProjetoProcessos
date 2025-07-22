@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <Layout>
     <div class="min-h-screen flex flex-col items-center px-8 py-8">
       <!-- Painéis de Gráficos -->
       <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
@@ -195,12 +195,12 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </Layout>
 </template>
 
 <script setup lang="ts">
 // IMPORTS
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import { ref, onMounted, watch, computed } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'

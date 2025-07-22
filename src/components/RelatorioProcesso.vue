@@ -4,13 +4,15 @@
     <div style="text-align:right; font-size: 0.9em; margin-bottom: 1em;">Gerado em: {{ new Date().toLocaleString('pt-BR') }}</div>
     <h2 style="margin-top: 0;">Dados Gerais</h2>
     <table style="width:100%; border-collapse: collapse; margin-bottom: 1.5em;">
-      <tr><td><b>Nome:</b></td><td>{{ processo.nome_acao }}</td></tr>
-      <tr><td><b>Status:</b></td><td>{{ processo.status }}</td></tr>
-      <tr><td><b>Valor Inicial:</b></td><td>{{ processo.valor_inicial_padrao }}</td></tr>
-      <tr><td><b>Área Temática:</b></td><td>{{ processo.area_code || processo.thematic_area_id }}</td></tr>
-      <tr><td><b>Força Responsável:</b></td><td>{{ processo.forca_code || processo.responsible_force_id }}</td></tr>
-      <tr><td><b>Data de Criação:</b></td><td>{{ formatarDataHora(processo.created_at) }}</td></tr>
-      <tr><td><b>Processo SEI:</b></td><td>{{ processo.codigo_transferegov }}</td></tr>
+      <tbody>
+        <tr><td><b>Nome:</b></td><td>{{ processo.nome_acao }}</td></tr>
+        <tr><td><b>Status:</b></td><td>{{ processo.status }}</td></tr>
+        <tr><td><b>Valor Inicial:</b></td><td>{{ processo.valor_inicial_padrao }}</td></tr>
+        <tr><td><b>Área Temática:</b></td><td>{{ processo.area_code || processo.thematic_area_id }}</td></tr>
+        <tr><td><b>Força Responsável:</b></td><td>{{ processo.forca_code || processo.responsible_force_id }}</td></tr>
+        <tr><td><b>Data de Criação:</b></td><td>{{ formatarDataHora(processo.created_at) }}</td></tr>
+        <tr><td><b>Processo SEI:</b></td><td>{{ processo.codigo_transferegov }}</td></tr>
+      </tbody>
     </table>
     <h2>Linha do Tempo de Etapas</h2>
     <ol style="margin-bottom: 1.5em;">

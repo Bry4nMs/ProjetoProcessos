@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <Layout>
     <div class="min-h-screen flex justify-center items-stretch px-8">
       <div class="w-full max-w-7xl mx-auto space-y-8">
         <!-- Gráficos de Sumário -->
@@ -69,7 +69,7 @@
               <input
                 v-model="filtroData"
                 type="date"
-                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full custom-date-input"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:sepia [&::-webkit-calendar-picker-indicator]:saturate-[5] [&::-webkit-calendar-picker-indicator]:hue-rotate-[140deg] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&:focus::-webkit-calendar-picker-indicator]:invert-[70%] [&:focus::-webkit-calendar-picker-indicator]:sepia [&:focus::-webkit-calendar-picker-indicator]:saturate-[8] [&:focus::-webkit-calendar-picker-indicator]:hue-rotate-[140deg] [&:focus::-webkit-calendar-picker-indicator]:brightness-150 placeholder:text-slate-400 [&::-webkit-input-placeholder]:text-slate-400 [&::-webkit-input-placeholder]:opacity-100 [&::-moz-placeholder]:text-slate-400 [&::-moz-placeholder]:opacity-100 [&::-ms-input-placeholder]:text-slate-400 [&::-ms-input-placeholder]:opacity-100"
               />
             </div>
             <div class="flex items-center gap-2 min-w-[170px] mt-5 md:mt-0">
@@ -109,11 +109,11 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </Layout>
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessosGraficos from '../components/ProcessosGraficos.vue'
 import { ref, computed, onMounted } from 'vue'
@@ -253,32 +253,3 @@ const processosFiltrados = computed(() => {
   })
 })
 </script>
-
-<style scoped>
-/* Melhora a visibilidade do ícone do calendário no input de data */
-.custom-date-input::-webkit-calendar-picker-indicator {
-  filter: invert(1) sepia(1) saturate(5) hue-rotate(140deg);
-  opacity: 1;
-  cursor: pointer;
-}
-.custom-date-input:focus::-webkit-calendar-picker-indicator {
-  filter: invert(70%) sepia(1) saturate(8) hue-rotate(140deg) brightness(1.5);
-}
-.custom-date-input::-webkit-input-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-.custom-date-input::placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-/* Firefox */
-.custom-date-input::-moz-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-.custom-date-input::-ms-input-placeholder {
-  color: #94a3b8;
-  opacity: 1;
-}
-</style>

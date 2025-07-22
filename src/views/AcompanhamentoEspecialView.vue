@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <Layout>
     <div class="min-h-screen flex justify-center items-stretch px-8 py-8">
       <div class="w-full max-w-7xl mx-auto space-y-8">
         <!-- Filtros -->
@@ -96,11 +96,11 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </Layout>
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../services/supabase'

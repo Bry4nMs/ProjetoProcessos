@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <Layout>
     <div class="min-h-screen flex justify-center items-stretch px-8 py-8">
       <div class="w-full max-w-5xl mx-auto">
         <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Minha Conta</h1>
@@ -112,11 +112,11 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </Layout>
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { supabase } from '../services/supabase'

@@ -1,5 +1,5 @@
 <template>
-  <AppLayout>
+  <Layout>
     <div class="min-h-screen flex flex-col items-center px-8 py-8">
       <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
         <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Regras de Automação</h1>
@@ -8,13 +8,13 @@
             + Criar Nova Regra
           </button>
         </div>
-        <table class="w-full text-left bg-white/5 rounded-lg overflow-hidden">
+        <table class="w-full text-left bg-white/5 rounded-lg overflow-hidden border-separate border-spacing-0">
           <thead>
             <tr class="text-teal-300 border-b border-white/10">
-              <th class="py-2 px-3">Nome da Regra</th>
-              <th class="py-2 px-3">Gatilho</th>
-              <th class="py-2 px-3">Ação</th>
-              <th class="py-2 px-3">Ativo</th>
+              <th class="py-2 px-3 border-r border-slate-800">Nome da Regra</th>
+              <th class="py-2 px-3 border-r border-slate-800">Gatilho</th>
+              <th class="py-2 px-3 border-r border-slate-800">Ação</th>
+              <th class="py-2 px-3 border-r border-slate-800">Ativo</th>
               <th class="py-2 px-3">Ações</th>
             </tr>
           </thead>
@@ -31,10 +31,10 @@
               </tr>
               <template v-if="secoesAbertas[categoria]">
                 <tr v-for="regra in grupoDeRegras" :key="regra.id">
-                  <td class="py-2 px-3">{{ regra.rule_name }}</td>
-                  <td class="py-2 px-3">{{ descricaoGatilho(regra) }}</td>
-                  <td class="py-2 px-3">{{ descricaoAcao(regra) }}</td>
-                  <td class="py-2 px-3">
+                  <td class="py-2 px-3 border-r border-slate-800">{{ regra.rule_name }}</td>
+                  <td class="py-2 px-3 border-r border-slate-800">{{ descricaoGatilho(regra) }}</td>
+                  <td class="py-2 px-3 border-r border-slate-800">{{ descricaoAcao(regra) }}</td>
+                  <td class="py-2 px-3 border-r border-slate-800">
                     <input type="checkbox" v-model="regra.is_active" @change="toggleAtivo(regra)" />
                   </td>
                   <td class="py-2 px-3 flex gap-2">
@@ -70,16 +70,16 @@
             </div>
             <div class="mb-4">
               <label class="block text-slate-300 mb-1">Gatilho (Quando...)</label>
-              <select v-model="form.trigger_type" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
-                <option value="">Selecione...</option>
+              <select v-model="form.trigger_type" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
+                <option value="" class="text-slate-400">Selecione...</option>
                 <option value="on_step_entry">Ao entrar em uma etapa</option>
                 <option value="after_delay">Após um tempo em uma etapa</option>
               </select>
             </div>
             <div v-if="form.trigger_type === 'on_step_entry' || form.trigger_type === 'after_delay'" class="mb-4">
               <label class="block text-slate-300 mb-1">Etapa</label>
-              <select v-model="form.trigger_step_template_id" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
-                <option value="">Selecione a etapa...</option>
+              <select v-model="form.trigger_step_template_id" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
+                <option value="" class="text-slate-400">Selecione a etapa...</option>
                 <option v-for="etapa in etapas" :key="etapa.id" :value="etapa.id">{{ etapa.name }}</option>
               </select>
             </div>
@@ -89,7 +89,7 @@
             </div>
             <div class="mb-4">
               <label class="block text-slate-300 mb-1">Ação (Então...)</label>
-              <select v-model="form.action_type" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
+              <select v-model="form.action_type" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
                 <option value="">Selecione...</option>
                 <option value="assign_user">Atribuir a um usuário</option>
                 <option value="send_notification">Enviar uma notificação</option>
@@ -97,8 +97,8 @@
             </div>
             <div v-if="form.action_type === 'assign_user'" class="mb-4">
               <label class="block text-slate-300 mb-1">Usuário</label>
-              <select v-model="form.action_user_id" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
-                <option value="">Selecione o usuário...</option>
+              <select v-model="form.action_user_id" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
+                <option value="" class="text-slate-400">Selecione o usuário...</option>
                 <option v-for="user in usuarios" :key="user.id" :value="user.id">{{ user.nome }}</option>
               </select>
             </div>
@@ -188,8 +188,20 @@
 
       <!-- Nova seção de Gerenciador de Processos -->
       <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10 mt-10">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">Gerenciador de Processos</h1>
-        <div class="flex gap-4 mb-6">
+        <div class="flex justify-between items-center mb-6">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+            {{ mostrandoLixeira ? 'Lixeira' : 'Gerenciador de Processos' }}
+          </h1>
+          <button 
+            @click="mostrandoLixeira = !mostrandoLixeira" 
+            class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
+          >
+            {{ mostrandoLixeira ? 'Voltar ao Gerenciador' : 'Ver Lixeira' }}
+          </button>
+        </div>
+        
+        <!-- Filtros (visíveis apenas quando não estiver na lixeira) -->
+        <div v-if="!mostrandoLixeira" class="flex gap-4 mb-6">
           <input v-model="searchTerm" type="text" placeholder="Buscar por nome da ação..." class="flex-1 bg-white/10 border border-white/20 text-white rounded px-3 py-2 placeholder:text-slate-400" />
           <select v-model="statusFilter" class="border rounded px-3 py-2 bg-white/10 border-white/20 text-white">
             <option value="">Todos os Status</option>
@@ -214,7 +226,9 @@
                 <td colspan="5" class="text-center py-6">Carregando...</td>
               </tr>
               <tr v-else-if="processosListados.length === 0">
-                <td colspan="5" class="text-center py-6">Nenhum processo encontrado.</td>
+                <td colspan="5" class="text-center py-6">
+                  {{ mostrandoLixeira ? 'A lixeira está vazia.' : 'Nenhum processo encontrado.' }}
+                </td>
               </tr>
               <tr v-for="(proc, index) in processosListados" :key="String(proc.id)" :class="index % 2 === 0 ? 'bg-white/5' : 'bg-white/0'">
                 <td class="px-3 py-2">{{ proc.codigo_transferegov as string }}</td>
@@ -222,7 +236,21 @@
                 <td class="px-3 py-2">{{ proc.status as string }}</td>
                 <td class="px-3 py-2">{{ new Date(proc.created_at as string).toLocaleString() }}</td>
                 <td class="px-3 py-2">
-                  <button @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)" class="text-red-600 hover:underline">Excluir</button>
+                  <!-- Botão condicional baseado no estado da lixeira -->
+                  <button 
+                    v-if="!mostrandoLixeira" 
+                    @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)" 
+                    class="text-red-600 hover:underline"
+                  >
+                    Excluir
+                  </button>
+                  <button 
+                    v-else 
+                    @click="handleRestoreProcess(proc.id as string, proc.nome_acao as string)" 
+                    class="text-green-500 hover:underline"
+                  >
+                    Restaurar
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -230,11 +258,11 @@
         </div>
       </div>
     </div>
-  </AppLayout>
+  </Layout>
 </template>
 
 <script setup lang="ts">
-import AppLayout from '../components/Layout.vue'
+import Layout from '../components/Layout.vue'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
@@ -268,16 +296,28 @@ const statusFilter = ref('')
 const processosListados = ref<Record<string, unknown>[]>([])
 const loadingProcessos = ref(false)
 
-// [2] --- NOVO: Função para buscar processos ativos (não deletados) ---
+// Estado para controlar a visualização da lixeira
+const mostrandoLixeira = ref(false)
+
+// [2] --- NOVO: Função para buscar processos (ativos ou excluídos) ---
 async function fetchProcesses() {
   loadingProcessos.value = true
-  let query = supabase.from('processes').select('*').is('deleted_at', null)
-  if (searchTerm.value) {
-    query = query.ilike('nome_acao', `%${searchTerm.value}%`)
+  let query = supabase.from('processes').select('*')
+  
+  // Filtrar por processos ativos ou excluídos com base no estado da lixeira
+  if (mostrandoLixeira.value) {
+    query = query.not('deleted_at', 'is', null)
+  } else {
+    query = query.is('deleted_at', null)
+    // Aplicar filtros apenas na visualização normal (não na lixeira)
+    if (searchTerm.value) {
+      query = query.ilike('nome_acao', `%${searchTerm.value}%`)
+    }
+    if (statusFilter.value) {
+      query = query.eq('status', statusFilter.value)
+    }
   }
-  if (statusFilter.value) {
-    query = query.eq('status', statusFilter.value)
-  }
+  
   const { data } = await query.order('created_at', { ascending: false })
   processosListados.value = data || []
   loadingProcessos.value = false
@@ -286,12 +326,26 @@ async function fetchProcesses() {
 // [3] --- NOVO: Watchers para busca/filtro (com debounce para busca) ---
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 watch([searchTerm, statusFilter], ([term]) => {
-  if (searchTimeout) clearTimeout(searchTimeout)
-  searchTimeout = setTimeout(() => {
-    processosVisiveis.value = 5
-    fetchProcesses()
-  }, term ? 400 : 0)
+  // Não aplicar filtros quando estiver na lixeira
+  if (!mostrandoLixeira.value) {
+    if (searchTimeout) clearTimeout(searchTimeout)
+    searchTimeout = setTimeout(() => {
+      processosVisiveis.value = 5
+      fetchProcesses()
+    }, term ? 400 : 0)
+  }
 }, { immediate: false })
+
+// Observar mudanças no estado da lixeira
+watch(mostrandoLixeira, () => {
+  // Resetar filtros ao alternar para a lixeira
+  if (mostrandoLixeira.value) {
+    searchTerm.value = ''
+    statusFilter.value = ''
+  }
+  processosVisiveis.value = 5
+  fetchProcesses()
+})
 
 // [4] --- NOVO: Função de exclusão (soft delete) ---
 async function handleDeleteProcess(processoId: string, processoNome: string) {
@@ -301,17 +355,59 @@ async function handleDeleteProcess(processoId: string, processoNome: string) {
   console.debug('Resultado da exclusão:', { data, error })
   if (!error) {
     // Registrar auditoria
-    const adminName = user.value?.user_metadata?.name || user.value?.email || 'admin'
+    // Obter nome do administrador para registro (não utilizado diretamente)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _adminName = user.value?.user_metadata?.name || user.value?.email || 'Admin'
     const auditRes = await supabase.from('audit_log').insert({
       process_id: processoId,
       user_id: user.value?.id,
-      action: 'delete',
-      description: `O administrador '${adminName}' excluiu o processo.`
+      field_name: 'deleted_at',
+      old_value: 'NULL',
+      new_value: 'data de exclusão'
     })
     console.debug('Resultado da auditoria:', auditRes)
     fetchProcesses()
   } else {
     alert('Erro ao excluir processo: ' + (error.message || JSON.stringify(error) || 'Erro desconhecido'))
+  }
+}
+
+// [4.1] --- NOVO: Função de restauração de processo ---
+async function handleRestoreProcess(processoId: string, processoNome: string) {
+  if (!window.confirm(`Tem certeza que deseja restaurar o processo "${processoNome}"?`)) return
+  
+  try {
+    // Primeiro, atualizar o processo diretamente
+    const { error: updateError } = await supabase
+      .from('processes')
+      .update({ deleted_at: null })
+      .eq('id', processoId)
+    
+    if (updateError) throw updateError;
+    
+    // Registrar na auditoria manualmente
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _adminName = user.value?.user_metadata?.name || user.value?.email || 'Admin' // Nome do admin para registro (não utilizado diretamente)
+    const { error: auditError } = await supabase.from('audit_log').insert({
+      process_id: processoId,
+      user_id: user.value?.id,
+      field_name: 'deleted_at',
+      old_value: 'data de exclusão',
+      new_value: 'NULL'
+    })
+    
+    if (auditError) {
+      console.error('Erro ao registrar auditoria:', auditError)
+      // Continuar mesmo com erro na auditoria
+    }
+    
+    // Atualizar a lista após restauração bem-sucedida
+    fetchProcesses()
+    alert(`O processo "${processoNome}" foi restaurado com sucesso.`)
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error) || 'Erro desconhecido'
+    console.error('Erro ao restaurar processo:', error)
+    alert('Erro ao restaurar processo: ' + errorMessage)
   }
 }
 
@@ -531,7 +627,7 @@ async function fetchProfileRole() {
     return
   }
   const { data } = await supabase.from('profiles').select('role').eq('id', user.value.id).single()
-  isAdmin.value = data?.role === 'admin'
+  isAdmin.value = data?.role === 'Admin'
 }
 
 watch(user, () => {
@@ -555,29 +651,3 @@ onMounted(async () => {
   await fetchProcesses() // Inicializa a busca de processos
 })
 </script>
-
-<style scoped>
-table {
-  border-collapse: separate;
-  border-spacing: 0;
-}
-th, td {
-  border-right: 1px solid #1e293b;
-}
-th:last-child, td:last-child {
-  border-right: none;
-}
-
-/* Melhora contraste do <select> e <option> no modal */
-select, select option {
-  background-color: #1e293b !important; /* Fundo escuro */
-  color: #fff !important;               /* Texto branco */
-}
-select:focus {
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 2px #14b8a6aa;
-}
-option[value=''] {
-  color: #94a3b8 !important; /* Placeholder mais claro */
-}
-</style>

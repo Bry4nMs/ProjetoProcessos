@@ -35,15 +35,30 @@
       </svg>
       <span class="font-medium">Acompanhamento Especial</span>
     </router-link>
-    <!-- Botão de Admin -->
-    <router-link
-      v-if="isAdmin"
-      to="/admin"
-      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2 bg-gradient-to-r from-amber-600 to-yellow-500 text-white shadow-lg"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V6a2 2 0 012-2h12a2 2 0 012 2v8c0 2.21-3.582 4-8 4z"/></svg>
-      <span class="font-medium">Administração</span>
-    </router-link>
+    <!-- Seção de Administração -->
+    <div v-if="isAdmin" class="mb-2">
+      <div class="text-slate-400 text-xs uppercase font-semibold mb-2 px-4">Administração</div>
+      
+      <!-- Botão de Admin - Regras de Automação -->
+      <router-link
+        to="/admin"
+        class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+        :class="$route.path === '/admin' ? 'bg-gradient-to-r from-amber-600 to-yellow-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-amber-400'"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V6a2 2 0 012-2h12a2 2 0 012 2v8c0 2.21-3.582 4-8 4z"/></svg>
+        <span class="font-medium">Regras de Automação</span>
+      </router-link>
+      
+      <!-- Botão de Gerenciamento de Usuários -->
+      <router-link
+        to="/admin/usuarios"
+        class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+        :class="$route.path === '/admin/usuarios' ? 'bg-gradient-to-r from-amber-600 to-yellow-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-amber-400'"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <span class="font-medium">Usuários</span>
+      </router-link>
+    </div>
     <div class="flex-1"></div>
     <template v-if="user">
       <span class="text-abyss-primary font-semibold mb-4 block"
@@ -75,7 +90,7 @@ async function fetchProfileRole() {
     return
   }
   const { data } = await supabase.from('profiles').select('role').eq('id', user.value.id).single()
-  isAdmin.value = data?.role === 'admin'
+  isAdmin.value = data?.role === 'Admin'
 }
 
 watch(user, () => {
