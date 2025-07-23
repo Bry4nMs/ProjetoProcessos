@@ -14,6 +14,15 @@ const { user, fetchUser } = useAuth()
 
 const showModal = ref(false)
 const showEtapas = ref(false)
+
+// Expor métodos para uso externo
+defineExpose({
+  abrirDetalhes,
+  showEtapas: () => {
+    showEtapas.value = true
+    carregarEtapas()
+  }
+})
 // NOVA interface para o item do checklist
 interface ChecklistItem {
   id: string;
@@ -739,7 +748,7 @@ async function gerarRelatorioPDF() {
 </script>
 
 <template>
-  <div>
+  <div class="processo-card" :data-processo-id="processo.id">
     <!-- Card -->
     <div
       class="bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-xl p-6 mb-6 hover:bg-white/15 hover:scale-105 transition-all relative w-full h-full min-h-[350px]"
@@ -985,7 +994,7 @@ async function gerarRelatorioPDF() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-4">
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Área Temática:</span>
-              <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.thematic_area_id || 'Não definido' }}</span>
+              <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.area_code || 'Não definido' }}</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-slate-300">Ano do FAF:</span>

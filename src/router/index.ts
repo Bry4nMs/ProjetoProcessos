@@ -43,15 +43,22 @@ const router = createRouter({
       component: () => import('../views/AcompanhamentoEspecialView.vue'),
     },
     {
-    path: '/admin',
-    name: 'admin',
-    component: () => import('../views/AdminView.vue'),
-  },
-  {
-    path: '/admin/usuarios',
-    name: 'gerenciamento-usuarios',
-    component: () => import('../views/GerenciamentoUsuariosView.vue'),
-  }
+      path: '/processo/:id',
+      name: 'processo-detalhes',
+      redirect: to => {
+        return { path: '/processos', query: { processo_id: to.params.id } }
+      }
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('../views/AdminView.vue'),
+    },
+    {
+      path: '/admin/usuarios',
+      name: 'gerenciamento-usuarios',
+      component: () => import('../views/GerenciamentoUsuariosView.vue'),
+    }
   ],
 })
 

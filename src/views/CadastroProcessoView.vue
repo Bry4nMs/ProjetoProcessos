@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Layout from '../components/Layout.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useDropZone } from '@vueuse/core'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
@@ -12,6 +12,15 @@ import {
 
 const anoAtual = new Date().getFullYear()
 const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
+
+// Mapeamento de anos para áreas temáticas permitidas
+const areasPorAno: { [key: string]: string[] } = {
+  '2019': ['ECV', 'VPSP'],
+  '2020': ['ECV', 'VPSP'],
+  '2021': ['FISP', 'VPSP'],
+  '2022': ['FISP', 'VPSP']
+  // A partir de 2023, a lógica será tratada no computed
+}
 
 // Campos do formulário
 const nomeAcao = ref('')
@@ -47,6 +56,33 @@ const dropZone = useDropZone(dropZoneRef, { onDrop })
 const isOver = dropZone && 'isOver' in dropZone ? dropZone.isOver : ref(false)
 
 const { user, fetchUser } = useAuth()
+
+// Variável computada para filtrar as áreas temáticas
+const areasTematicasFiltradas = computed(() => {
+  // Se nenhum ano foi selecionado, não mostre nenhuma área
+  if (!anoFaf.value) {
+    return [];
+  }
+
+  const anoSelecionado = Number(anoFaf.value);
+  let codigosPermitidos: string[] = [];
+
+  // Define os códigos permitidos com base no ano
+  if (anoSelecionado >= 2023) {
+    codigosPermitidos = ['EVM', 'MQV', 'RMVI'];
+  } else if (areasPorAno[anoSelecionado]) {
+    codigosPermitidos = areasPorAno[anoSelecionado];
+  }
+
+  // Filtra a lista completa de áreas temáticas (buscada do banco)
+  return areasTematicas.value.filter(area => codigosPermitidos.includes(area.code));
+});
+
+// Observador para limpar a área temática ao mudar o ano
+watch(anoFaf, () => {
+  // Limpa o valor selecionado da área temática
+  areaTematicaId.value = '';
+})
 
 onMounted(async () => {
   const { data: areas } = await buscarAreasTematicas()
@@ -241,16 +277,14 @@ function handleFileSelected(event: Event) {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-slate-200 mb-1 font-semibold">Área Temática</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Ano do FAF</label>
             <select
-              v-model="areaTematicaId"
+              v-model="anoFaf"
               class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
               style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
             >
               <option value="">Selecione</option>
-              <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
-                {{ area.code }}
-              </option>
+              <option v-for="ano in anos" :key="ano">{{ ano }}</option>
             </select>
           </div>
           <div>
@@ -265,14 +299,17 @@ function handleFileSelected(event: Event) {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-slate-200 mb-1 font-semibold">Ano do FAF</label>
+            <label class="block text-slate-200 mb-1 font-semibold">Área Temática</label>
             <select
-              v-model="anoFaf"
+              v-model="areaTematicaId"
               class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
               style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
+              :disabled="!anoFaf"
             >
               <option value="">Selecione</option>
-              <option v-for="ano in anos" :key="ano">{{ ano }}</option>
+              <option v-for="area in areasTematicasFiltradas" :key="area.id" :value="area.id">
+                {{ area.code }}
+              </option>
             </select>
           </div>
           <div>

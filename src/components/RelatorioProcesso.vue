@@ -8,8 +8,8 @@
         <tr><td><b>Nome:</b></td><td>{{ processo.nome_acao }}</td></tr>
         <tr><td><b>Status:</b></td><td>{{ processo.status }}</td></tr>
         <tr><td><b>Valor Inicial:</b></td><td>{{ processo.valor_inicial_padrao }}</td></tr>
-        <tr><td><b>Área Temática:</b></td><td>{{ processo.area_code || processo.thematic_area_id }}</td></tr>
-        <tr><td><b>Força Responsável:</b></td><td>{{ processo.forca_code || processo.responsible_force_id }}</td></tr>
+        <tr><td><b>Área Temática:</b></td><td>{{ processo.area_code || 'Não definido' }}</td></tr>
+        <tr><td><b>Força Responsável:</b></td><td>{{ processo.forca_code || 'Não definido' }}</td></tr>
         <tr><td><b>Data de Criação:</b></td><td>{{ formatarDataHora(processo.created_at) }}</td></tr>
         <tr><td><b>Processo SEI:</b></td><td>{{ processo.codigo_transferegov }}</td></tr>
       </tbody>

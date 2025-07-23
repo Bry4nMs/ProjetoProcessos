@@ -94,19 +94,109 @@
           </div>
         </div>
         <!-- Título -->
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Acompanhamento de Processos</h1>
-        <!-- Cards de Processo -->
-        <div class="flex justify-center w-full">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <ProcessoCard
-              v-for="(processo, idx) in processosFiltrados"
-              :key="idx"
-              :processo="processo"
-              :total-etapas="processo.totalEtapas"
-              @atualizar-processo="carregarProcessos()"
-            />
+        <div class="flex items-center justify-between mb-4">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Acompanhamento de Processos</h1>
+          <div class="flex bg-slate-800 rounded-lg p-1">
+            <button 
+              @click="viewMode = 'cards'" 
+              :class="[viewMode === 'cards' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
+            >
+              <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Cards
+              </span>
+            </button>
+            <button 
+              @click="viewMode = 'table'" 
+              :class="[viewMode === 'table' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
+            >
+              <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Tabela
+              </span>
+            </button>
           </div>
         </div>
+        <!-- Cards de Processo -->
+          <div class="flex justify-center w-full">
+            <div v-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <ProcessoCard
+                v-for="processo in processosFiltrados"
+                :key="processo.id"
+                :processo="processo"
+                @atualizar-processo="carregarProcessos()"
+              />
+            </div>
+            
+            <!-- Visualização em Tabela -->
+            <div v-else-if="viewMode === 'table'" class="w-full overflow-x-auto">
+              <table class="w-full border-collapse">
+                <thead>
+                  <tr class="bg-slate-800 text-left">
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Processo SEI</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Nome da Ação</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Força Responsável</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Área Temática</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Status</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Progresso</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Valor Inicial</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="processosFiltrados.length === 0">
+                    <td colspan="7" class="px-4 py-6 text-center text-slate-400">Nenhum processo encontrado</td>
+                  </tr>
+                  <tr 
+                    v-for="processo in processosFiltrados" 
+                    :key="processo.id"
+                    class="border-b border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors"
+                    @click="abrirModalProcesso(processo)"
+                  >
+                    <td class="px-4 py-3 text-white">{{ processo.codigo_transferegov || 'Não definido' }}</td>
+                    <td class="px-4 py-3 text-white font-medium">{{ processo.nome_acao }}</td>
+                    <td class="px-4 py-3">
+                      <span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full text-xs font-semibold">
+                        {{ processo.forca_code || 'Não definido' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="bg-teal-600/20 text-teal-300 px-2 py-1 rounded-full text-xs font-semibold">
+                        {{ processo.area_code || 'Não definido' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span 
+                        :class="{
+                          'bg-green-600/20 text-green-300': processo.status === 'Concluído',
+                          'bg-yellow-600/20 text-yellow-300': processo.status === 'Em andamento',
+                          'bg-slate-600/20 text-slate-300': !processo.status
+                        }"
+                        class="px-2 py-1 rounded-full text-xs font-semibold"
+                      >
+                        {{ processo.status || 'Não iniciado' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="w-full bg-slate-700 rounded-full h-2.5 mb-1">
+                        <div 
+                          class="bg-gradient-to-r from-teal-500 to-cyan-400 h-2.5 rounded-full" 
+                          :style="{ width: `${processo.progresso || 0}%` }"
+                        ></div>
+                      </div>
+                      <div class="text-xs text-slate-400">{{ processo.progresso || 0 }}%</div>
+                    </td>
+                    <td class="px-4 py-3 font-medium text-teal-400">
+                      {{ processo.valor_inicial_padrao ? processo.valor_inicial_padrao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
       </div>
     </div>
   </Layout>
@@ -116,7 +206,8 @@
 import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessosGraficos from '../components/ProcessosGraficos.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
@@ -125,9 +216,14 @@ import {
 } from '../services/auth'
 import { useDashboardFilters } from '../composables/useDashboardFilters'
 
+const route = useRoute()
+
 // Opções de Ano do FAF (igual CadastroProcessoView.vue)
 const anoAtual = new Date().getFullYear()
 const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
+
+// Modo de visualização (cards ou tabela)
+const viewMode = ref('cards')
 
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
@@ -160,6 +256,9 @@ interface Processo {
   status: string
   etapaAtual: number
   totalEtapas: number
+  progresso?: number
+  sei?: string
+
   forca_code: string
   area_code: string
   responsible_forces?: { id: number; code: string }
@@ -207,8 +306,10 @@ async function carregarProcessos() {
           forca_code: proc.responsible_forces?.code || '',
           area_code: proc.thematic_areas?.code || '',
       // `etapaAtual` e `totalEtapas` já são calculados no back-end!
-      etapaAtual: proc.etapaAtual,
-      totalEtapas: proc.totalEtapas,
+          totalEtapas: proc.totalEtapas,
+      // Adicionar sei e progresso
+          sei: proc.codigo_transferegov,
+          progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
       // O restante da lógica permanece
           status: proc.status || 'Em Andamento',
           is_favorited: favoriteIds.has(proc.id),
@@ -232,7 +333,42 @@ onMounted(async () => {
   if (forcas) forcasResponsaveis.value = forcas
   const { data: areas } = await buscarAreasTematicas()
   if (areas) areasTematicas.value = areas
+  
+  // Verificar se há um processo_id na query string para abrir o modal
+  const processoId = route.query.processo_id
+  if (processoId && typeof processoId === 'string') {
+    // Esperar um pouco para garantir que os processos foram carregados
+    setTimeout(() => {
+      const processo = processos.value.find(p => p.id === processoId)
+      if (processo) {
+        abrirModalProcesso(processo)
+      }
+    }, 500)
+  }
 })
+
+// Referência para o componente ProcessoCard que será usado para abrir o modal
+const processoSelecionado = ref<Processo | null>(null)
+
+// Função para abrir o modal do processo ao clicar na linha da tabela
+function abrirModalProcesso(processo: Processo) {
+  processoSelecionado.value = processo
+  // Buscar o componente ProcessoCard e chamar seu método para abrir o modal
+  const processoCards = document.querySelectorAll('.processo-card')
+  processoCards.forEach(card => {
+    if ((card as Element & { __vueParentComponent?: { props?: { processo?: { id: string } } } }).__vueParentComponent?.props?.processo?.id === processo.id) {
+      // Chamar o método abrirDetalhes do componente
+      const component = (card as Element & { __vueParentComponent?: { component?: { exposed?: { abrirDetalhes: (e: Event) => void, showEtapas?: () => void } } } }).__vueParentComponent?.component
+      if (component && component.exposed && component.exposed.abrirDetalhes) {
+        component.exposed.abrirDetalhes(new Event('click'))
+        // Opcionalmente, mudar para a aba de etapas se vier da tabela
+        if (component.exposed.showEtapas) {
+          component.exposed.showEtapas()
+        }
+      }
+    }
+  })
+}
 
 const processosFiltrados = computed(() => {
   return processos.value.filter((proc) => {
