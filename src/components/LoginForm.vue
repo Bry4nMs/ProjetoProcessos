@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
-import { useRouter } from 'vue-router'
+// 1. IMPORTADO: Adicionamos o 'useRoute' para ler a URL
+import { useRouter, useRoute } from 'vue-router'
 
 const tab = ref<'login' | 'register'>('login')
 const email = ref('')
@@ -12,16 +13,28 @@ const nome = ref('')
 const { login, criarConta, error } = useAuth()
 const feedback = ref('')
 const router = useRouter()
+// 2. ADICIONADO: Criamos a instância do 'route' para acessar os parâmetros da URL
+const route = useRoute()
 
 async function handleLogin(e: Event) {
   e.preventDefault()
   feedback.value = ''
   const { error: err } = await login(email.value, password.value)
+
+  // 3. LÓGICA MODIFICADA: Todo este bloco foi alterado
   if (!err) {
     feedback.value = 'Login realizado com sucesso!'
-    setTimeout(() => {
-      router.push('/')
-    }, 500)
+
+    // Verifica se existe um parâmetro 'redirect' na URL
+    const redirectPath = route.query.redirect as string;
+
+    if (redirectPath) {
+      // Se existir, redireciona o usuário para a página que ele queria acessar
+      router.push(redirectPath);
+    } else {
+      // Se não, redireciona para a página principal padrão
+      router.push('/processos');
+    }
   }
 }
 

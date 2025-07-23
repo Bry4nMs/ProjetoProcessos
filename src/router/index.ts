@@ -1,4 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+// 1. SUGESTÃO APLICADA: Importar o Supabase uma única vez, no topo do arquivo.
+import { supabase } from '../services/supabase'
+
 import ProcessosView from '../views/ProcessosView.vue'
 import LoginView from '../views/LoginView.vue'
 import CadastroProcessoView from '../views/CadastroProcessoView.vue'
@@ -47,7 +50,7 @@ const router = createRouter({
       name: 'processo-detalhes',
       redirect: to => {
         return { path: '/processos', query: { processo_id: to.params.id } }
-      }
+      },
     },
     {
       path: '/admin',
@@ -58,14 +61,12 @@ const router = createRouter({
       path: '/admin/usuarios',
       name: 'gerenciamento-usuarios',
       component: () => import('../views/GerenciamentoUsuariosView.vue'),
-    }
+    },
   ],
 })
 
 router.beforeEach(async (to, from, next) => {
-  // Pega o usuário e seu perfil (que contém o papel)
-  // Importar supabase para uso no router guard
-  const { supabase } = await import('../services/supabase')
+  // Agora 'supabase' já está disponível aqui, sem a necessidade de um novo import.
   const { data: { user } } = await supabase.auth.getUser()
   let userRole = null;
 
@@ -82,14 +83,14 @@ router.beforeEach(async (to, from, next) => {
   const authRequired = !publicPages.includes(to.path)
   const isAdminRoute = to.path.startsWith('/admin')
 
-  // 1. Se a rota precisa de login e o usuário não está logado, redireciona para /login
+  // 1. Se a rota precisa de login e o usuário não está logado...
   if (authRequired && !user) {
-    return next('/login')
+    // 2. SUGESTÃO APLICADA: Redireciona para o login, guardando a página que o usuário queria acessar.
+    return next({ path: '/login', query: { redirect: to.fullPath } })
   }
 
   // 2. Se a rota é de admin e o usuário não tem o papel 'Admin', redireciona
   if (isAdminRoute && userRole !== 'Admin') {
-    // Redireciona para uma página de "acesso negado" ou para a home
     console.warn('Acesso negado: Rota de admin para usuário não-admin.');
     return next('/processos')
   }
