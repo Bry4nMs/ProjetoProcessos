@@ -12,6 +12,9 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+
+// A linha abaixo desabilita a regra do ESLint apenas para a próxima linha de código.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 app.use(Toast as any, {
   transition: "Vue-Toastification__bounce",
   maxToasts: 5,
