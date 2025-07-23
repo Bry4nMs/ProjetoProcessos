@@ -206,7 +206,7 @@
 import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessosGraficos from '../components/ProcessosGraficos.vue'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
