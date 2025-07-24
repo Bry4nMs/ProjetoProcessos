@@ -1,0 +1,16 @@
+ALTER TABLE public.processes ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
+-- Exemplo de política RLS para SELECT (exibir apenas processos não deletados)
+CREATE POLICY select_active_processes ON public.processes FOR SELECT USING (deleted_at IS NULL);
+
+-- Exemplo de política RLS para UPDATE (permitir admin setar deleted_at)
+CREATE POLICY allow_admin_soft_delete ON public.processes FOR UPDATE USING (auth.role() = 'authenticated' AND (
+  (deleted_at IS NULL AND (
+    (
+      (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'Admin'
+    )
+  ))
+  OR (deleted_at IS NULL)
+));
+
+-- Lembre-se de revisar e adaptar as políticas de RLS em process_steps, etc., para filtrar deleted_at IS NULL nos JOINs.

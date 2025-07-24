@@ -1,0 +1,451 @@
+<template>
+  <Layout>
+    <div class="min-h-screen flex justify-center items-stretch px-8">
+      <div class="w-full max-w-7xl mx-auto space-y-8">
+        <!-- Gráficos de Sumário -->
+        <div class="flex justify-center flex-wrap gap-8">
+          <ProcessosGraficos :processos="processos" />
+        </div>
+        <!-- Filtros -->
+        <div class="w-full flex justify-center">
+          <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 shadow-xl rounded-lg flex flex-wrap items-center gap-4 px-6 py-3 mb-8">
+            <div class="flex flex-col min-w-[180px]">
+              <label class="text-slate-200 font-semibold mb-1">Pesquisar por Nome</label>
+              <input
+                v-model="filtroNome"
+                type="text"
+                placeholder="Digite o nome da ação"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
+              />
+            </div>
+            <div class="flex flex-col min-w-[180px]">
+              <label class="text-slate-200 font-semibold mb-1">Processo SEI</label>
+              <input
+                v-model="filtroSEI"
+                type="text"
+                placeholder="Digite o número SEI"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 w-full"
+              />
+            </div>
+            <div class="flex flex-col min-w-[120px]">
+              <label class="text-slate-200 font-semibold mb-1">Ano do FAF</label>
+              <select
+                v-model="filtroAno"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
+              >
+                <option value="">Todos</option>
+                <option v-for="ano in anos" :key="ano" :value="ano">{{ ano }}</option>
+              </select>
+            </div>
+            <div class="flex flex-col min-w-[140px]">
+              <label class="text-slate-200 font-semibold mb-1">Força</label>
+              <select
+                v-model="filtroForca"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
+              >
+                <option value="">Todas</option>
+                <option v-for="forca in forcasResponsaveis" :key="forca.id" :value="forca.id">
+                  {{ forca.code }}
+                </option>
+              </select>
+            </div>
+            <div class="flex flex-col min-w-[140px]">
+              <label class="text-slate-200 font-semibold mb-1">Área Temática</label>
+              <select
+                v-model="filtroArea"
+                class="px-2 py-1 rounded border border-white/30 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
+              >
+                <option value="">Todas</option>
+                <option v-for="area in areasTematicas" :key="area.id" :value="area.id">
+                  {{ area.code }}
+                </option>
+              </select>
+            </div>
+            <div class="flex flex-col min-w-[160px]">
+              <label class="text-slate-200 font-semibold mb-1">Data de Criação</label>
+              <input
+                v-model="filtroData"
+                type="date"
+                class="px-2 py-1 rounded border border-white/20 bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 w-full [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:sepia [&::-webkit-calendar-picker-indicator]:saturate-[5] [&::-webkit-calendar-picker-indicator]:hue-rotate-[140deg] [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&:focus::-webkit-calendar-picker-indicator]:invert-[70%] [&:focus::-webkit-calendar-picker-indicator]:sepia [&:focus::-webkit-calendar-picker-indicator]:saturate-[8] [&:focus::-webkit-calendar-picker-indicator]:hue-rotate-[140deg] [&:focus::-webkit-calendar-picker-indicator]:brightness-150 placeholder:text-slate-400 [&::-webkit-input-placeholder]:text-slate-400 [&::-webkit-input-placeholder]:opacity-100 [&::-moz-placeholder]:text-slate-400 [&::-moz-placeholder]:opacity-100 [&::-ms-input-placeholder]:text-slate-400 [&::-ms-input-placeholder]:opacity-100"
+              />
+            </div>
+            <div class="flex items-center gap-2 min-w-[170px] mt-5 md:mt-0">
+              <input
+                id="chkConcluidos"
+                v-model="mostrarConcluidos"
+                type="checkbox"
+                class="accent-teal-500 w-5 h-5 border-white/20 bg-white/10"
+              />
+              <label for="chkConcluidos" class="text-slate-200 font-semibold select-none"
+                >Mostrar Concluídos</label
+              >
+            </div>
+            <div class="flex-1 flex justify-end min-w-[200px]">
+              <router-link
+                to="/processos/novo"
+                class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
+              >
+                + Novo Processo
+              </router-link>
+            </div>
+          </div>
+        </div>
+        <!-- Título -->
+        <div class="flex items-center justify-between mb-4">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Acompanhamento de Processos</h1>
+          <div class="flex bg-slate-800 rounded-lg p-1">
+            <button
+              @click="viewMode = 'cards'"
+              :class="[viewMode === 'cards' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
+            >
+              <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Cards
+              </span>
+            </button>
+            <button
+              @click="viewMode = 'table'"
+              :class="[viewMode === 'table' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
+            >
+              <span class="flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Tabela
+              </span>
+            </button>
+          </div>
+        </div>
+        <!-- Cards de Processo -->
+          <div class="flex justify-center w-full">
+            <div v-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <ProcessoCard
+                v-for="processo in processosFiltrados"
+                :key="processo.id"
+                :processo="processo"
+                @atualizar-processo="(processoAtualizado) => atualizarProcesso(processoAtualizado)"
+                @abrir-detalhes="(processo) => abrirModalProcesso(processo, 'detalhes')"
+                @mostrar-etapas="(processo) => abrirModalProcesso(processo, 'etapas')"
+              />
+            </div>
+
+            <!-- Visualização em Tabela -->
+            <div v-else-if="viewMode === 'table'" class="w-full overflow-x-auto">
+              <table class="w-full border-collapse">
+                <thead>
+                  <tr class="bg-slate-800 text-left">
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Processo SEI</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Nome da Ação</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Força Responsável</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Área Temática</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Status</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Progresso</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Valor Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="processosFiltrados.length === 0">
+                    <td colspan="7" class="px-4 py-6 text-center text-slate-400">Nenhum processo encontrado</td>
+                  </tr>
+                  <tr
+                    v-for="processo in processosFiltrados"
+                    :key="processo.id"
+                    class="border-b border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors"
+                    @click="abrirModalProcesso(processo)"
+                  >
+                    <td class="px-4 py-3 text-white">{{ processo.codigo_transferegov || 'Não definido' }}</td>
+                    <td class="px-4 py-3 text-white font-medium">{{ processo.nome_acao }}</td>
+                    <td class="px-4 py-3">
+                      <span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full text-xs font-semibold">
+                        {{ processo.forca_code || 'Não definido' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="bg-teal-600/20 text-teal-300 px-2 py-1 rounded-full text-xs font-semibold">
+                        {{ processo.area_code || 'Não definido' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span
+                        :class="{
+                          'bg-green-600/20 text-green-300': processo.status === 'Concluído',
+                          'bg-yellow-600/20 text-yellow-300': processo.status === 'Em andamento',
+                          'bg-slate-600/20 text-slate-300': !processo.status
+                        }"
+                        class="px-2 py-1 rounded-full text-xs font-semibold"
+                      >
+                        {{ processo.status || 'Não iniciado' }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="w-full bg-slate-700 rounded-full h-2.5 mb-1">
+                        <div
+                          class="bg-gradient-to-r from-teal-500 to-cyan-400 h-2.5 rounded-full"
+                          :style="{ width: `${processo.progresso || 0}%` }"
+                        ></div>
+                      </div>
+                      <div class="text-xs text-slate-400">{{ processo.progresso || 0 }}%</div>
+                    </td>
+                    <td class="px-4 py-3 font-medium text-teal-400">
+                      {{ processo.valor_total_destinado ? processo.valor_total_destinado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+      </div>
+    </div>
+
+    <!-- Modal de Detalhes do Processo -->
+    <ProcessoDetalhesModal
+      v-if="processoSelecionado"
+      :show="showDetalhesModal"
+      :processo="processoSelecionado"
+      @close="fecharModalDetalhes"
+      @atualizar-processo="atualizarProcesso"
+    />
+
+    <!-- Modal de Etapas do Processo -->
+    <ProcessoEtapasModal
+      v-if="processoSelecionado"
+      :show="showEtapasModal"
+      :processo="processoSelecionado"
+      @close="fecharModalEtapas"
+      @atualizar-processo="atualizarProcesso"
+    />
+  </Layout>
+</template>
+
+<script setup lang="ts">
+import Layout from '../components/Layout.vue'
+import ProcessoCard from '../components/ProcessoCard.vue'
+import ProcessosGraficos from '../components/ProcessosGraficos.vue'
+import ProcessoDetalhesModal from '../components/ProcessoDetalhesModal.vue'
+import ProcessoEtapasModal from '../components/ProcessoEtapasModal.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { supabase } from '../services/supabase'
+import { useAuth } from '../composables/useAuth'
+import {
+  buscarForcasResponsaveis,
+  buscarAreasTematicas,
+  buscarEtapasDoProcesso,
+} from '../services/auth'
+import { useDashboardFilters } from '../composables/useDashboardFilters'
+
+const route = useRoute()
+
+// Opções de Ano do FAF (igual CadastroProcessoView.vue)
+const anoAtual = new Date().getFullYear()
+const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
+
+// Modo de visualização (cards ou tabela)
+const viewMode = ref('cards')
+
+const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
+const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
+const filtroNome = ref('')
+const filtroSEI = ref('')
+const filtroAno = ref('')
+const filtroForca = ref('')
+const filtroArea = ref('')
+const filtroData = ref('')
+const mostrarConcluidos = ref(true)
+
+interface Processo {
+  id: string
+  user_id: string
+  area_tematica?: string
+  ano_faf?: number
+  tipo_natureza_despesa?: string
+  forca_responsavel?: string
+  valor_inicial_padrao?: number
+  data_encaminhamento_aprovacao?: string
+  codigo_transferegov?: string
+  qtd_itens?: number
+  descricao_itens?: string
+  destinacao_itens?: string
+  valor_rendimentos?: number
+  valor_economicidade?: number
+  valor_total_destinado?: number
+  descricao_geral?: string
+  nome_acao?: string
+  status: string
+  etapaAtual: number
+  totalEtapas: number
+  progresso?: number
+  sei?: string
+  event_type?: string
+  etapaAtualNome?: string
+
+  forca_code: string
+  area_code: string
+  responsible_forces?: { id: number; code: string }
+  thematic_areas?: { id: number; code: string }
+  is_favorited?: boolean
+}
+const { user, fetchUser } = useAuth()
+const processos = ref<Processo[]>([])
+const loadingProcessos = ref(false)
+
+async function carregarProcessos() {
+  loadingProcessos.value = true;
+  let usuario = user.value;
+  if (!usuario) {
+    usuario = await fetchUser();
+  }
+  if (!usuario) {
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
+  }
+
+  // 1. Buscar favoritos do usuário (continua igual)
+  const { data: favorites } = await supabase
+    .from('user_favorites')
+    .select('process_id')
+    .eq('user_id', usuario.id);
+  const favoriteIds = new Set((favorites || []).map(f => f.process_id));
+
+  // 2. CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
+  const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
+
+  if (error) {
+    console.error('Erro ao buscar processos com RPC:', error);
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
+  }
+
+  if (data) {
+    // 3. Mapeamento simples dos dados já processados
+    processos.value = data.map(proc => ({
+          ...proc,
+      // Os dados de `forca` e `area` já vêm no formato correto do RPC
+          forca_code: proc.responsible_forces?.code || '',
+          area_code: proc.thematic_areas?.code || '',
+      // `etapaAtual` e `totalEtapas` já são calculados no back-end!
+          totalEtapas: proc.totalEtapas,
+      // Adicionar sei e progresso
+          sei: proc.codigo_transferegov,
+          progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
+      // Adicionar nome da etapa atual
+          etapaAtualNome: proc.current_step_name || 'Não definida',
+      // O restante da lógica permanece
+          status: proc.status || 'Em Andamento',
+          is_favorited: favoriteIds.has(proc.id),
+    }));
+
+    // Buscar o nome da etapa atual para cada processo
+    await Promise.all(processos.value.map(async (processo) => {
+      if (processo.id) {
+        const { data: etapas } = await buscarEtapasDoProcesso(processo.id);
+        if (etapas && etapas.length > 0) {
+          const etapaAtual = etapas.find(e => e.is_current);
+          if (etapaAtual) {
+            processo.etapaAtualNome = etapaAtual.step_templates?.name || 'Não definida';
+          }
+        }
+      }
+    }));
+  } else {
+    processos.value = [];
+  }
+  loadingProcessos.value = false;
+}
+
+const { filtroForcaId, limparFiltros } = useDashboardFilters()
+
+onMounted(async () => {
+  // Se vier filtro global do dashboard, aplicar e limpar
+  if (filtroForcaId.value) {
+    filtroForca.value = String(filtroForcaId.value)
+    limparFiltros()
+  }
+  await carregarProcessos()
+  const { data: forcas } = await buscarForcasResponsaveis()
+  if (forcas) forcasResponsaveis.value = forcas
+  const { data: areas } = await buscarAreasTematicas()
+  if (areas) areasTematicas.value = areas
+
+  // Verificar se há um processo_id na query string para abrir o modal
+  const processoId = route.query.processo_id
+  if (processoId && typeof processoId === 'string') {
+    // Esperar um pouco para garantir que os processos foram carregados
+    setTimeout(() => {
+      const processo = processos.value.find(p => p.id === processoId)
+      if (processo) {
+        abrirModalProcesso(processo)
+      }
+    }, 500)
+  }
+})
+
+// Referência para o processo selecionado e controle dos modais
+const processoSelecionado = ref<Processo | null>(null)
+const showDetalhesModal = ref(false)
+const showEtapasModal = ref(false)
+
+// Função para abrir o modal de detalhes do processo
+function abrirModalProcesso(processo: Processo, tipo: string = 'detalhes') {
+  processoSelecionado.value = processo
+
+  if (tipo === 'etapas' || processo.event_type === 'mostrar-etapas') {
+    showEtapasModal.value = true
+  } else {
+    showDetalhesModal.value = true
+  }
+}
+
+// Função para fechar o modal de detalhes
+function fecharModalDetalhes() {
+  showDetalhesModal.value = false
+}
+
+// Função para fechar o modal de etapas
+function fecharModalEtapas() {
+  showEtapasModal.value = false
+}
+
+// Função para atualizar o processo após edição
+async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
+  if (processoAtualizado && processoAtualizado.id) {
+    // Se recebemos um processo atualizado, atualizamos apenas esse processo no array
+    const index = processos.value.findIndex(p => p.id === processoAtualizado.id);
+    if (index !== -1) {
+      processos.value[index] = {
+        ...processos.value[index],
+        ...processoAtualizado
+      };
+      return;
+    }
+  }
+  // Caso contrário, recarregamos todos os processos
+  await carregarProcessos();
+}
+
+const processosFiltrados = computed(() => {
+  return processos.value.filter((proc) => {
+    const nomeMatch = (proc.nome_acao || proc.area_code || '')
+      .toLowerCase()
+      .includes(filtroNome.value.toLowerCase())
+    const seiMatch = !filtroSEI.value || (proc.codigo_transferegov || '').toLowerCase().includes(filtroSEI.value.toLowerCase())
+    const anoMatch = !filtroAno.value || proc.ano_faf === Number(filtroAno.value)
+    const forcaMatch =
+      !filtroForca.value || proc.responsible_forces?.id === Number(filtroForca.value)
+    const areaMatch = !filtroArea.value || proc.thematic_areas?.id === Number(filtroArea.value)
+    const dataMatch =
+      !filtroData.value ||
+      (proc.data_encaminhamento_aprovacao &&
+        proc.data_encaminhamento_aprovacao === filtroData.value)
+    const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
+    return nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
+  })
+})
+</script>
