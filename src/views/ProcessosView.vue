@@ -145,7 +145,7 @@
                     <th class="px-4 py-3 text-slate-300 font-semibold">Área Temática</th>
                     <th class="px-4 py-3 text-slate-300 font-semibold">Status</th>
                     <th class="px-4 py-3 text-slate-300 font-semibold">Progresso</th>
-                    <th class="px-4 py-3 text-slate-300 font-semibold">Valor Inicial</th>
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Valor Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -192,7 +192,7 @@
                       <div class="text-xs text-slate-400">{{ processo.progresso || 0 }}%</div>
                     </td>
                     <td class="px-4 py-3 font-medium text-teal-400">
-                      {{ processo.valor_inicial_padrao ? processo.valor_inicial_padrao.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00' }}
+                      {{ processo.valor_total_destinado ? processo.valor_total_destinado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00' }}
                     </td>
                   </tr>
                 </tbody>
@@ -341,7 +341,7 @@ async function carregarProcessos() {
           status: proc.status || 'Em Andamento',
           is_favorited: favoriteIds.has(proc.id),
     }));
-    
+
     // Buscar o nome da etapa atual para cada processo
     await Promise.all(processos.value.map(async (processo) => {
       if (processo.id) {
