@@ -108,14 +108,14 @@
             </div>
             <div v-if="form.action_type === 'send_notification'" class="mb-4">
               <label class="block text-slate-300 mb-1">Destinatário</label>
-              <select v-model="form.action_notification_target" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white" required>
+              <select v-model="form.action_notification_target" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
                 <option value="">Selecione...</option>
                 <option value="owner">Dono do processo</option>
                 <option value="user">Usuário específico</option>
               </select>
               <div v-if="form.action_notification_target === 'user'" class="mt-2">
                 <label class="block text-slate-300 mb-1">Usuário Destinatário</label>
-                <select v-model="form.action_notification_user_id" class="w-full px-3 py-2 rounded bg-white/10 border border-white/20 text-white">
+                <select v-model="form.action_notification_user_id" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70">
                   <option value="">Selecione o usuário...</option>
                   <option v-for="user in usuarios" :key="user.id" :value="user.id">{{ user.nome }}</option>
                 </select>
@@ -192,14 +192,14 @@
           <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
             {{ mostrandoLixeira ? 'Lixeira' : 'Gerenciador de Processos' }}
           </h1>
-          <button 
-            @click="mostrandoLixeira = !mostrandoLixeira" 
+          <button
+            @click="mostrandoLixeira = !mostrandoLixeira"
             class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
           >
             {{ mostrandoLixeira ? 'Voltar ao Gerenciador' : 'Ver Lixeira' }}
           </button>
         </div>
-        
+
         <!-- Filtros (visíveis apenas quando não estiver na lixeira) -->
         <div v-if="!mostrandoLixeira" class="flex gap-4 mb-6">
           <input v-model="searchTerm" type="text" placeholder="Buscar por nome da ação..." class="flex-1 bg-white/10 border border-white/20 text-white rounded px-3 py-2 placeholder:text-slate-400" />
@@ -237,16 +237,16 @@
                 <td class="px-3 py-2">{{ new Date(proc.created_at as string).toLocaleString() }}</td>
                 <td class="px-3 py-2">
                   <!-- Botão condicional baseado no estado da lixeira -->
-                  <button 
-                    v-if="!mostrandoLixeira" 
-                    @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)" 
+                  <button
+                    v-if="!mostrandoLixeira"
+                    @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)"
                     class="text-red-600 hover:underline"
                   >
                     Excluir
                   </button>
-                  <button 
-                    v-else 
-                    @click="handleRestoreProcess(proc.id as string, proc.nome_acao as string)" 
+                  <button
+                    v-else
+                    @click="handleRestoreProcess(proc.id as string, proc.nome_acao as string)"
                     class="text-green-500 hover:underline"
                   >
                     Restaurar
@@ -303,7 +303,7 @@ const mostrandoLixeira = ref(false)
 async function fetchProcesses() {
   loadingProcessos.value = true
   let query = supabase.from('processes').select('*')
-  
+
   // Filtrar por processos ativos ou excluídos com base no estado da lixeira
   if (mostrandoLixeira.value) {
     query = query.not('deleted_at', 'is', null)
@@ -317,7 +317,7 @@ async function fetchProcesses() {
       query = query.eq('status', statusFilter.value)
     }
   }
-  
+
   const { data } = await query.order('created_at', { ascending: false })
   processosListados.value = data || []
   loadingProcessos.value = false
@@ -375,16 +375,16 @@ async function handleDeleteProcess(processoId: string, processoNome: string) {
 // [4.1] --- NOVO: Função de restauração de processo ---
 async function handleRestoreProcess(processoId: string, processoNome: string) {
   if (!window.confirm(`Tem certeza que deseja restaurar o processo "${processoNome}"?`)) return
-  
+
   try {
     // Primeiro, atualizar o processo diretamente
     const { error: updateError } = await supabase
       .from('processes')
       .update({ deleted_at: null })
       .eq('id', processoId)
-    
+
     if (updateError) throw updateError;
-    
+
     // Registrar na auditoria manualmente
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _adminName = user.value?.user_metadata?.name || user.value?.email || 'Admin' // Nome do admin para registro (não utilizado diretamente)
@@ -395,12 +395,12 @@ async function handleRestoreProcess(processoId: string, processoNome: string) {
       old_value: 'data de exclusão',
       new_value: 'NULL'
     })
-    
+
     if (auditError) {
       console.error('Erro ao registrar auditoria:', auditError)
       // Continuar mesmo com erro na auditoria
     }
-    
+
     // Atualizar a lista após restauração bem-sucedida
     fetchProcesses()
     alert(`O processo "${processoNome}" foi restaurado com sucesso.`)
