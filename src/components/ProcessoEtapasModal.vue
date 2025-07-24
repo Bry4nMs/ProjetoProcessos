@@ -301,6 +301,23 @@ async function voltarEtapa() {
     }
   }
   await carregarEtapas();
+  
+  // Criar um objeto com as atualizações em vez de emitir apenas o evento
+  if (etapasData && etapasData.length > 0) {
+    const etapaAtualIdx = etapasData.findIndex(e => e.is_current);
+    if (etapaAtualIdx !== -1) {
+      const nomeEtapa = etapasData[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
+      const processoAtualizado = {
+        ...props.processo,
+        etapaAtualNome: nomeEtapa,
+        etapaAtual: etapaAtualIdx,
+        progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ? 
+          Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0
+      };
+      emit('atualizar-processo', processoAtualizado);
+      return;
+    }
+  }
   emit('atualizar-processo');
 }
 

@@ -117,7 +117,7 @@
                 v-for="processo in processosFiltrados"
                 :key="processo.id"
                 :processo="processo"
-                @atualizar-processo="carregarProcessos()"
+                @atualizar-processo="(processoAtualizado) => atualizarProcesso(processoAtualizado)"
               />
           </div>
           
@@ -249,6 +249,7 @@ interface Processo {
   is_favorited?: boolean
   progresso?: number
   sei?: string
+  etapaAtualNome?: string
 }
 const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
@@ -316,6 +317,23 @@ onMounted(async () => {
 
 // Referência para o componente ProcessoCard que será usado para abrir o modal
 const processoSelecionado = ref<Processo | null>(null)
+
+// Função para atualizar o processo após edição
+async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
+  if (processoAtualizado && processoAtualizado.id) {
+    // Se recebemos um processo atualizado, atualizamos apenas esse processo no array
+    const index = processos.value.findIndex(p => p.id === processoAtualizado.id);
+    if (index !== -1) {
+      processos.value[index] = {
+        ...processos.value[index],
+        ...processoAtualizado
+      };
+      return;
+    }
+  }
+  // Caso contrário, recarregamos todos os processos
+  await carregarProcessos();
+}
 
 // Função para abrir o modal do processo ao clicar na linha da tabela
 function abrirModalProcesso(processo: Processo) {

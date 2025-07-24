@@ -203,7 +203,7 @@
         <!-- Filtros (visíveis apenas quando não estiver na lixeira) -->
         <div v-if="!mostrandoLixeira" class="flex gap-4 mb-6">
           <input v-model="searchTerm" type="text" placeholder="Buscar por nome da ação..." class="flex-1 bg-white/10 border border-white/20 text-white rounded px-3 py-2 placeholder:text-slate-400" />
-          <select v-model="statusFilter" class="border rounded px-3 py-2 bg-white/10 border-white/20 text-white">
+          <select v-model="statusFilter" class="border rounded px-3 py-2 bg-slate-800 border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70">
             <option value="">Todos os Status</option>
             <option value="Em Andamento">Em Andamento</option>
             <option value="Concluído">Concluído</option>

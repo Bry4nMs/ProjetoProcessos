@@ -128,7 +128,7 @@
                 v-for="processo in processosFiltrados"
                 :key="processo.id"
                 :processo="processo"
-                @atualizar-processo="carregarProcessos()"
+                @atualizar-processo="(processoAtualizado) => atualizarProcesso(processoAtualizado)"
                 @abrir-detalhes="(processo) => abrirModalProcesso(processo, 'detalhes')"
                 @mostrar-etapas="(processo) => abrirModalProcesso(processo, 'etapas')"
               />
@@ -201,7 +201,7 @@
           </div>
       </div>
     </div>
-    
+
     <!-- Modal de Detalhes do Processo -->
     <ProcessoDetalhesModal
       v-if="processoSelecionado"
@@ -210,7 +210,7 @@
       @close="fecharModalDetalhes"
       @atualizar-processo="atualizarProcesso"
     />
-    
+
     <!-- Modal de Etapas do Processo -->
     <ProcessoEtapasModal
       v-if="processoSelecionado"
@@ -235,6 +235,7 @@ import { useAuth } from '../composables/useAuth'
 import {
   buscarForcasResponsaveis,
   buscarAreasTematicas,
+  buscarEtapasDoProcesso,
 } from '../services/auth'
 import { useDashboardFilters } from '../composables/useDashboardFilters'
 
@@ -281,6 +282,7 @@ interface Processo {
   progresso?: number
   sei?: string
   event_type?: string
+  etapaAtualNome?: string
 
   forca_code: string
   area_code: string
@@ -312,7 +314,7 @@ async function carregarProcessos() {
   const favoriteIds = new Set((favorites || []).map(f => f.process_id));
 
   // 2. CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
-  const { data, error } = await supabase.rpc('get_processes_with_progress');
+  const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
 
   if (error) {
     console.error('Erro ao buscar processos com RPC:', error);
@@ -333,9 +335,24 @@ async function carregarProcessos() {
       // Adicionar sei e progresso
           sei: proc.codigo_transferegov,
           progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
+      // Adicionar nome da etapa atual
+          etapaAtualNome: proc.current_step_name || 'Não definida',
       // O restante da lógica permanece
           status: proc.status || 'Em Andamento',
           is_favorited: favoriteIds.has(proc.id),
+    }));
+    
+    // Buscar o nome da etapa atual para cada processo
+    await Promise.all(processos.value.map(async (processo) => {
+      if (processo.id) {
+        const { data: etapas } = await buscarEtapasDoProcesso(processo.id);
+        if (etapas && etapas.length > 0) {
+          const etapaAtual = etapas.find(e => e.is_current);
+          if (etapaAtual) {
+            processo.etapaAtualNome = etapaAtual.step_templates?.name || 'Não definida';
+          }
+        }
+      }
     }));
   } else {
     processos.value = [];
@@ -378,7 +395,7 @@ const showEtapasModal = ref(false)
 // Função para abrir o modal de detalhes do processo
 function abrirModalProcesso(processo: Processo, tipo: string = 'detalhes') {
   processoSelecionado.value = processo
-  
+
   if (tipo === 'etapas' || processo.event_type === 'mostrar-etapas') {
     showEtapasModal.value = true
   } else {
@@ -397,8 +414,20 @@ function fecharModalEtapas() {
 }
 
 // Função para atualizar o processo após edição
-function atualizarProcesso() {
-  carregarProcessos()
+async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
+  if (processoAtualizado && processoAtualizado.id) {
+    // Se recebemos um processo atualizado, atualizamos apenas esse processo no array
+    const index = processos.value.findIndex(p => p.id === processoAtualizado.id);
+    if (index !== -1) {
+      processos.value[index] = {
+        ...processos.value[index],
+        ...processoAtualizado
+      };
+      return;
+    }
+  }
+  // Caso contrário, recarregamos todos os processos
+  await carregarProcessos();
 }
 
 const processosFiltrados = computed(() => {

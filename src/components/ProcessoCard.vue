@@ -61,10 +61,28 @@ async function passarEtapa(e: Event) {
         if (etapaAtualIdx !== -1) {
           const nomeNovaEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
           await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`);
+          
+          // Criar um objeto com as atualizações em vez de modificar diretamente a prop
+          const processoAtualizado = {
+            ...props.processo,
+            etapaAtualNome: nomeNovaEtapa,
+            etapaAtual: etapaAtualIdx,
+            progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ? 
+              Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0
+          };
+          
+          // Emitir evento com o processo atualizado
+          emit('atualizar-processo', processoAtualizado);
+          return;
         }
       }
     }
-    emit('atualizar-processo');
+    // Criar um objeto com as atualizações em vez de emitir apenas o evento
+  const processoAtualizado = {
+    ...props.processo,
+    is_favorited: isFavorited.value
+  }
+  emit('atualizar-processo', processoAtualizado);
   }
 }
 
@@ -81,7 +99,12 @@ async function toggleFavorite() {
     await supabase.from('user_favorites').insert({ user_id: usuario.id, process_id: props.processo.id })
     isFavorited.value = true
   }
-  emit('atualizar-processo')
+  // Criar um objeto com as atualizações em vez de emitir apenas o evento
+  const processoAtualizado = {
+    ...props.processo,
+    is_favorited: isFavorited.value
+  }
+  emit('atualizar-processo', processoAtualizado)
 }
 
 // Todas as outras variáveis e funções (edição, documentos, comentários, PDF) foram removidas
@@ -132,7 +155,7 @@ async function toggleFavorite() {
         {{ processo.forca_code || 'Não definido' }}
       </div>
       <div class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
-        {{ formatarValor(processo.valor_inicial_padrao || 0) }}
+        {{ formatarValor(processo.valor_total_destinado || 0) }}
       </div>
       <div class="flex flex-wrap gap-2 mb-2">
         <span class="border border-teal-400/50 text-teal-300 bg-teal-500/10 text-xs px-2 py-1 rounded">

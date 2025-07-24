@@ -646,14 +646,25 @@ async function salvarAlteracoes() {
         valor_economicidade: editableData.valor_economicidade,
         valor_total_destinado: editableData.valor_total_destinado,
         descricao_geral: editableData.descricao_geral,
-        updated_at: new Date().toISOString()
       })
       .eq('id', props.processo.id)
 
     if (error) throw error
 
     isEditing.value = false
-    emit('atualizar-processo')
+    // Criar um objeto com as atualizações em vez de emitir apenas o evento
+    const processoAtualizado = {
+      ...props.processo,
+      valor_inicial_padrao: editableData.valor_inicial_padrao,
+      qtd_itens: editableData.qtd_itens,
+      descricao_itens: editableData.descricao_itens,
+      destinacao_itens: editableData.destinacao_itens,
+      valor_rendimentos: editableData.valor_rendimentos,
+      valor_economicidade: editableData.valor_economicidade,
+      valor_total_destinado: editableData.valor_total_destinado,
+      descricao_geral: editableData.descricao_geral,
+    }
+    emit('atualizar-processo', processoAtualizado)
   } catch (error) {
     console.error('Erro ao salvar alterações:', error)
     editError.value = 'Erro ao salvar alterações. Tente novamente.'
