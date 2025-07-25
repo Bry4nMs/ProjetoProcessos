@@ -127,12 +127,16 @@
 
 <script setup lang="ts">
 import { ref, defineProps, defineEmits, computed, watchEffect, onMounted, onUnmounted, watch } from 'vue'
-import { tempoGastoEtapa, tempoTotalProcesso, formatarSegundos } from '../composables/useEtapaTimer'
+import { tempoGastoEtapa, tempoTotalProcesso } from '../composables/useEtapaTimer'
 import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import { useFormatters } from '../composables/useFormatters'
 
 const { } = useAuth() // Removido user e fetchUser pois não são utilizados
+
+// Importar funções de formatação do composable
+const { formatarData, formatarSegundos } = useFormatters()
 
 // NOVA interface para o item do checklist
 interface ChecklistItem {
@@ -347,10 +351,7 @@ function switchToDetalhes() {
   emit('switch-to-detalhes')
 }
 
-function formatarData(data: string | null | undefined) {
-  if (!data) return 'Data não definida'
-  return new Date(data).toLocaleDateString('pt-BR')
-}
+// A função formatarData foi removida e agora é importada do composable useFormatters
 
 // Watchers e lifecycle hooks
 watchEffect(() => {

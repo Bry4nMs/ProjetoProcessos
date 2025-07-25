@@ -147,7 +147,7 @@
                 <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
                     <div class="flex items-start justify-between mb-2">
                       <h3 class="font-semibold text-white">{{ evento.description }}</h3>
-                      <span class="text-sm text-slate-400">{{ formatarData(evento.changed_at) }}</span>
+                      <span class="text-sm text-slate-400">{{ formatarDataSimples(evento.changed_at) }}</span>
                     </div>
                     <div class="flex items-center gap-2 text-sm text-slate-300">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -177,7 +177,7 @@
                           <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ evento.old_value || 'vazio' }}'</span> para
                           <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ evento.new_value || 'vazio' }}'</span>.
                         </p>
-                        <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarData(evento.changed_at) }}</span>
+                        <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarDataSimples(evento.changed_at) }}</span>
                       </div>
                     </div>
                   </div>
@@ -206,6 +206,7 @@ import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import { useDashboardFilters } from '../composables/useDashboardFilters'
 import { useRouter } from 'vue-router'
+import { useFormatters } from '../composables/useFormatters'
 
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
 import { Bar } from 'vue-chartjs'
@@ -582,16 +583,12 @@ onMounted(async () => {
   await fetchForcas() // popula forcasMem
 })
 
-// Formata a data/hora para exibição amigável
-function formatarData(data: string) {
-  return new Date(data).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
+// Importar funções de formatação do composable
+const { formatarData: formatarDataSimples } = useFormatters()
+// Usar formatarDataSimples para datas sem hora
+
+// Formata a data/hora para exibição amigável com hora e minuto (específica para análises)
+
 
 // ATUALIZADO: Função para obter nome do usuário (mais robusta)
 function obterNomeUsuario(profileOrId: { nome?: string } | string | null | undefined) {

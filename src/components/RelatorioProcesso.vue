@@ -57,6 +57,8 @@
 </template>
 
 <script setup lang="ts">
+import { useFormatters } from '../composables/useFormatters'
+
 defineProps<{
   processo: Record<string, unknown>,
   historicoEtapas: Array<Record<string, unknown>>,
@@ -66,6 +68,11 @@ defineProps<{
   responsavelNome?: string,
 }>()
 
+// Importar funções de formatação do composable
+const { formatarSegundos } = useFormatters()
+
+// Função formatarDataHora é específica deste componente e não foi centralizada
+// pois tem um formato diferente das outras funções de formatação de data
 function formatarDataHora(data: unknown) {
   if (!data) return '';
   const d = new Date(data as string);
@@ -82,10 +89,7 @@ function calcularTempoGasto(started_at: string, ended_at: string, accumulated_du
     const end = new Date(ended_at).getTime();
     segundos = Math.floor((end - start) / 1000);
   }
-  const horas = Math.floor(segundos / 3600);
-  const minutos = Math.floor((segundos % 3600) / 60);
-  const seg = segundos % 60;
-  return `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${seg.toString().padStart(2, '0')}`;
+  return formatarSegundos(segundos);
 }
 
 function isImagem(filename: string) {

@@ -5,8 +5,12 @@ import { ref, defineProps, defineEmits, watch } from 'vue'
 import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import { useFormatters } from '../composables/useFormatters'
 
 const { user, fetchUser } = useAuth()
+
+// Importar funções de formatação do composable
+const { formatarValor, formatarData } = useFormatters()
 
 // Definir eventos que este componente pode emitir
 const emit = defineEmits(['abrir-detalhes', 'mostrar-etapas', 'atualizar-processo'])
@@ -21,17 +25,6 @@ const props = defineProps({
 // Lógica para favoritar, que pertence ao card
 const isFavorited = ref(props.processo.is_favorited)
 watch(() => props.processo.is_favorited, (val) => { isFavorited.value = val })
-
-// Funções de formatação usadas pelo template do card
-function formatarValor(valor: number | null | undefined) {
-  if (valor === null || valor === undefined) return 'R$ 0,00'
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function formatarData(data: string | null | undefined) {
-  if (!data) return 'Data não definida'
-  return new Date(data).toLocaleDateString('pt-BR')
-}
 
 // Funções de ação do card
 function abrirEtapas(e: Event) {

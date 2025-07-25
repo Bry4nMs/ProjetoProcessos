@@ -1,8 +1,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useFormatters } from './useFormatters'
 
 export function useEtapaTimer(etapas, etapaAtualRef) {
   const now = ref(Date.now())
   let interval: ReturnType<typeof setInterval> | null = null
+  const { formatarSegundos } = useFormatters()
 
   onMounted(() => {
     interval = setInterval(() => {
@@ -44,13 +46,6 @@ export function useEtapaTimer(etapas, etapaAtualRef) {
     return total
   })
 
-  function formatarSegundos(seg) {
-    const h = Math.floor(seg / 3600)
-    const m = Math.floor((seg % 3600) / 60)
-    const s = seg % 60
-    return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
-  }
-
   return { tempoEtapaAtual, tempoTotal, formatarSegundos }
 }
 
@@ -77,9 +72,5 @@ export function tempoTotalProcesso(etapas: Array<{ started_at?: string; ended_at
   }, 0)
 }
 
-export function formatarSegundos(seg: number) {
-  const h = Math.floor(seg / 3600)
-  const m = Math.floor((seg % 3600) / 60)
-  const s = seg % 60
-  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':')
-}
+// Função formatarSegundos foi movida para useFormatters.ts
+export { formatarSegundos } from './useFormatters'

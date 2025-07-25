@@ -308,6 +308,7 @@
 import { ref, reactive, watch, onMounted, nextTick } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import { useFormatters } from '../composables/useFormatters'
 import RelatorioProcesso from './RelatorioProcesso.vue'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -371,25 +372,8 @@ const tribute = ref(null)
 const gerandoPDF = ref(false)
 const dadosRelatorio = ref(null)
 
-// Funções de formatação
-function formatarValor(valor) {
-  if (valor === null || valor === undefined) return 'R$ 0,00';
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function formatarData(dataString) {
-  if (!dataString) return 'Data não definida'
-  const data = new Date(dataString)
-  return data.toLocaleDateString('pt-BR')
-}
-
-function formatarTamanhoArquivo(bytes) {
-  if (!bytes) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+// Importar funções de formatação do composable
+const { formatarValor, formatarData, formatarTamanhoArquivo } = useFormatters()
 
 // Funções de documentos
 async function carregarDocumentos() {
