@@ -14,6 +14,22 @@
       >
         <svg xmlns='http://www.w3.org/2000/svg' class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
       </button>
+      <!-- Navegação entre modais -->
+      <div class="flex items-center gap-4 mb-4">
+        <div class="flex bg-slate-800/50 rounded-lg p-1">
+          <button
+            @click="switchToDetalhes"
+            class="px-4 py-1.5 rounded-md font-medium transition-all text-slate-300 hover:text-white hover:bg-white/10"
+          >
+            Detalhes
+          </button>
+          <button
+            class="px-4 py-1.5 rounded-md font-medium transition-all bg-gradient-to-r from-teal-600 to-cyan-500 text-white"
+          >
+            Etapas
+          </button>
+        </div>
+      </div>
       <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
         {{ processo.nome_acao || 'Processo sem nome' }}
       </h2>
@@ -154,7 +170,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'atualizar-processo'])
+const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes'])
 
 // Estado do modal
 const etapas = ref<Etapa[]>([])
@@ -324,6 +340,11 @@ async function voltarEtapa() {
 // Função para fechar o modal
 function fecharEtapas() {
   emit('close')
+}
+
+// Função para alternar para o modal de detalhes
+function switchToDetalhes() {
+  emit('switch-to-detalhes')
 }
 
 function formatarData(data: string | null | undefined) {

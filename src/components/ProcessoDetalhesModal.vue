@@ -38,6 +38,22 @@
       </div>
       <!-- Conteúdo das Abas -->
       <div v-if="activeModalTab === 'detalhes'">
+      <!-- Navegação entre modais -->
+      <div class="flex items-center gap-4 mb-4">
+        <div class="flex bg-slate-800/50 rounded-lg p-1">
+          <button
+            class="px-4 py-1.5 rounded-md font-medium transition-all bg-gradient-to-r from-teal-600 to-cyan-500 text-white"
+          >
+            Detalhes
+          </button>
+          <button
+            @click="switchToEtapas"
+            class="px-4 py-1.5 rounded-md font-medium transition-all text-slate-300 hover:text-white hover:bg-white/10"
+          >
+            Etapas
+          </button>
+        </div>
+      </div>
       <div class="flex items-center gap-2 mb-4">
         <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
           {{ processo.nome_acao || 'Processo sem nome' }}
@@ -309,7 +325,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'atualizar-processo'])
+const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas'])
 
 // Estado do modal
 const activeModalTab = ref('detalhes')
@@ -675,6 +691,11 @@ async function salvarAlteracoes() {
 
 function fecharDetalhes() {
   emit('close')
+}
+
+// Função para alternar para o modal de etapas
+function switchToEtapas() {
+  emit('switch-to-etapas')
 }
 
 // Função para gerar relatório PDF (sem alterações)

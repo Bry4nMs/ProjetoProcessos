@@ -209,6 +209,7 @@
       :processo="processoSelecionado"
       @close="fecharModalDetalhes"
       @atualizar-processo="atualizarProcesso"
+      @switch-to-etapas="handleSwitchToEtapas"
     />
 
     <!-- Modal de Etapas do Processo -->
@@ -218,6 +219,7 @@
       :processo="processoSelecionado"
       @close="fecharModalEtapas"
       @atualizar-processo="atualizarProcesso"
+      @switch-to-detalhes="handleSwitchToDetalhes"
     />
   </Layout>
 </template>
@@ -411,6 +413,18 @@ function fecharModalDetalhes() {
 // Função para fechar o modal de etapas
 function fecharModalEtapas() {
   showEtapasModal.value = false
+}
+
+// Função para alternar do modal de detalhes para o modal de etapas
+function handleSwitchToEtapas() {
+  showDetalhesModal.value = false
+  showEtapasModal.value = true
+}
+
+// Função para alternar do modal de etapas para o modal de detalhes
+function handleSwitchToDetalhes() {
+  showEtapasModal.value = false
+  showDetalhesModal.value = true
 }
 
 // Função para atualizar o processo após edição
