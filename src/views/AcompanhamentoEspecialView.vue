@@ -188,12 +188,33 @@
         </div>
       </div>
     </div>
+    <!-- Modal de Detalhes do Processo -->
+    <ProcessoDetalhesModal
+      v-if="processoSelecionado"
+      :show="showDetalhesModal"
+      :processo="processoSelecionado"
+      @close="fecharModalDetalhes"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-etapas="handleSwitchToEtapas"
+    />
+
+    <!-- Modal de Etapas do Processo -->
+    <ProcessoEtapasModal
+      v-if="processoSelecionado"
+      :show="showEtapasModal"
+      :processo="processoSelecionado"
+      @close="fecharModalEtapas"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-detalhes="handleSwitchToDetalhes"
+    />
   </Layout>
 </template>
 
 <script setup lang="ts">
 import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
+import ProcessoDetalhesModal from '../components/ProcessoDetalhesModal.vue'
+import ProcessoEtapasModal from '../components/ProcessoEtapasModal.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../services/supabase'
@@ -250,6 +271,7 @@ interface Processo {
   progresso?: number
   sei?: string
   etapaAtualNome?: string
+  event_type?: string
 }
 const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
@@ -315,8 +337,10 @@ onMounted(async () => {
   }
 })
 
-// Referência para o componente ProcessoCard que será usado para abrir o modal
+// Referência para o processo selecionado e controle dos modais
 const processoSelecionado = ref<Processo | null>(null)
+const showDetalhesModal = ref(false)
+const showEtapasModal = ref(false)
 
 // Função para atualizar o processo após edição
 async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
@@ -335,20 +359,37 @@ async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
   await carregarProcessos();
 }
 
-// Função para abrir o modal do processo ao clicar na linha da tabela
-function abrirModalProcesso(processo: Processo) {
+// Função para abrir o modal de detalhes do processo
+function abrirModalProcesso(processo: Processo, tipo: string = 'detalhes') {
   processoSelecionado.value = processo
-  // Buscar o componente ProcessoCard e chamar seu método para abrir o modal
-  const processoCards = document.querySelectorAll('.processo-card')
-  processoCards.forEach(card => {
-    if ((card as Element & { __vueParentComponent?: { props?: { processo?: { id: string } } } }).__vueParentComponent?.props?.processo?.id === processo.id) {
-      // Chamar o método abrirDetalhes do componente
-      const component = (card as Element & { __vueParentComponent?: { component?: { exposed?: { abrirDetalhes: (e: Event) => void, showEtapas?: () => void } } } }).__vueParentComponent?.component
-      if (component && component.exposed && component.exposed.abrirDetalhes) {
-        component.exposed.abrirDetalhes(new Event('click'))
-      }
-    }
-  })
+
+  if (tipo === 'etapas' || processo.event_type === 'mostrar-etapas') {
+    showEtapasModal.value = true
+  } else {
+    showDetalhesModal.value = true
+  }
+}
+
+// Função para fechar o modal de detalhes
+function fecharModalDetalhes() {
+  showDetalhesModal.value = false
+}
+
+// Função para fechar o modal de etapas
+function fecharModalEtapas() {
+  showEtapasModal.value = false
+}
+
+// Função para alternar do modal de detalhes para o modal de etapas
+function handleSwitchToEtapas() {
+  showDetalhesModal.value = false
+  showEtapasModal.value = true
+}
+
+// Função para alternar do modal de etapas para o modal de detalhes
+function handleSwitchToDetalhes() {
+  showEtapasModal.value = false
+  showDetalhesModal.value = true
 }
 
 const processosFiltrados = computed(() => {
