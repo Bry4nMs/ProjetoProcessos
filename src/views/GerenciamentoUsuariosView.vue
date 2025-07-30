@@ -12,6 +12,7 @@ interface Usuario {
   nome: string
   telefone: string
   setor_id: string
+  setor_nome: string
   role: 'Admin' | 'User'
   status: 'ativo' | 'inativo'
   created_at: string
@@ -31,6 +32,7 @@ const carregando = ref(true)
 const erro = ref('')
 const modalAberto = ref(false)
 const usuarioEmEdicao = ref<UsuarioEdicao | null>(null)
+const setores = ref<{ id: string; nome: string }[]>([])
 
 // Opções para o dropdown de papel (role)
 const opcoesRole = [
@@ -84,6 +86,17 @@ function abrirModalEdicao(usuario: Usuario) {
   modalAberto.value = true
 }
 
+// ADICIONE ESTA NOVA FUNÇÃO COMPLETA
+async function buscarSetores() {
+  try {
+    const { data, error } = await supabase.from('setores').select('id, nome')
+    if (error) throw error
+    setores.value = data || []
+  } catch (error) {
+    toast.error('Não foi possível carregar a lista de setores.')
+    console.error('Erro ao buscar setores:', error)
+  }
+}
 // Função para fechar o modal
 function fecharModal() {
   modalAberto.value = false
@@ -183,6 +196,7 @@ async function salvarAlteracoes() {
 // Carregar usuários quando o componente for montado
 onMounted(() => {
   buscarUsuarios()
+  buscarSetores()
 })
 </script>
 
@@ -209,7 +223,7 @@ onMounted(() => {
             <tr>
               <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Nome</th>
               <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Email</th>
-              <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Cargo</th>
+              <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Setor</th>
               <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Papel</th>
               <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Status</th>
               <th class="px-6 py-3 text-left text-sm font-medium text-slate-200 uppercase tracking-wider">Ações</th>
@@ -219,10 +233,10 @@ onMounted(() => {
             <tr v-for="usuario in usuarios" :key="usuario.id" class="hover:bg-white/5 transition-colors">
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ usuario.nome || 'Não informado' }}</td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ usuario.email }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ usuario.setor_id || 'Não informado' }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-300">{{ usuario.setor_nome || 'Não informado' }}</td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-2 py-1 text-xs font-medium rounded-full" 
+                <span
+                  class="px-2 py-1 text-xs font-medium rounded-full"
                   :class="{
                     'bg-teal-500/30 text-teal-200': usuario.role === 'Admin',
                     'bg-slate-500/30 text-slate-300': !usuario.role || usuario.role === 'User'
@@ -232,8 +246,8 @@ onMounted(() => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span 
-                  class="px-2 py-1 text-xs font-medium rounded-full" 
+                <span
+                  class="px-2 py-1 text-xs font-medium rounded-full"
                   :class="{
                     'bg-emerald-500/30 text-emerald-200': usuario.status === 'ativo',
                     'bg-slate-500/30 text-slate-300': usuario.status === 'inativo' || !usuario.status
@@ -243,7 +257,7 @@ onMounted(() => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <button 
+                <button
                   class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
                   @click="abrirModalEdicao(usuario)"
                 >
@@ -261,11 +275,11 @@ onMounted(() => {
       <div v-if="usuarioEmEdicao" class="space-y-4">
         <div>
           <label for="email" class="block text-sm font-medium text-slate-200 mb-1">Email:</label>
-          <input 
-            type="text" 
-            id="email" 
-            v-model="usuarioEmEdicao.email" 
-            disabled 
+          <input
+            type="text"
+            id="email"
+            v-model="usuarioEmEdicao.email"
+            disabled
             class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
           <small class="text-slate-400 text-xs">O email não pode ser alterado</small>
@@ -273,38 +287,43 @@ onMounted(() => {
 
         <div>
           <label for="nome" class="block text-sm font-medium text-slate-200 mb-1">Nome:</label>
-          <input 
-            type="text" 
-            id="nome" 
-            v-model="usuarioEmEdicao.nome" 
+          <input
+            type="text"
+            id="nome"
+            v-model="usuarioEmEdicao.nome"
             class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
         </div>
 
         <div>
           <label for="telefone" class="block text-sm font-medium text-slate-200 mb-1">Telefone:</label>
-          <input 
-            type="text" 
-            id="telefone" 
-            v-model="usuarioEmEdicao.telefone" 
+          <input
+            type="text"
+            id="telefone"
+            v-model="usuarioEmEdicao.telefone"
             class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
           />
         </div>
 
         <div>
-          <label for="setor" class="block text-sm font-medium text-slate-200 mb-1">Cargo:</label>
-          <input 
-            type="text" 
-            id="setor" 
-            v-model="usuarioEmEdicao.setor_id" 
-            class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
-          />
+          <label for="setor" class="block text-sm font-medium text-slate-200 mb-1">Setor:</label>
+            <select
+                id="setor"
+                v-model="usuarioEmEdicao.setor_id"
+                class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+                style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
+                >
+                <option :value="null">Nenhum setor</option>
+                <option v-for="setor in setores" :key="setor.id" :value="setor.id">
+              {{ setor.nome }}
+            </option>
+          </select>
         </div>
 
         <div>
           <label for="role" class="block text-sm font-medium text-slate-200 mb-1">Papel:</label>
-          <select 
-            id="role" 
+          <select
+            id="role"
             v-model="usuarioEmEdicao.role"
             class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
             style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
@@ -317,8 +336,8 @@ onMounted(() => {
 
         <div>
           <label for="status" class="block text-sm font-medium text-slate-200 mb-1">Status:</label>
-          <select 
-            id="status" 
+          <select
+            id="status"
             v-model="usuarioEmEdicao.status"
             class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
             style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1.25em 1.25em;"
@@ -330,8 +349,8 @@ onMounted(() => {
         </div>
 
         <div class="flex justify-end space-x-4 pt-4">
-          <button 
-            @click="fecharModal" 
+          <button
+            @click="fecharModal"
             class="px-4 py-2 bg-white/10 border border-white/20 text-slate-200 rounded font-medium hover:bg-white/20 transition"
           >
             Cancelar
