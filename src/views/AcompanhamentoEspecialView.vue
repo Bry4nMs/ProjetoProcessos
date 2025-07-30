@@ -85,8 +85,8 @@
         <div class="flex items-center justify-between mb-4">
           <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Acompanhamento Especial</h1>
           <div class="flex bg-slate-800 rounded-lg p-1">
-            <button 
-              @click="viewMode = 'cards'" 
+            <button
+              @click="viewMode = 'cards'"
               :class="[viewMode === 'cards' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
             >
               <span class="flex items-center gap-1">
@@ -96,8 +96,8 @@
                 Cards
               </span>
             </button>
-            <button 
-              @click="viewMode = 'table'" 
+            <button
+              @click="viewMode = 'table'"
               :class="[viewMode === 'table' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white' : 'text-slate-300 hover:text-white', 'px-3 py-1 rounded-md font-medium transition-all']"
             >
               <span class="flex items-center gap-1">
@@ -109,7 +109,7 @@
             </button>
           </div>
         </div>
-        
+
         <!-- Cards de Processo -->
         <div class="flex justify-center w-full">
           <div v-if="viewMode === 'cards'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -118,9 +118,11 @@
                 :key="processo.id"
                 :processo="processo"
                 @atualizar-processo="(processoAtualizado) => atualizarProcesso(processoAtualizado)"
+                @abrir-detalhes="(processo) => abrirModalProcesso(processo, 'detalhes')"
+                @mostrar-etapas="(processo) => abrirModalProcesso(processo, 'etapas')"
               />
           </div>
-          
+
           <!-- Visualização em Tabela -->
           <div v-else-if="viewMode === 'table'" class="w-full overflow-x-auto">
             <table class="w-full border-collapse">
@@ -139,8 +141,8 @@
                 <tr v-if="processosFiltrados.length === 0">
                   <td colspan="7" class="px-4 py-6 text-center text-slate-400">Nenhum processo encontrado</td>
                 </tr>
-                <tr 
-                  v-for="processo in processosFiltrados" 
+                <tr
+                  v-for="processo in processosFiltrados"
                   :key="processo.id"
                   class="border-b border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors"
                   @click="abrirModalProcesso(processo)"
@@ -158,7 +160,7 @@
                     </span>
                   </td>
                   <td class="px-4 py-3">
-                    <span 
+                    <span
                       :class="{
                         'bg-green-600/20 text-green-300': processo.status === 'Concluído',
                         'bg-yellow-600/20 text-yellow-300': processo.status === 'Em andamento',
@@ -171,8 +173,8 @@
                   </td>
                   <td class="px-4 py-3">
                     <div class="w-full bg-slate-700 rounded-full h-2.5 mb-1">
-                      <div 
-                        class="bg-gradient-to-r from-teal-500 to-cyan-400 h-2.5 rounded-full" 
+                      <div
+                        class="bg-gradient-to-r from-teal-500 to-cyan-400 h-2.5 rounded-full"
                         :style="{ width: `${processo.progresso || 0}%` }"
                       ></div>
                     </div>
@@ -323,7 +325,7 @@ onMounted(async () => {
   if (forcas) forcasResponsaveis.value = forcas
   const { data: areas } = await buscarAreasTematicas()
   if (areas) areasTematicas.value = areas
-  
+
   // Verificar se há um processo_id na query string para abrir o modal
   const processoId = route.query.processo_id
   if (processoId && typeof processoId === 'string') {
