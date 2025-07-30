@@ -10,6 +10,14 @@ import {
   registrarEventoHistorico,
 } from '../services/auth'
 
+
+function parseCurrency(value: string): number {
+  if (!value) return 0;
+  // Remove "R$", espaços, pontos de milhar e troca a vírgula do decimal por ponto.
+  const numberString = value.replace(/R\$\s?/, '').replace(/\./g, '').replace(',', '.');
+  return parseFloat(numberString) || 0;
+}
+
 const anoAtual = new Date().getFullYear()
 const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
 
@@ -36,7 +44,6 @@ const destinacaoItens = ref('')
 const valor = ref('')
 const valorRendimentos = ref('')
 const valorEconomicidade = ref('')
-const valorTotal = ref('')
 const descricaoGeral = ref('')
 const feedback = ref('')
 const loading = ref(false)
@@ -47,6 +54,13 @@ const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const dropZoneRef = ref<HTMLDivElement | null>(null)
 const fileUpload = ref<HTMLInputElement | null>(null)
+const valorTotal = computed(() => {
+  const v1 = parseCurrency(valor.value);
+  const v2 = parseCurrency(valorRendimentos.value);
+  const v3 = parseCurrency(valorEconomicidade.value);
+  return v1 + v2 + v3;
+});
+
 function onDrop(files: File[] | null) {
   if (files) {
     arquivos.value = files.map(file => ({ file, description: '' }))
@@ -122,7 +136,7 @@ async function registrarProcesso() {
         destinacao_itens: destinacaoItens.value,
         valor_rendimentos: valorRendimentos.value ? Number(valorRendimentos.value) : null,
         valor_economicidade: valorEconomicidade.value ? Number(valorEconomicidade.value) : null,
-        valor_total_destinado: valorTotal.value ? Number(valorTotal.value) : null,
+        valor_total_destinado: valorTotal.value,
         descricao_geral: descricaoGeral.value,
       },
     ])
@@ -242,7 +256,6 @@ function limparFormulario() {
   valor.value = ''
   valorRendimentos.value = ''
   valorEconomicidade.value = ''
-  valorTotal.value = ''
   descricaoGeral.value = ''
   areaTematicaId.value = ''
   forcaResponsavelId.value = ''
@@ -411,12 +424,14 @@ function handleFileSelected(event: Event) {
             <label class="block text-slate-200 mb-1 font-semibold"
               >Valor Total Destinado à Ação</label
             >
-            <input
-              v-model="valorTotal"
-              type="text"
-              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
-              placeholder="R$ 0,00"
-            />
+            <div class="w-full px-4 py-2 rounded-lg bg-slate-800/50 text-slate-300 border border-white/20 font-semibold">
+            {{
+              valorTotal.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+              })
+            }}
+            </div>
           </div>
         </div>
         <div>
