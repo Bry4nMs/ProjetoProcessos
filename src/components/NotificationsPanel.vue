@@ -33,13 +33,13 @@ import { useAuth } from '../composables/useAuth'
 const router = useRouter()
 
 interface Notification {
-  id: string
-  user_id: string
-  process_id?: string | null
-  step_id?: string | null
-  message: string
-  created_at: string
-  is_read: boolean
+  id: string
+  user_id: string
+  process_id?: string | null
+  step_id?: string | null
+  message: string
+  created_at: string
+  is_read: boolean
 }
 
 const notifications = ref<Notification[]>([])
@@ -57,34 +57,38 @@ const unreadCount = computed(() => {
 })
 
 function formatarData(data: string) {
-  if (!data) return ''
-  return new Date(data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+  if (!data) return ''
+  return new Date(data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 // ✅ FUNÇÃO CORRIGIDA
 async function markAllAsRead() {
-  // Apenas verifica o estado de carregamento.
   if (markLoading.value) return;
 
-  // Encontra os IDs das notificações que REALMENTE não foram lidas (is_read: false)
   const unreadIds = notifications.value.filter(n => !n.is_read).map(n => n.id);
 
-  // Se não houver nenhuma para marcar, simplesmente retorna.
   if (unreadIds.length === 0) {
     return;
   }
 
   markLoading.value = true;
-  const { error } = await supabase
+
+  const { data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
-    .in('id', unreadIds);
+    .in('id', unreadIds)
+    .select(); // Corrigido para 0 argumentos
 
-  if (!error) {
-    // Atualiza o estado local para refletir a mudança visualmente.
+  const count = data ? data.length : 0;
+
+  if (error) {
+    console.error('Erro ao marcar notificações como lidas:', error.message);
+  } else if (count === unreadIds.length) {
     notifications.value = notifications.value.map(n =>
       unreadIds.includes(n.id) ? { ...n, is_read: true } : n
     );
+  } else {
+    console.warn(`Tentativa de atualizar ${unreadIds.length} notificações, mas apenas ${count} foram alteradas. Verifique as políticas RLS.`);
   }
 
   markLoading.value = false;
@@ -106,11 +110,11 @@ async function updateLastViewedTimestamp() {
 }
 
 async function togglePanel() {
-  showPanel.value = !showPanel.value
-  if (showPanel.value) {
+ showPanel.value = !showPanel.value
+  if (showPanel.value) {
     await updateLastViewedTimestamp();
-    await markAllAsRead();
-  }
+    await markAllAsRead();
+  }
 }
 
 async function initializePanel() {
@@ -158,32 +162,32 @@ async function handleNotificationClick(notification: Notification) {
 let channel: ReturnType<typeof supabase.channel> | null = null
 
 onMounted(async () => {
-  await initializePanel()
+  await initializePanel()
   const usuario = user.value
-  if (!usuario) return
+  if (!usuario) return
 
-  channel = supabase.channel('notifications_' + usuario.id)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${usuario.id}`
-      },
-      (payload) => {
-        if (payload.new) {
-          notifications.value.unshift(payload.new as Notification)
-        }
-      }
-    )
-    .subscribe()
+  channel = supabase.channel('notifications_' + usuario.id)
+    .on(
+      'postgres_changes',
+     {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${usuario.id}`
+     },
+     (payload) => {
+        if (payload.new) {
+          notifications.value.unshift(payload.new as Notification)
+        }
+      }
+    )
+    .subscribe()
 })
 
 onUnmounted(() => {
-  if (channel) {
-    channel.unsubscribe()
-  }
+  if (channel) {
+    channel.unsubscribe()
+  }
 })
 </script>
 
