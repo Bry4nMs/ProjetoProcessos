@@ -230,8 +230,8 @@ import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessosGraficos from '../components/ProcessosGraficos.vue'
 import ProcessoDetalhesModal from '../components/ProcessoDetalhesModal.vue'
 import ProcessoEtapasModal from '../components/ProcessoEtapasModal.vue'
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
@@ -242,6 +242,40 @@ import {
 import { useDashboardFilters } from '../composables/useDashboardFilters'
 
 const route = useRoute()
+const router = useRouter()
+
+function handleRouteChange(query) {
+  const processoId = query.processo_id as string | null;
+  const modalType = query.modal_type as string | null;
+
+  // Se a URL tem um processo_id
+  if (processoId) {
+    // Garante que os processos estejam carregados antes de procurar
+    if (processos.value.length > 0) {
+      const processoParaAbrir = processos.value.find(p => p.id === processoId);
+      if (processoParaAbrir) {
+        // Se o modal correspondente não estiver aberto, abra-o
+        if ((modalType === 'etapas' && !showEtapasModal.value) || (modalType !== 'etapas' && !showDetalhesModal.value)) {
+          abrirModalProcesso(processoParaAbrir, modalType || 'detalhes');
+        }
+      } else {
+        // Processo não encontrado, limpa a URL para evitar inconsistência
+        router.push({ query: {} });
+      }
+    }
+  } else {
+    // Se a URL foi limpa (sem processo_id), garante que os modais estejam fechados
+    showDetalhesModal.value = false;
+    showEtapasModal.value = false;
+  }
+}
+
+// Use o watch para "escutar" as mudanças na query da URL
+watch(() => route.query, (newQuery) => {
+  handleRouteChange(newQuery);
+});
+
+
 
 // Opções de Ano do FAF (igual CadastroProcessoView.vue)
 const anoAtual = new Date().getFullYear()
@@ -377,16 +411,7 @@ onMounted(async () => {
   if (areas) areasTematicas.value = areas
 
   // Verificar se há um processo_id na query string para abrir o modal
-  const processoId = route.query.processo_id
-  if (processoId && typeof processoId === 'string') {
-    // Esperar um pouco para garantir que os processos foram carregados
-    setTimeout(() => {
-      const processo = processos.value.find(p => p.id === processoId)
-      if (processo) {
-        abrirModalProcesso(processo)
-      }
-    }, 500)
-  }
+  handleRouteChange(route.query);
 })
 
 // Referência para o processo selecionado e controle dos modais
@@ -403,28 +428,52 @@ function abrirModalProcesso(processo: Processo, tipo: string = 'detalhes') {
   } else {
     showDetalhesModal.value = true
   }
+  router.push({
+    query: {
+      processo_id: processo.id,
+      modal_type: tipo
+    }
+  })
 }
 
 // Função para fechar o modal de detalhes
 function fecharModalDetalhes() {
   showDetalhesModal.value = false
+  router.push({ query: {} });
 }
 
 // Função para fechar o modal de etapas
 function fecharModalEtapas() {
   showEtapasModal.value = false
+  router.push({ query: {} });
 }
 
 // Função para alternar do modal de detalhes para o modal de etapas
 function handleSwitchToEtapas() {
   showDetalhesModal.value = false
   showEtapasModal.value = true
+  if (processoSelecionado.value) {
+    router.push({
+      query: {
+        processo_id: processoSelecionado.value.id,
+        modal_type: 'etapas'
+      }
+    })
+  }
 }
 
 // Função para alternar do modal de etapas para o modal de detalhes
 function handleSwitchToDetalhes() {
   showEtapasModal.value = false
   showDetalhesModal.value = true
+  if (processoSelecionado.value) {
+    router.push({
+      query: {
+        processo_id: processoSelecionado.value.id,
+        modal_type: 'detalhes'
+      }
+    })
+  }
 }
 
 // Função para atualizar o processo após edição

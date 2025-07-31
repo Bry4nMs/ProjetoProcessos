@@ -155,7 +155,7 @@ async function handleNotificationClick(notification: Notification) {
         }
     }
     showPanel.value = false;
-    router.push(`/processos?processo_id=${notification.process_id}`);
+    router.push(`/processos?processo_id=${notification.process_id}&modal_type=etapas`);
   }
 }
 
