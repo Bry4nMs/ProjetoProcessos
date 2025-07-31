@@ -74,6 +74,8 @@
                 <option value="" class="text-slate-400">Selecione...</option>
                 <option value="on_step_entry">Ao entrar em uma etapa</option>
                 <option value="after_delay">Após um tempo em uma etapa</option>
+                <option value="on_substep_creation">Ao criar uma subtarefa</option>
+                <option value="on_substep_completion">Ao concluir uma subtarefa</option>
               </select>
             </div>
             <div v-if="form.trigger_type === 'on_step_entry' || form.trigger_type === 'after_delay'" class="mb-4">
@@ -111,6 +113,8 @@
               <select v-model="form.action_notification_target" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70" required>
                 <option value="">Selecione...</option>
                 <option value="owner">Dono do processo</option>
+                <option value="substep_creator">Criador da subtarefa</option>
+                <option value="substep_assignee">Responsável da subtarefa</option>
                 <option value="user">Usuário específico</option>
               </select>
               <div v-if="form.action_notification_target === 'user'" class="mt-2">
@@ -517,6 +521,12 @@ function descricaoGatilho(regra: Regra): string {
   if (regra.trigger_type === 'after_delay') {
     return `Após ${metadata.delay_days} dias na etapa ${nomeEtapa}`;
   }
+  if (regra.trigger_type === 'on_substep_creation') {
+    return 'Ao criar uma nova subtarefa';
+  }
+  if (regra.trigger_type === 'on_substep_completion') {
+    return 'Ao concluir uma subtarefa';
+  }
   return 'Gatilho desconhecido';
 }
 
@@ -540,6 +550,12 @@ function descricaoAcao(regra: Regra): string {
       const usuario = usuarios.value.find(u => u.id === userId);
       const nomeUsuario = usuario ? `'${usuario.nome}'` : `ID ${userId}`;
       return `Enviar notificação para o usuário ${nomeUsuario}`;
+    }
+    if (target === 'substep_creator') {
+      return 'Enviar notificação para o criador da subtarefa';
+    }
+    if (target === 'substep_assignee') {
+      return 'Enviar notificação para o responsável da subtarefa';
     }
   }
   return 'Ação desconhecida';
