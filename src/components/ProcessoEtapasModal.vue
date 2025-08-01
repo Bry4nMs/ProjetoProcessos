@@ -37,13 +37,23 @@
         Tempo total decorrido:
         <span class="font-semibold">{{ formatarSegundos(tempoTotal) }}</span>
       </div>
-      <div class="flex justify-end mb-4">
+      <div class="flex justify-between items-center mb-4">
         <button
           v-if="etapaAtual > 0 && processo.status !== 'Concluído'"
           @click="voltarEtapa"
-          class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-lg font-semibold shadow hover:from-cyan-600 hover:to-teal-600 transition"
+          class="px-4 py-2 bg-red-700 hover:bg-red-500 text-white rounded-lg font-semibold shadow transition"
         >
           Voltar à Etapa Anterior
+        </button>
+
+        <div v-else></div>
+
+        <button
+          v-if="processo.status !== 'Concluído'"
+          @click="passarEtapa"
+          class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 text-white rounded-lg font-semibold shadow transition"
+        >
+          {{ (processo.etapaAtual === processo.totalEtapas - 1 && processo.totalEtapas > 0) ? 'Concluir Processo' : 'Passar Etapa' }}
         </button>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -298,6 +308,52 @@ async function toggleChecklistItem(item: ChecklistItem) {
   }
 }
 
+// Copie esta função inteira...
+async function passarEtapa() {
+  if (!props.processo.id) return;
+
+  const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
+
+  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
+
+  if (!error) {
+    if (isFinalStep) {
+      await registrarEventoHistorico(props.processo.id, 'Processo Concluído.');
+    } else {
+      const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
+      if (etapas && etapas.length > 0) {
+        const etapaAtualIdx = etapas.findIndex(e => e.is_current);
+        if (etapaAtualIdx !== -1) {
+          const nomeNovaEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
+          await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`);
+
+          const processoAtualizado = {
+             ...props.processo,
+            etapaAtualNome: nomeNovaEtapa,
+            etapaAtual: etapaAtualIdx,
+            progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ?
+            Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0,
+            // Atualiza o status se for a última etapa
+            status: isFinalStep ? 'Concluído' : props.processo.status
+          };
+
+          // Recarrega as etapas no modal para refletir a mudança
+          await carregarEtapas();
+          emit('atualizar-processo', processoAtualizado);
+          return;
+        }
+      }
+    }
+    // Se for o caso de conclusão, emite a atualização para o pai
+    emit('atualizar-processo');
+    // Recarrega as etapas no modal
+    await carregarEtapas();
+  } else {
+    console.error("Erro ao avançar etapa:", error);
+    alert("Ocorreu um erro ao tentar avançar a etapa.");
+  }
+}
+
 async function voltarEtapa() {
   if (!props.processo.id) return;
   const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
@@ -321,7 +377,7 @@ async function voltarEtapa() {
     }
   }
   await carregarEtapas();
-  
+
   // Criar um objeto com as atualizações em vez de emitir apenas o evento
   if (etapasData && etapasData.length > 0) {
     const etapaAtualIdx = etapasData.findIndex(e => e.is_current);
@@ -331,7 +387,7 @@ async function voltarEtapa() {
         ...props.processo,
         etapaAtualNome: nomeEtapa,
         etapaAtual: etapaAtualIdx,
-        progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ? 
+        progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ?
           Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0
       };
       emit('atualizar-processo', processoAtualizado);
