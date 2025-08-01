@@ -199,9 +199,9 @@ onMounted(async () => {
      (payload) => {
         if (payload.new) {
           notifications.value.unshift(payload.new as Notification)
+
           if(soundEnabled.value){
           const audio = new Audio('/notification.wav');
-
             audio.play().catch(error => {
               console.warn('Erro ao reproduzir som de notificação:', error)
             })
