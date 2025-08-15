@@ -173,9 +173,9 @@
                     <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
                       <div class="flex items-start justify-between">
                         <p class="font-semibold text-white text-base leading-relaxed">
-                          <span class="text-slate-300">{{ obterNomeUsuario(evento.user) }}</span> alterou <b>{{ evento.field_name }}</b> de
-                          <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ evento.old_value || 'vazio' }}'</span> para
-                          <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ evento.new_value || 'vazio' }}'</span>.
+                          <span class="text-slate-300">{{ obterNomeUsuario(evento.user) }}</span> alterou <b>{{ formatarCampo(evento.field_name) }}</b> de
+                          <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.old_value, evento.field_name) }}'</span> para
+                          <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.new_value, evento.field_name) }}'</span>.
                         </p>
                         <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarDataSimples(evento.changed_at) }}</span>
                       </div>
@@ -525,6 +525,38 @@ async function buscarHistorico(id: string) {
   console.log('Histórico de Etapas:', historicoEtapas.value);
   console.log('Histórico de Alterações:', historicoAlteracoes.value);
   loading.value = false;
+}
+// AnalisesView.vue -> dentro de <script setup>
+
+// --- NOVOS TRADUTORES PARA O HISTÓRICO ---
+
+// 1. Mapeia nomes técnicos dos campos para nomes amigáveis
+const nomesAmigaveisCampos: Record<string, string> = {
+  deleted_at: 'Status do Processo', // ou 'Data de Exclusão' se preferir
+  descricao_itens: 'Descrição dos Itens',
+  nome_acao: 'Nome da Ação',
+  valor_total_destinado: 'Valor Total Destinado',
+  // Adicione outros campos da tabela 'processes' aqui conforme precisar
+};
+
+// 2. Função que traduz o nome do campo
+function formatarCampo(fieldName: string): string {
+  return nomesAmigaveisCampos[fieldName] || fieldName;
+}
+
+// 3. Função que traduz o valor, com lógica especial para o 'deleted_at'
+function formatarValor(value: string | null, fieldName: string): string {
+  const isNullish = value === null || value === 'NULL' || value === '';
+
+  // Lógica específica para o campo 'deleted_at'
+  if (fieldName === 'deleted_at') {
+    // Se o valor for nulo, significa que o processo está ATIVO.
+    // Se tiver uma data, significa que foi EXCLUÍDO.
+    return isNullish ? 'Ativo' : 'Excluído';
+  }
+
+  // Lógica padrão para outros campos
+  return isNullish ? 'vazio' : value;
 }
 
 // WATCH: Observa mudanças no processoSelecionado
