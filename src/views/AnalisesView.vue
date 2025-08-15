@@ -526,8 +526,6 @@ async function buscarHistorico(id: string) {
   console.log('Histórico de Alterações:', historicoAlteracoes.value);
   loading.value = false;
 }
-// AnalisesView.vue -> dentro de <script setup>
-
 // --- NOVOS TRADUTORES PARA O HISTÓRICO ---
 
 // 1. Mapeia nomes técnicos dos campos para nomes amigáveis
