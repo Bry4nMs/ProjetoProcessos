@@ -716,18 +716,33 @@ async function gerarRelatorioPDF() {
 
 
 // Watchers e lifecycle hooks
-watch(() => props.show, async (newVal) => {
-  if (newVal) {
-    activeModalTab.value = 'detalhes'; // Reset para a aba principal
-    isEditing.value = false; // Resetar modo de edição
-    await carregarDocumentos()
-    await fetchComments()
-    await fetchAllUsers()
-    nextTick(() => {
-      initTribute()
-    })
-  }
-})
+// CÓDIGO NOVO E CORRIGIDO em ProcessoDetalhesModal.vue
+
+watch(
+  // 1. Observar DUAS coisas: a visibilidade (show) E o ID do processo
+  [() => props.show, () => props.processo?.id],
+
+  // 2. A função agora recebe os novos valores de [show, processoId]
+  async ([newShow, newProcessoId]) => {
+
+    // 3. A condição agora é mais segura: só executa se o modal estiver abrindo E tiver um ID
+    if (newShow && newProcessoId) {
+      activeModalTab.value = 'detalhes';
+      isEditing.value = false;
+
+      // Inicia as buscas de dados essenciais imediatamente
+      await carregarDocumentos();
+      await fetchComments();
+
+      // Funções que dependem da UI ou são menos críticas podem vir depois
+      await fetchAllUsers();
+      nextTick(() => {
+        initTribute();
+      });
+    }
+  },
+  { immediate: false } // Garante que não execute na criação inicial sem dados
+);
 
 onMounted(() => {
   if (dropZoneModalRef.value) {
