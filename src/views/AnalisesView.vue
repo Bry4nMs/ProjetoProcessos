@@ -90,7 +90,7 @@
 
       <!-- Linha do Tempo e Seletor -->
       <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Análises e Histórico</h1>
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Histórico</h1>
         <p class="text-slate-300 mb-6">Visualize a linha do tempo de todos os processos.</p>
         <!-- Seletor de Processo -->
         <div class="mb-8">
