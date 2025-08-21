@@ -38,7 +38,7 @@
     <!-- Seção de Administração -->
     <div v-if="isAdmin" class="mb-2">
       <div class="text-slate-400 text-xs uppercase font-semibold mb-2 px-4">Administração</div>
-      
+
       <!-- Botão de Admin - Regras de Automação -->
       <router-link
         to="/admin"
@@ -48,7 +48,7 @@
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 1.343-3 3s1.343 3 3 3 3-1.343 3-3-1.343-3-3-3zm0 10c-4.418 0-8-1.79-8-4V6a2 2 0 012-2h12a2 2 0 012 2v8c0 2.21-3.582 4-8 4z"/></svg>
         <span class="font-medium">Regras de Automação</span>
       </router-link>
-      
+
       <!-- Botão de Gerenciamento de Usuários -->
       <router-link
         to="/admin/usuarios"

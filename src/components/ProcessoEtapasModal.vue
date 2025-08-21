@@ -148,6 +148,8 @@ const { } = useAuth() // Removido user e fetchUser pois não são utilizados
 // Importar funções de formatação do composable
 const { formatarData, formatarSegundos } = useFormatters()
 
+
+
 // NOVA interface para o item do checklist
 interface ChecklistItem {
   id: string;

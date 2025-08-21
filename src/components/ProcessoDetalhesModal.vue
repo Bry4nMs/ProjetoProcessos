@@ -367,10 +367,14 @@ const editingCommentId = ref(null)
 const editingCommentText = ref('')
 const allUsers = ref([])
 const tribute = ref(null)
+const commentLoading = ref(false)
 
 // Estado de relatório PDF
 const gerandoPDF = ref(false)
 const dadosRelatorio = ref(null)
+
+
+
 
 // Importar funções de formatação do composable
 const { formatarValor, formatarData, formatarTamanhoArquivo } = useFormatters()
@@ -523,6 +527,7 @@ async function fetchComments() {
 
 async function postComment() {
   if (!newComment.value.trim()) return
+  commentLoading.value = true
 
   try {
     const { error } = await supabase.rpc('post_comment_with_mentions', {
@@ -532,11 +537,18 @@ async function postComment() {
 
     if (error) throw error
 
-    newComment.value = ''
+    newComment.value = '';
     await fetchComments()
+
+
+    console.log('Dados recebidos APÓS o fetchComments:', JSON.parse(JSON.stringify(comments.value)));
+
+
   } catch (error) {
     console.error('Erro ao postar comentário:', error)
     alert('Erro ao postar comentário. Tente novamente.')
+  }finally{
+    commentLoading.value = false;
   }
 }
 
@@ -551,11 +563,11 @@ function cancelEdit() {
 }
 
 async function saveComment() {
-  if (!editingCommentText.value.trim()) return
+  if (!editingCommentText.value.trim() || commentLoading.value)  return
 
+  commentLoading.value = true
   try {
     const { error } = await supabase
-      // CORREÇÃO 2: Tabela 'document_comments' alterada para 'process_comments'
       .from('process_comments')
       .update({ comment_text: editingCommentText.value })
       .eq('id', editingCommentId.value)
@@ -567,15 +579,20 @@ async function saveComment() {
   } catch (error) {
     console.error('Erro ao editar comentário:', error)
     alert('Erro ao editar comentário. Tente novamente.')
+  }finally{
+    commentLoading.value = false;
   }
 }
 
 async function deleteComment(commentId) {
   if (!confirm('Tem certeza que deseja excluir este comentário?')) return
+  commentLoading.value = true
 
   try {
-    // CORREÇÃO 2: Tabela 'document_comments' alterada para 'process_comments'
-    const { error } = await supabase.from('process_comments').delete().eq('id', commentId)
+    const { error } = await supabase
+    .from('process_comments')
+    .delete()
+    .eq('id', commentId)
 
     if (error) throw error
 
@@ -583,6 +600,8 @@ async function deleteComment(commentId) {
   } catch (error) {
     console.error('Erro ao excluir comentário:', error)
     alert('Erro ao excluir comentário. Tente novamente.')
+  } finally{
+    commentLoading.value = false;
   }
 }
 
@@ -718,31 +737,37 @@ async function gerarRelatorioPDF() {
 // Watchers e lifecycle hooks
 // CÓDIGO NOVO E CORRIGIDO em ProcessoDetalhesModal.vue
 
+
+
 watch(
-  // 1. Observar DUAS coisas: a visibilidade (show) E o ID do processo
   [() => props.show, () => props.processo?.id],
 
-  // 2. A função agora recebe os novos valores de [show, processoId]
   async ([newShow, newProcessoId]) => {
-
-    // 3. A condição agora é mais segura: só executa se o modal estiver abrindo E tiver um ID
     if (newShow && newProcessoId) {
+      comments.value = [];
+
       activeModalTab.value = 'detalhes';
       isEditing.value = false;
 
-      // Inicia as buscas de dados essenciais imediatamente
       await carregarDocumentos();
-      await fetchComments();
 
-      // Funções que dependem da UI ou são menos críticas podem vir depois
       await fetchAllUsers();
       nextTick(() => {
         initTribute();
       });
     }
   },
-  { immediate: false } // Garante que não execute na criação inicial sem dados
+  { immediate: false }
 );
+
+// Em ProcessoDetalhesModal.vue
+
+// ✨ NOVO WATCH PARA CARREGAR DADOS SOB DEMANDA ✨
+watch(activeModalTab, (newTab) =>{
+    if(newTab === 'comentarios'){
+        fetchComments();
+    }
+})
 
 onMounted(() => {
   if (dropZoneModalRef.value) {

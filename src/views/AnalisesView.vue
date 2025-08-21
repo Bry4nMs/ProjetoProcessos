@@ -1,199 +1,161 @@
 <template>
   <Layout>
-    <div class="min-h-screen flex flex-col items-center px-8 py-8">
-      <!-- Painéis de Gráficos -->
-      <div class="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
-        <!-- Gráfico 1: Total de Processos por Força Responsável -->
-        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[420px]">
-          <div class="flex items-center gap-3 mb-4">
-            <svg class="w-7 h-7 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-            </svg>
-            <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
-              Processos por Força Responsável
-            </h2>
-          </div>
-          <div v-if="dadosProcessosPorForca.length > 0" class="text-center mb-4">
-            <div class="text-5xl font-bold text-white">{{ totalProcessosGrafico }}</div>
-            <div class="text-sm text-slate-400">Total de Processos</div>
-          </div>
-          <div class="flex-1 w-full flex items-center justify-center">
-            <BarChart
-              v-if="dadosProcessosPorForca.length > 0 && !loading"
-              :data="chartDataForca"
-              :options="chartOptionsForca"
-              class="w-full h-full"
-            />
-            <div v-else-if="loading" class="text-center">
-              <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div>
-              <p class="text-slate-400 mt-2">Carregando...</p>
-            </div>
-            <div v-else class="text-center">
-              <svg class="w-16 h-16 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-              <p class="text-slate-400 mt-2">Nenhum processo para exibir.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-3 mt-4">
+    <div class="min-h-screen w-full flex flex-col items-center px-8 py-8">
+
+      <div class="w-full max-w-7xl mb-12">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+            Painel de Análises
+          </h1>
+
+          <div class="flex bg-slate-800/80 rounded-lg p-1.5 backdrop-blur-sm border border-white/10">
             <button
-              @click="exportToCSV(
-                ['Forca_Responsavel', 'Total_Processos'],
-                dadosProcessosPorForca.map(item => ({
-                  'Forca_Responsavel': item.code,
-                  'Total_Processos': item.total
-                })),
-                'processos_por_forca.csv'
-              )"
-              class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition"
-            >Exportar (CSV)</button>
+                @click="painelAtivo = 'processos'"
+                :class="[
+                    'px-5 py-2 text-sm font-semibold rounded-md transition-all duration-300',
+                    painelAtivo === 'processos'
+                        ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-md'
+                        : 'text-slate-300 hover:bg-white/5'
+                ]"
+            >
+                Análise de Processos
+            </button>
+            <button
+                @click="painelAtivo = 'financeiro'"
+                :class="[
+                    'px-5 py-2 text-sm font-semibold rounded-md transition-all duration-300',
+                    painelAtivo === 'financeiro'
+                        ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-md'
+                        : 'text-slate-300 hover:bg-white/5'
+                ]"
+            >
+                Análise Financeira
+            </button>
           </div>
         </div>
-        <!-- Gráfico 2: Tempo Médio Gasto por Etapa -->
-        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
+      </div>
 
-    <div class="flex items-center gap-3 mb-4 self-start">
-        <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
-            Análise de Tempo por Etapa
-        </h2>
-    </div>
-
-    <div class="flex-1 w-full overflow-x-auto">
-        <div :style="{ minWidth: chartWidthEtapa + 'px' }">
-            <BarChart
-                v-if="dadosTempoMedioEtapa.length"
-                :data="chartDataEtapa"
-                :options="chartOptionsEtapa"
-                class="w-full"
-                :height="320"
-                :width="chartWidthEtapa"
-            />
-            <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
+      <div v-if="painelAtivo === 'processos'" class="w-full max-w-7xl mx-auto space-y-12">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[420px]">
+            <div class="flex items-center gap-3 mb-4">
+              <svg class="w-7 h-7 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Processos por Força Responsável</h2>
+            </div>
+            <div v-if="dadosProcessosPorForca.length > 0" class="text-center mb-4">
+              <div class="text-5xl font-bold text-white">{{ totalProcessosGrafico }}</div>
+              <div class="text-sm text-slate-400">Total de Processos</div>
+            </div>
+            <div class="flex-1 w-full flex items-center justify-center">
+              <BarChart v-if="dadosProcessosPorForca.length > 0 && !loading" :data="chartDataForca" :options="chartOptionsForca" class="w-full h-full" />
+              <div v-else-if="loading" class="text-center"><div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div><p class="text-slate-400 mt-2">Carregando...</p></div>
+              <div v-else class="text-center"><svg class="w-16 h-16 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg><p class="text-slate-400 mt-2">Nenhum processo para exibir.</p></div>
+            </div>
+            <div class="flex items-center gap-3 mt-4">
+              <button @click="exportToCSV(['Forca_Responsavel', 'Total_Processos'], dadosProcessosPorForca.map(item => ({ 'Forca_Responsavel': item.code, 'Total_Processos': item.total })), 'processos_por_forca.csv')" class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition">Exportar (CSV)</button>
+            </div>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
+            <div class="flex items-center gap-3 mb-4 self-start">
+              <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Análise de Tempo por Etapa</h2>
+            </div>
+            <div class="flex-1 w-full overflow-x-auto">
+              <div :style="{ minWidth: chartWidthEtapa + 'px' }">
+                <BarChart v-if="dadosTempoMedioEtapa.length" :data="chartDataEtapa" :options="chartOptionsEtapa" class="w-full" :height="320" :width="chartWidthEtapa" />
+                <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 mt-4">
+              <button @click="exportToCSV(['Etapa', 'Media_Horas'], dadosTempoMedioEtapa.map(item => ({ 'Etapa': item.name, 'Media_Horas': item.media_horas })), 'tempo_medio_por_etapa.csv')" class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition">Exportar (CSV)</button>
+            </div>
+          </div>
         </div>
+        <div class="w-full max-w-4xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
+          <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Histórico</h1>
+          <p class="text-slate-300 mb-6">Visualize a linha do tempo de todos os processos.</p>
+          <div class="mb-8">
+            <label class="block text-white font-semibold mb-2">Selecionar Processo</label>
+            <select v-model="processoSelecionado" class="w-full md:w-96 px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 appearance-none" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;">
+              <option value="">Selecione um processo</option>
+              <option v-for="processo in processos" :key="processo.id" :value="processo.id">{{ processo.nome_acao || 'Processo sem nome' }} - {{ processo.area_code || 'N/A' }}</option>
+            </select>
+          </div>
+          <div v-if="loading" class="text-center py-12"><span class="text-lg font-semibold text-teal-400">Carregando histórico...</span></div>
+          <div v-else-if="processoSelecionado">
+            <div class="mb-6 flex justify-center border-b border-white/20">
+              <button @click="abaAtiva = 'etapas'" :class="['px-6 py-2 text-lg font-semibold transition-colors duration-200', abaAtiva === 'etapas' ? 'text-teal-300 border-b-2 border-teal-300' : 'text-slate-400 hover:text-white']">Etapas</button>
+              <button @click="abaAtiva = 'alteracoes'" :class="['px-6 py-2 text-lg font-semibold transition-colors duration-200', abaAtiva === 'alteracoes' ? 'text-teal-300 border-b-2 border-teal-300' : 'text-slate-400 hover:text-white']">Alterações</button>
+            </div>
+            <div v-if="abaAtiva === 'etapas'">
+              <div v-if="historicoEtapas.length > 0" class="space-y-6">
+                <div class="relative"><div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
+                  <div class="space-y-6">
+                    <div v-for="evento in historicoEtapas" :key="evento.id" class="relative flex items-start"><div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
+                      <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
+                        <div class="flex items-start justify-between mb-2"><h3 class="font-semibold text-white">{{ evento.description }}</h3><span class="text-sm text-slate-400">{{ formatarDataSimples(evento.changed_at) }}</span></div>
+                        <div class="flex items-center gap-2 text-sm text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><span>{{ obterNomeUsuario(evento.profiles) }}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center py-12"><span class="text-lg font-semibold text-slate-400">Nenhum histórico de etapas encontrado.</span></div>
+            </div>
+            <div v-if="abaAtiva === 'alteracoes'">
+              <div v-if="historicoAlteracoes.length > 0" class="space-y-6">
+                <div class="relative"><div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
+                  <div class="space-y-6">
+                    <div v-for="evento in historicoAlteracoes" :key="evento.id" class="relative flex items-start"><div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
+                      <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
+                        <div class="flex items-start justify-between">
+                          <p class="font-semibold text-white text-base leading-relaxed"><span class="text-slate-300">{{ obterNomeUsuario(evento.user) }}</span> alterou <b>{{ formatarCampo(evento.field_name) }}</b> de <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.old_value, evento.field_name) }}'</span> para <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.new_value, evento.field_name) }}'</span>.</p>
+                          <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarDataSimples(evento.changed_at) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center py-12"><span class="text-lg font-semibold text-slate-400">Nenhum log de alterações encontrado.</span></div>
+            </div>
+          </div>
+          <div v-else class="text-center py-12"><span class="text-lg font-semibold text-slate-400">Selecione um processo para ver o histórico</span></div>
+        </div>
+      </div>
+
+      <div v-else-if="painelAtivo === 'financeiro'" class="w-full max-w-7xl">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-1 flex flex-col gap-8">
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 text-center">
+        <div class="flex items-center justify-center gap-3 mb-2">
+          <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+          <h2 class="text-xl font-bold text-emerald-400">Total em Projetos</h2>
+        </div>
+        <div class="text-4xl font-bold text-white tracking-tight">{{ formatarMoeda(totalProjetos) }}</div>
+      </div>
+
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 text-center">
+        <div class="flex items-center justify-center gap-3 mb-2">
+          <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+          <h2 class="text-xl font-bold text-cyan-400">Economicidade</h2>
+        </div>
+        <div class="text-4xl font-bold text-white tracking-tight">{{ formatarMoeda(totalEconomicidade) }}</div>
+      </div>
     </div>
-    <div class="flex items-center gap-3 mt-4">
-        <button
-            @click="exportToCSV(
-              ['Etapa', 'Media_Horas'],
-              dadosTempoMedioEtapa.map(item => ({
-                'Etapa': item.name,
-                'Media_Horas': item.media_horas
-              })),
-              'tempo_medio_por_etapa.csv'
-            )"
-            class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition"
-        >Exportar (CSV)</button>
+
+    <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
+      <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+        Comparativo de Valor por Órgão
+      </h2>
+      <div class="flex-1 w-full">
+        <BarChart v-if="dadosValoresPorOrgao.length && !loading" :data="chartDataValores" :options="chartOptionsValores" />
+        <div v-else class="text-slate-400 text-center pt-24">Carregando dados financeiros...</div>
+      </div>
     </div>
+  </div>
 </div>
-      </div>
 
-      <!-- Linha do Tempo e Seletor -->
-      <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
-        <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Histórico</h1>
-        <p class="text-slate-300 mb-6">Visualize a linha do tempo de todos os processos.</p>
-        <!-- Seletor de Processo -->
-        <div class="mb-8">
-          <label class="block text-white font-semibold mb-2">Selecionar Processo</label>
-          <select
-            v-model="processoSelecionado"
-            class="w-full md:w-96 px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 appearance-none"
-            style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
-          >
-            <option value="">Selecione um processo</option>
-            <option v-for="processo in processos" :key="processo.id" :value="processo.id">
-              {{ processo.nome_acao || 'Processo sem nome' }} - {{ processo.area_code || 'N/A' }}
-            </option>
-          </select>
-        </div>
-
-        <div v-if="loading" class="text-center py-12">
-          <span class="text-lg font-semibold text-teal-400">Carregando histórico...</span>
-        </div>
-
-        <div v-else-if="processoSelecionado">
-          <div class="mb-6 flex justify-center border-b border-white/20">
-            <button
-              @click="abaAtiva = 'etapas'"
-              :class="[
-                'px-6 py-2 text-lg font-semibold transition-colors duration-200',
-                abaAtiva === 'etapas'
-                  ? 'text-teal-300 border-b-2 border-teal-300'
-                  : 'text-slate-400 hover:text-white'
-              ]"
-            >
-              Etapas
-            </button>
-            <button
-              @click="abaAtiva = 'alteracoes'"
-              :class="[
-                'px-6 py-2 text-lg font-semibold transition-colors duration-200',
-                abaAtiva === 'alteracoes'
-                  ? 'text-teal-300 border-b-2 border-teal-300'
-                  : 'text-slate-400 hover:text-white'
-              ]"
-            >
-              Alterações
-            </button>
-          </div>
-
-          <div v-if="abaAtiva === 'etapas'">
-            <div v-if="historicoEtapas.length > 0" class="space-y-6">
-          <div class="relative">
-            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
-            <div class="space-y-6">
-                  <div v-for="evento in historicoEtapas" :key="evento.id" class="relative flex items-start">
-                    <div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
-                <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
-                    <div class="flex items-start justify-between mb-2">
-                      <h3 class="font-semibold text-white">{{ evento.description }}</h3>
-                      <span class="text-sm text-slate-400">{{ formatarDataSimples(evento.changed_at) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2 text-sm text-slate-300">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                      <span>{{ obterNomeUsuario(evento.profiles) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="text-center py-12">
-              <span class="text-lg font-semibold text-slate-400">Nenhum histórico de etapas encontrado.</span>
-            </div>
-          </div>
-
-          <div v-if="abaAtiva === 'alteracoes'">
-            <div v-if="historicoAlteracoes.length > 0" class="space-y-6">
-              <div class="relative">
-                <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
-                <div class="space-y-6">
-                  <div v-for="evento in historicoAlteracoes" :key="evento.id" class="relative flex items-start">
-                    <div class="absolute left-4 w-4 h-4 bg-cyan-400 rounded-full border-4 border-white shadow-lg z-10"></div>
-                    <div class="ml-12 bg-white/5 rounded-lg p-4 flex-1 shadow-sm">
-                      <div class="flex items-start justify-between">
-                        <p class="font-semibold text-white text-base leading-relaxed">
-                          <span class="text-slate-300">{{ obterNomeUsuario(evento.user) }}</span> alterou <b>{{ formatarCampo(evento.field_name) }}</b> de
-                          <span class="text-red-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.old_value, evento.field_name) }}'</span> para
-                          <span class="text-green-400 font-mono bg-black/20 px-1 rounded">'{{ formatarValor(evento.new_value, evento.field_name) }}'</span>.
-                        </p>
-                        <span class="text-sm text-slate-400 flex-shrink-0 ml-4">{{ formatarDataSimples(evento.changed_at) }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="text-center py-12">
-              <span class="text-lg font-semibold text-slate-400">Nenhum log de alterações encontrado.</span>
-            </div>
-          </div>
-        </div>
-
-        <div v-else class="text-center py-12">
-          <span class="text-lg font-semibold text-slate-400">Selecione um processo para ver o histórico</span>
-        </div>
-      </div>
     </div>
   </Layout>
 </template>
@@ -263,6 +225,7 @@ const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
+const painelAtivo = ref<'processos' | 'financeiro'>('processos')
 
 // NOVO: Estado para controlar a aba ativa
 const abaAtiva = ref<'etapas' | 'alteracoes'>('etapas')
@@ -275,6 +238,12 @@ const historicoAlteracoes = ref<EventoAudit[]>([])
 const dadosProcessosPorForca = ref<Array<{ code: string; total: number }>>([])
 const dadosTempoMedioEtapa = ref<Array<{ name: string; media_horas: number }>>([])
 const totalProcessosGrafico = computed(() => dadosProcessosPorForca.value.reduce((acc, f) => acc + f.total, 0))
+const dadosValoresPorOrgao = ref<Array<{ id: number; code: string; valor_total: number}>>([])
+const { formatarData: formatarDataSimples, formatarValor: formatarMoeda } = useFormatters()
+
+
+const totalProjetos = ref(0);
+const totalEconomicidade = ref(0);
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
 const chartWidthEtapa = computed(() => {
@@ -377,6 +346,36 @@ async function fetchTempoMedioPorEtapa() {
   console.log('Dados finais do gráfico:', dadosTempoMedioEtapa.value);
 }
 
+
+async function fetchValoresPorOrgao(){
+  const { data, error} = await supabase.rpc('get_valores_por_orgao');
+
+  if(error){
+    console.error('Erro ao buscar valores por órgão:', error);
+    dadosValoresPorOrgao.value = [];
+    return;
+  }
+  dadosValoresPorOrgao.value = data || [];
+}
+
+// Em AnalisesView.vue -> <script setup>
+
+async function fetchTotaisFinanceiros() {
+  // O nome da função aqui foi corrigido para 'get_totais_financeiros'
+  const { data, error } = await supabase.rpc('get_totais_financeiros');
+
+  if (error) {
+    // Este console.error é o que você está vendo no navegador
+    console.error('Erro ao buscar Totais Financeiros: ', error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    totalProjetos.value = data[0].total_projetos || 0;
+    totalEconomicidade.value = data[0].total_economicidade || 0;
+  }
+}
+
 // --- CHART DATA/OPTIONS PARA OS GRÁFICOS ---
 
 // Gráfico de barras de processos por força (usando code)
@@ -462,6 +461,68 @@ const chartOptionsEtapa = {
     },
   },
 }
+
+
+const chartDataValores = computed(() => ({
+  labels: dadosValoresPorOrgao.value.map((o) => o.code),
+  datasets: [
+    {
+      label: 'Valor Total Destinado',
+      data: dadosValoresPorOrgao.value.map((o) => o.valor_total),
+      backgroundColor: '#34d399', // emerald-400
+      borderColor: '#10b981', // emerald-500
+      borderWidth: 1,
+      borderRadius: 6,
+    },
+  ],
+}));
+
+// Opções para o gráfico de valores (note o indexAxis: 'y')
+const chartOptionsValores = {
+  indexAxis: 'y' as const, // <-- Isso torna o gráfico horizontal!
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      titleColor: '#fff',
+      bodyColor: '#fff',
+      callbacks: {
+        label: function(context) {
+          let label = context.dataset.label || '';
+          if (label) {
+            label += ': ';
+          }
+          if (context.parsed.x !== null) {
+            label += formatarMoeda(context.parsed.x);
+          }
+          return label;
+        }
+      }
+    },
+  },
+  scales: {
+    y: {
+      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      grid: { color: 'rgba(255,255,255,0.05)' },
+    },
+    x: {
+      ticks: {
+        color: '#9ca3af',
+        // Formata o eixo X como moeda de forma abreviada
+        callback: function(value) {
+            const num = Number(value);
+            if (num >= 1000000) return 'R$' + (num / 1000000) + 'M';
+            if (num >= 1000) return 'R$' + (num / 1000) + 'K';
+            return 'R$' + num;
+        }
+      },
+      grid: { color: 'rgba(255,255,255,0.1)' },
+    },
+  },
+};
+
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
@@ -610,11 +671,12 @@ onMounted(async () => {
   // Carrega os dados dos gráficos
   await fetchProcessosPorForca()
   await fetchTempoMedioPorEtapa()
+  await fetchValoresPorOrgao()
+  await fetchTotaisFinanceiros()
   await fetchForcas() // popula forcasMem
 })
 
 // Importar funções de formatação do composable
-const { formatarData: formatarDataSimples } = useFormatters()
 // Usar formatarDataSimples para datas sem hora
 
 // Formata a data/hora para exibição amigável com hora e minuto (específica para análises)
