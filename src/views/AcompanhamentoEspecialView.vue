@@ -392,20 +392,33 @@ const showDetalhesModal = ref(false)
 const showEtapasModal = ref(false)
 
 // Função para atualizar o processo após edição
+// VERSÃO CORRIGIDA E REATIVA ✨
 async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
+  // Se o modal ou o card enviou um objeto com as mudanças...
   if (processoAtualizado && processoAtualizado.id) {
-    // Se recebemos um processo atualizado, atualizamos apenas esse processo no array
     const index = processos.value.findIndex(p => p.id === processoAtualizado.id);
+
+    // Se encontramos o processo na lista principal...
     if (index !== -1) {
+      // 1. Atualiza o processo na lista principal (para o card no fundo)
       processos.value[index] = {
         ...processos.value[index],
         ...processoAtualizado
       };
-      return;
+
+      // 2. ✨ A LINHA MÁGICA: Atualiza também o processo que está no modal!
+      if (processoSelecionado.value && processoSelecionado.value.id === processoAtualizado.id) {
+        processoSelecionado.value = {
+          ...processoSelecionado.value,
+          ...processoAtualizado
+        };
+      }
+      return; // Agora podemos retornar, pois ambas as fontes foram atualizadas.
     }
-    await carregarProcessos();
   }
-  // Caso contrário, recarregamos todos os processos
+
+  // Se não recebemos um objeto ou o processo não foi encontrado,
+  // recarregamos tudo como uma medida de segurança.
   await carregarProcessos();
 }
 
