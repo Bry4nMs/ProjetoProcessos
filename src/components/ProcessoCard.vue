@@ -2,7 +2,7 @@
 import { ref, defineProps, defineEmits, watch } from 'vue'
 // As importações desnecessárias (onMounted, reactive, etc.) e as de bibliotecas
 // que foram movidas (Tribute, jsPDF, etc.) foram removidas.
-import { buscarEtapasDoProcesso, registrarEventoHistorico } from '../services/auth'
+import {registrarEventoHistorico } from '../services/auth'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import { useFormatters } from '../composables/useFormatters'
@@ -33,49 +33,29 @@ function abrirEtapas(e: Event) {
   emit('mostrar-etapas', props.processo)
 }
 
+// Em ProcessoCard.vue -> <script setup>
+
 async function passarEtapa(e: Event) {
   e.stopPropagation();
   if (!props.processo.id) return;
 
-  // Verifica se esta é a última etapa ANTES de chamar o RPC
   const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
 
+  // 1. Chama a função no banco de dados para avançar a etapa
   const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
 
   if (!error) {
-    // Sempre registra o evento, independente do usuário
-    if (isFinalStep) {
-      await registrarEventoHistorico(props.processo.id, 'Processo Concluído.');
-    } else {
-      // Buscar o nome da nova etapa e registrar
-      const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
-      if (etapas && etapas.length > 0) {
-        const etapaAtualIdx = etapas.findIndex(e => e.is_current);
-        if (etapaAtualIdx !== -1) {
-          const nomeNovaEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
-          await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`);
-          
-          // Criar um objeto com as atualizações em vez de modificar diretamente a prop
-          const processoAtualizado = {
-            ...props.processo,
-            etapaAtualNome: nomeNovaEtapa,
-            etapaAtual: etapaAtualIdx,
-            progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ? 
-              Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0
-          };
-          
-          // Emitir evento com o processo atualizado
-          emit('atualizar-processo', processoAtualizado);
-          return;
-        }
-      }
-    }
-    // Criar um objeto com as atualizações em vez de emitir apenas o evento
-  const processoAtualizado = {
-    ...props.processo,
-    is_favorited: isFavorited.value
-  }
-  emit('atualizar-processo', processoAtualizado);
+    // 2. Registra o evento no histórico (isso está ótimo!)
+    const nomeEtapa = isFinalStep ? 'Processo Concluído.' : `Etapa avançada.`; // Mensagem simplificada
+    await registrarEventoHistorico(props.processo.id, nomeEtapa);
+
+    // 3. ✨ A MUDANÇA PRINCIPAL: Apenas notifica o pai que algo mudou.
+    // Não enviamos mais o objeto `processoAtualizado`.
+    // O pai vai acionar `carregarProcessos` e pegar o estado 100% correto do banco.
+    emit('atualizar-processo');
+  } else {
+    console.error("Erro ao avançar a etapa:", error);
+    alert("Ocorreu um erro ao avançar a etapa."); // Informa o usuário do erro
   }
 }
 

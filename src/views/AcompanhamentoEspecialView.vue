@@ -217,8 +217,8 @@ import Layout from '../components/Layout.vue'
 import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessoDetalhesModal from '../components/ProcessoDetalhesModal.vue'
 import ProcessoEtapasModal from '../components/ProcessoEtapasModal.vue'
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import {
@@ -227,6 +227,8 @@ import {
 } from '../services/auth'
 
 const route = useRoute()
+const router = useRouter()
+
 
 const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
@@ -279,45 +281,90 @@ const { user, fetchUser } = useAuth()
 const processos = ref<Processo[]>([])
 const loadingProcessos = ref(false)
 
+// Em ProcessoView.vue -> <script setup>
+
 async function carregarProcessos() {
-  loadingProcessos.value = true
-  let usuario = user.value
+  loadingProcessos.value = true;
+  let usuario = user.value;
   if (!usuario) {
-    usuario = await fetchUser()
+    usuario = await fetchUser();
   }
   if (!usuario) {
-    processos.value = []
-    loadingProcessos.value = false
-    return
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
   }
 
-  // Chamada única para a função RPC otimizada
-  const { data, error } = await supabase.rpc('get_favorited_processes_with_progress', { p_user_id: usuario.id })
+  // A chamada para favoritos continua igual
+  const { data: favorites } = await supabase
+    .from('user_favorites')
+    .select('process_id')
+    .eq('user_id', usuario.id);
+  const favoriteIds = new Set((favorites || []).map(f => f.process_id));
+
+  // A CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
+  const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
 
   if (error) {
-    console.error('Erro ao buscar processos favoritados com RPC:', error)
-    processos.value = []
-    loadingProcessos.value = false
-    return
+    console.error('Erro ao buscar processos com RPC:', error);
+    processos.value = [];
+    loadingProcessos.value = false;
+    return;
   }
 
   if (data) {
+    // Mapeamento simples e direto dos dados JÁ PROCESSADOS pelo backend
     processos.value = data.map(proc => ({
-          ...proc,
-          forca_code: proc.responsible_forces?.code || '',
-          area_code: proc.thematic_areas?.code || '',
-          etapaAtual: proc.etapaAtual,
-          totalEtapas: proc.totalEtapas,
-          sei: proc.codigo_transferegov,
-          progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
-          status: proc.status || 'Em Andamento',
-          is_favorited: true,
-    }))
+        ...proc,
+        forca_code: proc.responsible_forces?.code || 'N/D',
+        area_code: proc.thematic_areas?.code || 'N/D',
+        // O progresso agora é calculado com base nos dados corretos do RPC
+        progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1
+            ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100)
+            : 0,
+        // Usamos o nome da etapa que JÁ VEIO do banco de dados!
+        etapaAtualNome: proc.current_step_name || 'Não definida',
+        status: proc.status || 'Em Andamento',
+        is_favorited: favoriteIds.has(proc.id),
+    }));
   } else {
-    processos.value = []
+    processos.value = [];
   }
-  loadingProcessos.value = false
+
+  // ✨ O BLOCO Promise.all FOI COMPLETAMENTE REMOVIDO! ✨
+
+  loadingProcessos.value = false;
+
+  // Adicionado para garantir que o modal seja aberto após o carregamento, se necessário
+  handleRouteChange(route.query);
 }
+
+// Em AcompanhamentoEspecialView.vue
+
+function handleRouteChange(query) {
+  const processoId = query.processo_id as string | null;
+  const modalType = query.modal_type as string | null;
+
+  if (processoId) {
+    if (processos.value.length > 0) {
+      const processoParaAbrir = processos.value.find(p => p.id === processoId);
+      if (processoParaAbrir) {
+        abrirModalProcesso(processoParaAbrir, modalType || 'detalhes');
+      } else {
+        router.push({ query: {} }); // Limpa a URL se o processo não for encontrado
+      }
+    }
+  } else {
+    // Garante que os modais fechem se a URL for limpa
+    showDetalhesModal.value = false;
+    showEtapasModal.value = false;
+  }
+}
+
+// "Escuta" as mudanças na URL para abrir/fechar o modal dinamicamente
+watch(() => route.query, (newQuery) => {
+  handleRouteChange(newQuery);
+});
 
 onMounted(async () => {
   await carregarProcessos()
@@ -356,6 +403,7 @@ async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
       };
       return;
     }
+    await carregarProcessos();
   }
   // Caso contrário, recarregamos todos os processos
   await carregarProcessos();
