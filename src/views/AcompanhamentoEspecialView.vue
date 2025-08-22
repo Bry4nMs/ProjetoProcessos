@@ -214,6 +214,7 @@
 
     <!-- Modal de Registros do Processo -->
     <ProcessoRegistrosModal
+      v-if="processoSelecionado"
       :show="showRegistrosModal"
       :processo="processoSelecionado"
       @close="fecharModalRegistros"

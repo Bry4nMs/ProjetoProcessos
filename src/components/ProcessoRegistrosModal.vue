@@ -57,6 +57,18 @@
               <label class="block text-sm font-medium text-slate-300 mb-1">Descrição dos Itens/Serviços</label>
               <textarea v-model="newRecord.description" rows="2" placeholder="Descreva o que foi adquirido..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"></textarea>
             </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">Anexar Comprovante (Opcional)</label>
+              <div class="flex items-center gap-4 bg-white/10 border border-white/20 rounded-lg px-3 py-2">
+                <label for="record-file-input" class="px-3 py-1 bg-white/10 border border-white/20 rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-white/20 transition">
+                  Escolher Arquivo
+                </label>
+                <input id="record-file-input" type="file" @change="onFileChange" class="hidden" />
+                <span class="text-sm text-slate-300 truncate">{{  newRecordFile?.name || 'Nenhum arquivo selecionado...'}}</span>
+              </div>
+            </div>
+
             <div class="flex justify-end">
               <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ isSubmitting ? 'Salvando...' : 'Salvar Registro' }}
@@ -70,15 +82,27 @@
           <div v-if="loadingRecords" class="text-center p-4">Carregando...</div>
           <div v-else-if="records.length === 0" class="text-center text-slate-400 p-4">Nenhum registro de gasto encontrado.</div>
           <div v-else class="space-y-3">
-            <div v-for="record in records" :key="record.id" class="bg-white/5 p-3 rounded-lg flex items-center justify-between">
-              <div>
-                <p class="font-semibold text-white">{{ record.description || 'Registro sem descrição' }}</p>
-                <p class="text-sm text-slate-300">
-                  Solicitado em: {{ formatarData(record.request_date) }} | Adquirido em: {{ formatarData(record.acquisition_date) }}
-                </p>
-              </div>
-              <p class="text-lg font-bold text-teal-300">{{ formatarMoeda(record.amount_used) }}</p>
-            </div>
+            <div v-for="record in records" :key="record.id" class="bg-white/5 p-3 rounded-lg flex items-center justify-between gap-4">
+  <div>
+    <p class="font-semibold text-white">{{ record.description || 'Registro sem descrição' }}</p>
+    <div class="flex items-center gap-4 text-sm text-slate-300">
+      <span>Solicitado: {{ formatarData(record.request_date) }}</span>
+      <span>Adquirido: {{ formatarData(record.acquisition_date) }}</span>
+
+      <a
+        v-if="record.file_url"
+        :href="record.file_url"
+        target="_blank"
+        class="flex items-center gap-1 text-teal-400 hover:text-teal-300 hover:underline"
+        title="Ver anexo"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+        Ver Comprovante
+      </a>
+    </div>
+  </div>
+  <p class="text-lg font-bold text-teal-300 flex-shrink-0">{{ formatarMoeda(record.amount_used) }}</p>
+</div>
           </div>
         </div>
       </div>
@@ -99,6 +123,9 @@ interface ProcessRecord {
   acquisition_date: string | null;
   amount_used: number;
   description: string | null;
+  file_url?: string | null;      // Adicionado
+  filename?: string | null;      // Adicionado
+  storage_path?: string | null;  // Adicionado
 }
 
 // Props e Emits
@@ -130,6 +157,7 @@ const { formatarValor: formatarMoeda, formatarData } = useFormatters();
 const records = ref<ProcessRecord[]>([]);
 const loadingRecords = ref(false);
 const isSubmitting = ref(false);
+const newRecordFile = ref<File | null>(null)
 
 const newRecord = reactive({
   request_date: '',
@@ -143,7 +171,18 @@ const totalUtilizado = computed(() => {
   return records.value.reduce((sum, record) => sum + (record.amount_used || 0), 0);
 });
 
+
 // Funções
+
+function onFileChange(event: Event){
+  const target = event.target as HTMLInputElement;
+  if(target.files && target.files.length > 0){
+    newRecordFile.value = target.files[0]
+  } else{
+    newRecordFile.value = null
+  }
+}
+
 async function fetchRecords() {
   if (!props.processo.id) return;
   loadingRecords.value = true;
@@ -170,8 +209,33 @@ async function salvarRegistro() {
     return;
   }
   isSubmitting.value = true;
+
+  const fileData = {
+    file_url: null as string | null,
+    filename: null as string | null,
+    storage_path: null as string | null,
+  };
+
   try {
-    const { error } = await supabase.from('process_records').insert([
+    if (newRecordFile.value) {
+      const file = newRecordFile.value;
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${props.processo.id}/records/${Date.now()}_${sanitizedFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
+      fileData.file_url = urlData.publicUrl;
+      fileData.filename = file.name;
+      fileData.storage_path = filePath;
+    }
+
+    // 2. INSERE O REGISTRO NO BANCO DE DADOS
+    const { error: insertError } = await supabase.from('process_records').insert([
       {
         process_id: props.processo.id,
         user_id: user.value?.id,
@@ -179,22 +243,30 @@ async function salvarRegistro() {
         acquisition_date: newRecord.acquisition_date || null,
         amount_used: newRecord.amount_used,
         description: newRecord.description,
+        // Adiciona os dados do arquivo (serão null se não houver anexo)
+        ...fileData,
       },
     ]);
-    if (error) throw error;
 
-    // Limpa o formulário
+    if (insertError) throw insertError;
+
+    // 3. LIMPA O FORMULÁRIO E RECARREGA A LISTA
     newRecord.request_date = '';
     newRecord.acquisition_date = '';
     newRecord.amount_used = null;
     newRecord.description = '';
+    newRecordFile.value = null; // Limpa o arquivo também
+    const fileInput = document.getElementById('record-file-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
 
-    // Recarrega a lista
     await fetchRecords();
 
-  } catch (err) {
-    console.error('Erro ao salvar registro:', err);
-    alert('Não foi possível salvar o registro.');
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Erro ao salvar registro:', error);
+    alert(`Não foi possível salvar o registro: ${error.message}`);
   } finally {
     isSubmitting.value = false;
   }
