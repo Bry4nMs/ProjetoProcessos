@@ -28,6 +28,12 @@
           >
             Etapas
           </button>
+          <button
+            @click="switchToRegistros"
+            class="px-4 py-1.5 rounded-md font-medium transition-all text-slate-300 hover:text-white hover:bg-white/10"
+          >
+            Registros
+          </button>
         </div>
       </div>
       <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
@@ -186,7 +192,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes'])
+const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes', 'switch-to-registros'])
 
 // Estado do modal
 const etapas = ref<Etapa[]>([])
@@ -407,6 +413,11 @@ function fecharEtapas() {
 // Função para alternar para o modal de detalhes
 function switchToDetalhes() {
   emit('switch-to-detalhes')
+}
+
+// Função para alternar para o modal de registros
+function switchToRegistros() {
+  emit('switch-to-registros')
 }
 
 // A função formatarData foi removida e agora é importada do composable useFormatters

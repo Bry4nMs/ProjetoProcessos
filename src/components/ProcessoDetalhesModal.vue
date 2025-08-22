@@ -52,6 +52,12 @@
           >
             Etapas
           </button>
+          <button
+            @click="switchToRegistros"
+            class="px-4 py-1.5 rounded-md font-medium transition-all text-slate-300 hover:text-white hover:bg-white/10"
+          >
+            Registros
+          </button>
         </div>
       </div>
       <div class="flex items-center gap-2 mb-4">
@@ -326,7 +332,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas'])
+const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas', 'switch-to-registros'])
 
 // Estado do modal
 const activeModalTab = ref('detalhes')
@@ -699,6 +705,11 @@ function fecharDetalhes() {
 // Função para alternar para o modal de etapas
 function switchToEtapas() {
   emit('switch-to-etapas')
+}
+
+// Função para alternar para o modal de registros
+function switchToRegistros() {
+  emit('switch-to-registros')
 }
 
 // Função para gerar relatório PDF (sem alterações)

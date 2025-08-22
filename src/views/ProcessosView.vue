@@ -210,6 +210,7 @@
       @close="fecharModalDetalhes"
       @atualizar-processo="atualizarProcesso"
       @switch-to-etapas="handleSwitchToEtapas"
+      @switch-to-registros="handleSwitchToRegistros"
     />
 
     <!-- Modal de Etapas do Processo -->
@@ -220,7 +221,20 @@
       @close="fecharModalEtapas"
       @atualizar-processo="atualizarProcesso"
       @switch-to-detalhes="handleSwitchToDetalhes"
+      @switch-to-registros="handleSwitchToRegistros"
     />
+
+    <!-- Modal de Registros do Processo -->
+    <ProcessoRegistrosModal
+      :show="showRegistrosModal"
+      :processo="processoSelecionado"
+      @close="fecharModalRegistros"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-detalhes="switchToDetalhesFromRegistros"
+      @switch-to-etapas="switchToEtapasFromRegistros"
+    />
+
+
   </Layout>
 </template>
 
@@ -230,6 +244,7 @@ import ProcessoCard from '../components/ProcessoCard.vue'
 import ProcessosGraficos from '../components/ProcessosGraficos.vue'
 import ProcessoDetalhesModal from '../components/ProcessoDetalhesModal.vue'
 import ProcessoEtapasModal from '../components/ProcessoEtapasModal.vue'
+import ProcessoRegistrosModal from '../components/ProcessoRegistrosModal.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
@@ -267,6 +282,7 @@ function handleRouteChange(query) {
     // Se a URL foi limpa (sem processo_id), garante que os modais estejam fechados
     showDetalhesModal.value = false;
     showEtapasModal.value = false;
+    showRegistrosModal.value = false;
   }
 }
 
@@ -418,24 +434,20 @@ onMounted(async () => {
 const processoSelecionado = ref<Processo | null>(null)
 const showDetalhesModal = ref(false)
 const showEtapasModal = ref(false)
+const showRegistrosModal = ref(false)
 
 // Função para abrir o modal de detalhes do processo
 function abrirModalProcesso(processo: Processo, tipo: string = 'detalhes') {
   processoSelecionado.value = processo
-
-  if (tipo === 'etapas' || processo.event_type === 'mostrar-etapas') {
+  if (tipo === 'etapas') {
     showEtapasModal.value = true
+  } else if (tipo === 'registros') {
+    showRegistrosModal.value = true
   } else {
     showDetalhesModal.value = true
   }
-  router.push({
-    query: {
-      processo_id: processo.id,
-      modal_type: tipo
-    }
-  })
+  router.push({ query: { processo_id: processo.id, modal_type: tipo } })
 }
-
 // Função para fechar o modal de detalhes
 function fecharModalDetalhes() {
   showDetalhesModal.value = false
@@ -448,9 +460,17 @@ function fecharModalEtapas() {
   router.push({ query: {} });
 }
 
+//Função para fechar o modal de registros
+function fecharModalRegistros() {
+  showRegistrosModal.value = false
+  router.push({ query: {} });
+}
+
+
 // Função para alternar do modal de detalhes para o modal de etapas
 function handleSwitchToEtapas() {
   showDetalhesModal.value = false
+  showRegistrosModal.value = false
   showEtapasModal.value = true
   if (processoSelecionado.value) {
     router.push({
@@ -465,6 +485,7 @@ function handleSwitchToEtapas() {
 // Função para alternar do modal de etapas para o modal de detalhes
 function handleSwitchToDetalhes() {
   showEtapasModal.value = false
+  showRegistrosModal.value = false
   showDetalhesModal.value = true
   if (processoSelecionado.value) {
     router.push({
@@ -474,6 +495,29 @@ function handleSwitchToDetalhes() {
       }
     })
   }
+}
+
+// Função para alternar para o modal de registros
+function handleSwitchToRegistros() {
+  showDetalhesModal.value = false
+  showEtapasModal.value = false
+  showRegistrosModal.value = true
+  if (processoSelecionado.value) {
+    router.push({
+      query: {
+        processo_id: processoSelecionado.value.id,
+        modal_type: 'registros'
+      }
+    })
+  }
+}
+
+function switchToDetalhesFromRegistros() {
+  handleSwitchToDetalhes();
+}
+
+function switchToEtapasFromRegistros() {
+  handleSwitchToEtapas();
 }
 
 // Função para atualizar o processo após edição
