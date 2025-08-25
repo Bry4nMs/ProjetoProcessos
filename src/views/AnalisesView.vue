@@ -551,7 +551,7 @@ const chartOptionsValores = {
       grid: { color: 'rgba(255,255,255,0.1)'},
     },
   },
-};
+}
 
 const chartDataRankingPagamento = computed(() => ({
   labels: dadosRankingPagamento.value.map(d => d.code),
