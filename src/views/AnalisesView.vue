@@ -499,6 +499,9 @@ const chartDataValores = computed(() => ({
 }));
 
 // Opções para o gráfico de valores (note o indexAxis: 'y')
+// Em AnalisesView.vue -> <script setup>
+
+// SUBSTITUA SEU OBJETO chartOptionsValores INTEIRO POR ESTE:
 const chartOptionsValores = {
   indexAxis: 'y' as const,
   responsive: true,
@@ -508,9 +511,9 @@ const chartOptionsValores = {
       display: true,
       position: 'top' as const,
       labels: {
-        color: '#cbd5e1',
+        color: '#cbd5e1', // slate-300
         font: {
-          size: 14.
+          size: 14,
         }
       }
     },
@@ -531,27 +534,47 @@ const chartOptionsValores = {
         }
       }
     },
+    // ✨ CONFIGURAÇÃO ADICIONADA PARA OS RÓTULOS NAS BARRAS ✨
+    datalabels: {
+      color: '#ffffff', // Cor branca para os números
+      anchor: 'end' as const, // Alinha o texto no final da barra
+      align: 'end' as const,  // Alinha o texto no final da barra
+      offset: -8, // Um pequeno deslocamento para não ficar colado na borda
+      font: {
+        weight: 'bold' as const,
+        size: 12,
+      },
+      // Formata o número como moeda, mas só mostra se for maior que zero
+      formatter: (value) => {
+        if (value > 0) {
+          return formatarMoeda(value);
+        }
+        return ''; // Não mostra o rótulo se o valor for 0
+      }
+    }
   },
   scales: {
     y: {
-      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      ticks: {
+        color: '#cbd5e1', // ✨ COR CORRIGIDA (slate-300)
+        font: { weight: 'bold' as const }
+      },
       grid: { color: 'rgba(255,255,255,0.05)' },
     },
     x: {
       ticks: {
-        color: '#9ca3af',
-
+        color: '#cbd5e1', // ✨ COR CORRIGIDA (slate-300)
         callback: (value) => {
-          const num = Number(value);
-          if(num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
-          if(num >= 1000) return 'R$' + (num / 1000) + 'K';
-          return formatarMoeda(num);
+            const num = Number(value);
+            if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return 'R$' + (num / 1000) + 'K';
+            return formatarMoeda(num);
         }
       },
-      grid: { color: 'rgba(255,255,255,0.1)'},
+      grid: { color: 'rgba(255,255,255,0.1)' },
     },
   },
-}
+};
 
 const chartDataRankingPagamento = computed(() => ({
   labels: dadosRankingPagamento.value.map(d => d.code),
