@@ -124,42 +124,59 @@
         </div>
       </div>
 
-      <div v-else-if="painelAtivo === 'financeiro'" class="w-full max-w-7xl">
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div v-else-if="painelAtivo === 'financeiro'" class="w-full max-w-7xl space-y-8">
 
-    <div class="lg:col-span-1 flex flex-col gap-8">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+    <div class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6">
+      <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
       </div>
-
-    <div class="lg:col-span-2 flex flex-col gap-8">
-      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[400px]">
-        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-          Comparativo de Valor por Órgão
-        </h2>
-        <div class="flex-1 w-full">
-          <BarChart v-if="dadosValoresPorOrgao.length && !loading" :data="chartDataValores" :options="chartOptionsValores" />
-          <div v-else class="text-slate-400 text-center pt-24">Carregando dados financeiros...</div>
-        </div>
+      <div>
+        <h2 class="text-lg font-semibold text-teal-300">Total em Projetos</h2>
+        <div class="text-3xl font-bold text-white tracking-tight">{{ formatarMoeda(totalProjetos) }}</div>
       </div>
+    </div>
 
-      <div class="flex flex-col gap-8">
-        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
-           <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Ranking de Pagamento dos Órgãos</h2>
-           <div class="flex-1 w-full">
-             <BarChart v-if="dadosRankingPagamento.length" :data="chartDataRankingPagamento" :options="chartOptionsRankingPagamento" />
-             <div v-else class="text-slate-400 text-center pt-16">Calculando ranking...</div>
-           </div>
-        </div>
-        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
-           <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Quantidade de Processos por Órgão</h2>
-           <div class="flex-1 w-full">
-             <BarChart v-if="dadosProcessosPorForca.length" :data="chartDataQuantidadeProcessos" :options="chartOptionsQuantidadeProcessos" />
-             <div v-else class="text-slate-400 text-center pt-16">Carregando...</div>
-           </div>
-        </div>
+    <div class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6">
+       <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
       </div>
-
+      <div>
+        <h2 class="text-lg font-semibold text-cyan-300">Economicidade</h2>
+        <div class="text-3xl font-bold text-white tracking-tight">{{ formatarMoeda(totalEconomicidade) }}</div>
+      </div>
     </div>
   </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
+      <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+        Comparativo de Valor por Órgão
+      </h2>
+      <div class="flex-1 w-full">
+        <BarChart v-if="dadosValoresPorOrgao.length && !loading" :data="chartDataValores" :options="chartOptionsValores" />
+        <div v-else class="text-slate-400 text-center pt-24">Carregando dados financeiros...</div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-1 flex flex-col gap-8">
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
+         <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Ranking de Pagamento</h2>
+         <div class="flex-1 w-full">
+           <BarChart v-if="dadosRankingPagamento.length" :data="chartDataRankingPagamento" :options="chartOptionsRankingPagamento" />
+           <div v-else class="text-slate-400 text-center pt-16">Calculando ranking...</div>
+         </div>
+      </div>
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
+         <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Qtd. de Processos por Órgão</h2>
+         <div class="flex-1 w-full">
+           <BarChart v-if="dadosProcessosPorForca.length" :data="chartDataQuantidadeProcessos" :options="chartOptionsQuantidadeProcessos" />
+           <div v-else class="text-slate-400 text-center pt-16">Carregando...</div>
+         </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
     </div>
