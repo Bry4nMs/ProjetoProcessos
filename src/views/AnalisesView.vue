@@ -126,32 +126,38 @@
 
       <div v-else-if="painelAtivo === 'financeiro'" class="w-full max-w-7xl">
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
     <div class="lg:col-span-1 flex flex-col gap-8">
-      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 text-center">
-        <div class="flex items-center justify-center gap-3 mb-2">
-          <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-          <h2 class="text-xl font-bold text-emerald-400">Total em Projetos</h2>
-        </div>
-        <div class="text-4xl font-bold text-white tracking-tight">{{ formatarMoeda(totalProjetos) }}</div>
       </div>
 
-      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 text-center">
-        <div class="flex items-center justify-center gap-3 mb-2">
-          <svg class="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-          <h2 class="text-xl font-bold text-cyan-400">Economicidade</h2>
+    <div class="lg:col-span-2 flex flex-col gap-8">
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[400px]">
+        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+          Comparativo de Valor por Órgão
+        </h2>
+        <div class="flex-1 w-full">
+          <BarChart v-if="dadosValoresPorOrgao.length && !loading" :data="chartDataValores" :options="chartOptionsValores" />
+          <div v-else class="text-slate-400 text-center pt-24">Carregando dados financeiros...</div>
         </div>
-        <div class="text-4xl font-bold text-white tracking-tight">{{ formatarMoeda(totalEconomicidade) }}</div>
       </div>
-    </div>
 
-    <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
-      <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-        Comparativo de Valor por Órgão
-      </h2>
-      <div class="flex-1 w-full">
-        <BarChart v-if="dadosValoresPorOrgao.length && !loading" :data="chartDataValores" :options="chartOptionsValores" />
-        <div v-else class="text-slate-400 text-center pt-24">Carregando dados financeiros...</div>
+      <div class="flex flex-col gap-8">
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
+           <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Ranking de Pagamento dos Órgãos</h2>
+           <div class="flex-1 w-full">
+             <BarChart v-if="dadosRankingPagamento.length" :data="chartDataRankingPagamento" :options="chartOptionsRankingPagamento" />
+             <div v-else class="text-slate-400 text-center pt-16">Calculando ranking...</div>
+           </div>
+        </div>
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
+           <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Quantidade de Processos por Órgão</h2>
+           <div class="flex-1 w-full">
+             <BarChart v-if="dadosProcessosPorForca.length" :data="chartDataQuantidadeProcessos" :options="chartOptionsQuantidadeProcessos" />
+             <div v-else class="text-slate-400 text-center pt-16">Carregando...</div>
+           </div>
+        </div>
       </div>
+
     </div>
   </div>
 </div>
@@ -173,7 +179,8 @@ import { useFormatters } from '../composables/useFormatters'
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
 import { Bar } from 'vue-chartjs'
 import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend)
+import ChartDataLabels from 'chartjs-plugin-datalabels';
+Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
 
 // COMPONENTE DE GRÁFICO REUTILIZÁVEL
 const BarChart = Bar
@@ -240,7 +247,7 @@ const dadosTempoMedioEtapa = ref<Array<{ name: string; media_horas: number }>>([
 const totalProcessosGrafico = computed(() => dadosProcessosPorForca.value.reduce((acc, f) => acc + f.total, 0))
 const dadosValoresPorOrgao = ref<Array<{ id: number; code: string; valor_total: number}>>([])
 const { formatarData: formatarDataSimples, formatarValor: formatarMoeda } = useFormatters()
-
+const dadosGastosPorOrgao = ref<Array<{ id: number; code: string; total_gasto: number}>>([]);
 
 const totalProjetos = ref(0);
 const totalEconomicidade = ref(0);
@@ -358,6 +365,16 @@ async function fetchValoresPorOrgao(){
   dadosValoresPorOrgao.value = data || [];
 }
 
+async function fetchGastosPorOrgao(){
+  const { data, error} = await supabase.rpc('get_gastos_por_orgao');
+  if (error) {
+    console.error('Erro ao buscar gastos por órgão', error);
+    dadosGastosPorOrgao.value = [];
+    return;
+  }
+  dadosGastosPorOrgao.value = data || [];
+}
+
 // Em AnalisesView.vue -> <script setup>
 
 async function fetchTotaisFinanceiros() {
@@ -464,38 +481,51 @@ const chartOptionsEtapa = {
 
 
 const chartDataValores = computed(() => ({
-  labels: dadosValoresPorOrgao.value.map((o) => o.code),
+  labels: dadosFinanceirosCombinados.value.map((d) => d.code),
   datasets: [
     {
-      label: 'Valor Total Destinado',
-      data: dadosValoresPorOrgao.value.map((o) => o.valor_total),
-      backgroundColor: '#34d399', // emerald-400
-      borderColor: '#10b981', // emerald-500
-      borderWidth: 1,
+      label: 'Pagamento',
+      data: dadosFinanceirosCombinados.value.map((d) => d.gasto),
+      backgroundColor: '#4ade80',
       borderRadius: 6,
     },
-  ],
+    {
+      label: 'Projetos',
+      data: dadosFinanceirosCombinados.value.map((d) => d.destinado),
+      backgroundColor: '#22d3ee',
+      borderRadius: 6,
+    }
+  ]
 }));
 
 // Opções para o gráfico de valores (note o indexAxis: 'y')
 const chartOptionsValores = {
-  indexAxis: 'y' as const, // <-- Isso torna o gráfico horizontal!
+  indexAxis: 'y' as const,
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: false },
+    legend: {
+      display: true,
+      position: 'top' as const,
+      labels: {
+        color: '#cbd5e1',
+        font: {
+          size: 14.
+        }
+      }
+    },
     tooltip: {
       backgroundColor: 'rgba(0,0,0,0.7)',
       titleColor: '#fff',
       bodyColor: '#fff',
       callbacks: {
-        label: function(context) {
-          let label = context.dataset.label || '';
+        label: ({ dataset, parsed }) => {
+          let label = dataset.label || '';
           if (label) {
             label += ': ';
           }
-          if (context.parsed.x !== null) {
-            label += formatarMoeda(context.parsed.x);
+          if (parsed.x !== null) {
+            label += formatarMoeda(parsed.x);
           }
           return label;
         }
@@ -510,19 +540,111 @@ const chartOptionsValores = {
     x: {
       ticks: {
         color: '#9ca3af',
-        // Formata o eixo X como moeda de forma abreviada
-        callback: function(value) {
-            const num = Number(value);
-            if (num >= 1000000) return 'R$' + (num / 1000000) + 'M';
-            if (num >= 1000) return 'R$' + (num / 1000) + 'K';
-            return 'R$' + num;
+
+        callback: (value) => {
+          const num = Number(value);
+          if(num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
+          if(num >= 1000) return 'R$' + (num / 1000) + 'K';
+          return formatarMoeda(num);
         }
       },
-      grid: { color: 'rgba(255,255,255,0.1)' },
+      grid: { color: 'rgba(255,255,255,0.1)'},
     },
   },
 };
 
+const chartDataRankingPagamento = computed(() => ({
+  labels: dadosRankingPagamento.value.map(d => d.code),
+  datasets: [{
+    label: 'Percentual Pago',
+    data: dadosRankingPagamento.value.map(d => d.percentual),
+    backgroundColor: '#06b6d4',
+    borderRadius: 6,
+  }]
+}));
+
+// Em AnalisesView.vue -> <script setup>
+
+// SUBSTITUA ESTE OBJETO
+const chartOptionsRankingPagamento = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+        callbacks: {
+            label: ({ dataset, parsed }) => `${dataset.label}: ${parsed.y.toFixed(2)}%`
+        }
+    },
+    datalabels: {
+        anchor: 'end' as const,
+        align: 'top' as const,
+        color: 'white',
+        font: { weight: 'bold' as const },
+        formatter: (value) => `${value.toFixed(2)}%`,
+    }
+  },
+  scales: {
+    y: {
+        suggestedMax: 100,
+        ticks: {
+            color: '#cbd5e1',
+            callback: (value) => `${Number(value)}%`
+        },
+        grid: { color: 'rgba(255,255,255,0.1)' },
+    },
+    x: {
+        ticks: {
+            color: '#cbd5e1',
+        },
+        grid: { display: false },
+    }
+  }
+};
+
+const chartDataQuantidadeProcessos = computed(() => ({
+  labels: dadosProcessosPorForca.value.map(d => d.code),
+  datasets: [{
+    label: 'Nº de Processos',
+    data: dadosProcessosPorForca.value.map(d => d.total),
+    backgroundColor: '#4f46e5',
+    borderRadius: 6,
+  }]
+}));
+
+const chartOptionsQuantidadeProcessos = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+        callbacks: {
+            label: ({ dataset, parsed }) => `${dataset.label}: ${parsed.y}`
+        }
+    },
+    datalabels: {
+        anchor: 'end' as const,
+        align: 'top' as const,
+        color: 'white',
+        font: { weight: 'bold' as const },
+        formatter: (value) => value,
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        color: '#cbd5e1',
+        stepSize: 1,
+      },
+      grid: { color: 'rgba(255,255,255,0.1)' },
+    },
+    x: {
+      ticks: {
+        color: '#cbd5e1',
+      },
+      grid: { display: false },
+    }
+  }
+};
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
@@ -672,8 +794,39 @@ onMounted(async () => {
   await fetchProcessosPorForca()
   await fetchTempoMedioPorEtapa()
   await fetchValoresPorOrgao()
+  await fetchGastosPorOrgao()
   await fetchTotaisFinanceiros()
   await fetchForcas() // popula forcasMem
+})
+
+const dadosFinanceirosCombinados = computed(() => {
+  const mapa = new Map<string, { code: string; destinado: number; gasto: number}>()
+
+  dadosValoresPorOrgao.value.forEach(orgao => {
+    mapa.set(orgao.code, {
+      code: orgao.code,
+      destinado: orgao.valor_total || 0,
+      gasto: 0,
+    })
+  })
+
+  dadosGastosPorOrgao.value.forEach(gasto =>{
+    if (mapa.has(gasto.code)) {
+      mapa.get(gasto.code)!.gasto = gasto.total_gasto || 0;
+    }
+  });
+
+  return Array.from(mapa.values()).sort((a,b) => b.destinado - a.destinado);
+});
+
+const dadosRankingPagamento = computed(() => {
+  return dadosFinanceirosCombinados.value
+    .map(orgao => ({
+      code: orgao.code,
+
+      percentual: orgao.destinado > 0 ? (orgao.gasto / orgao.destinado) * 100 : 0,
+    }))
+    .sort((a, b) => b.percentual - a.percentual);
 })
 
 // Importar funções de formatação do composable
