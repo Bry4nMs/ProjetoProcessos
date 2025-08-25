@@ -529,6 +529,8 @@ function switchToEtapasFromRegistros() {
 
 const processosFiltrados = computed(() => {
   return processos.value.filter((proc) => {
+    const isFavorito = proc.is_favorited;
+
     const nomeMatch = (proc.nome_acao || proc.area_code || '')
       .toLowerCase()
       .includes(filtroNome.value.toLowerCase())
@@ -542,7 +544,8 @@ const processosFiltrados = computed(() => {
       (proc.data_encaminhamento_aprovacao &&
         proc.data_encaminhamento_aprovacao === filtroData.value)
     const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
-    return nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
+
+    return isFavorito && nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
   })
 })
 </script>
