@@ -392,8 +392,6 @@ async function fetchGastosPorOrgao(){
   dadosGastosPorOrgao.value = data || [];
 }
 
-// Em AnalisesView.vue -> <script setup>
-
 async function fetchTotaisFinanceiros() {
   // O nome da função aqui foi corrigido para 'get_totais_financeiros'
   const { data, error } = await supabase.rpc('get_totais_financeiros');
@@ -426,6 +424,7 @@ const chartDataForca = computed(() => ({
 }))
 const chartOptionsForca = {
   responsive: true,
+  maintainAspectRatio: false, // Adicionado para consistência
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -434,32 +433,34 @@ const chartOptionsForca = {
       titleColor: '#fff',
       bodyColor: '#fff',
     },
-    title: { color: '#fff' },
   },
   scales: {
     y: {
       beginAtZero: true,
-      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } }, // slate-400
+      ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
       grid: { color: 'rgba(255,255,255,0.1)' },
     },
     x: {
-      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
       grid: { color: 'rgba(255,255,255,0.05)' },
     },
   },
   onClick: (event, elements, chart) => {
-    if (!elements.length) return
-    const idx = elements[0].index
-    const code = chart.data.labels[idx]
-    const forca = forcasMem.value.find(f => f.code === code)
+    if (!elements.length) return;
+    const idx = elements[0].index;
+    const code = chart.data.labels?.[idx] as string;
+    if (code) {
+      const forca = forcasMem.value.find(f => f.code === code);
     if (forca) {
-      setFiltroForca(forca.id)
-      router.push('/')
+        setFiltroForca(forca.id);
+        router.push('/');
+      }
     }
   },
-}
+};
 
 // Gráfico de barras horizontais de tempo médio por etapa
+
 const chartDataEtapa = computed(() => ({
   labels: dadosTempoMedioEtapa.value.map((e) => e.name),
   datasets: [
@@ -470,9 +471,11 @@ const chartDataEtapa = computed(() => ({
       borderRadius: 8,
     },
   ],
-}))
+}));
+
 const chartOptionsEtapa = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -481,21 +484,19 @@ const chartOptionsEtapa = {
       titleColor: '#fff',
       bodyColor: '#fff',
     },
-    title: { color: '#fff' },
   },
   scales: {
     y: {
       beginAtZero: true,
-      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
       grid: { color: 'rgba(255,255,255,0.1)' },
     },
     x: {
-      ticks: { color: '#9ca3af', font: { weight: 'bold' as const } },
+      ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
       grid: { color: 'rgba(255,255,255,0.05)' },
     },
   },
-}
-
+};
 
 const chartDataValores = computed(() => ({
   labels: dadosFinanceirosCombinados.value.map((d) => d.code),
@@ -515,10 +516,6 @@ const chartDataValores = computed(() => ({
   ]
 }));
 
-// Opções para o gráfico de valores (note o indexAxis: 'y')
-// Em AnalisesView.vue -> <script setup>
-
-// SUBSTITUA SEU OBJETO chartOptionsValores INTEIRO POR ESTE:
 const chartOptionsValores = {
   indexAxis: 'y' as const,
   responsive: true,
@@ -528,7 +525,7 @@ const chartOptionsValores = {
       display: true,
       position: 'top' as const,
       labels: {
-        color: '#cbd5e1', // slate-300
+        color: '#cbd5e1',
         font: {
           size: 14,
         }
@@ -551,37 +548,36 @@ const chartOptionsValores = {
         }
       }
     },
-    // ✨ CONFIGURAÇÃO ADICIONADA PARA OS RÓTULOS NAS BARRAS ✨
     datalabels: {
-      color: '#ffffff', // Cor branca para os números
-      anchor: 'end' as const, // Alinha o texto no final da barra
-      align: 'end' as const,  // Alinha o texto no final da barra
-      offset: -8, // Um pequeno deslocamento para não ficar colado na borda
+      color: '#ffffff',
+      anchor: 'end' as const,
+      align: 'end' as const,
+      offset: -8,
       font: {
         weight: 'bold' as const,
         size: 12,
       },
-      // Formata o número como moeda, mas só mostra se for maior que zero
       formatter: (value) => {
         if (value > 0) {
           return formatarMoeda(value);
         }
-        return ''; // Não mostra o rótulo se o valor for 0
+        return '';
       }
     }
   },
   scales: {
     y: {
       ticks: {
-        color: '#cbd5e1', // ✨ COR CORRIGIDA (slate-300)
+        color: '#cbd5e1',
         font: { weight: 'bold' as const }
       },
       grid: { color: 'rgba(255,255,255,0.05)' },
     },
     x: {
       ticks: {
-        color: '#cbd5e1', // ✨ COR CORRIGIDA (slate-300)
-        callback: (value) => {
+        color: '#cbd5e1',
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        callback: (value, index, ticks) => {
             const num = Number(value);
             if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return 'R$' + (num / 1000) + 'K';
@@ -603,11 +599,9 @@ const chartDataRankingPagamento = computed(() => ({
   }]
 }));
 
-// Em AnalisesView.vue -> <script setup>
-
-// SUBSTITUA ESTE OBJETO
 const chartOptionsRankingPagamento = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -628,7 +622,8 @@ const chartOptionsRankingPagamento = {
         suggestedMax: 100,
         ticks: {
             color: '#cbd5e1',
-            callback: (value) => `${Number(value)}%`
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            callback: (value, index, ticks) => `${Number(value)}%`
         },
         grid: { color: 'rgba(255,255,255,0.1)' },
     },
@@ -653,6 +648,7 @@ const chartDataQuantidadeProcessos = computed(() => ({
 
 const chartOptionsQuantidadeProcessos = {
   responsive: true,
+  maintainAspectRatio: false,
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -685,6 +681,7 @@ const chartOptionsQuantidadeProcessos = {
     }
   }
 };
+
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
@@ -801,43 +798,48 @@ if (typeof window !== 'undefined') {
 
 // Carrega a lista de processos e os gráficos ao montar o componente
 onMounted(async () => {
-  let usuario = user.value
+  let usuario = user.value;
   if (!usuario) {
-    usuario = await fetchUser()
+    usuario = await fetchUser();
   }
   if (!usuario) {
-    processos.value = []
-    return
+    processos.value = [];
+    return;
   }
-  // Carrega processos para o dropdown
+
+  // Carrega processos para o dropdown do histórico
   const { data } = await supabase
     .from('processes')
     .select('id, nome_acao, thematic_areas(id, code)')
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
   if (data) {
     processos.value = (data as Processo[]).map((proc) => {
-      let area_code = ''
+      let area_code = '';
       if (Array.isArray(proc.thematic_areas) && proc.thematic_areas.length > 0) {
-        area_code = proc.thematic_areas[0].code
+        area_code = proc.thematic_areas[0].code;
       } else if (proc.thematic_areas && typeof proc.thematic_areas === 'object') {
-        area_code = (proc.thematic_areas as { code: string }).code
+        area_code = (proc.thematic_areas as { code: string }).code;
       }
       return {
         id: proc.id,
         nome_acao: proc.nome_acao,
         area_code,
-      }
-    })
+      };
+    });
   }
-  // Carrega os dados dos gráficos
-  await fetchProcessosPorForca()
-  await fetchTempoMedioPorEtapa()
-  await fetchValoresPorOrgao()
-  await fetchGastosPorOrgao()
-  await fetchTotaisFinanceiros()
-  await fetchForcas() // popula forcasMem
-})
+  
+  // Carrega todos os dados para os gráficos em paralelo para mais performance
+  await Promise.all([
+    fetchProcessosPorForca(),
+    fetchTempoMedioPorEtapa(),
+    fetchValoresPorOrgao(),
+    fetchGastosPorOrgao(),
+    fetchTotaisFinanceiros(),
+    fetchForcas()
+  ]);
+});
 
 const dadosFinanceirosCombinados = computed(() => {
   const mapa = new Map<string, { code: string; destinado: number; gasto: number}>()
