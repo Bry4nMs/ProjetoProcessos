@@ -35,6 +35,14 @@
       </svg>
       <span class="font-medium">Acompanhamento Especial</span>
     </router-link>
+    <router-link
+      to="/controle-acoes"
+      class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 mb-2"
+      :class="$route.path === '/controle-acoes' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-lg' : 'text-slate-300 hover:bg-slate-700/50 hover:text-teal-400'"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+      <span class="font-medium">Controle de Ações</span>
+    </router-link>
     <!-- Seção de Administração -->
     <div v-if="isAdmin" class="mb-2">
       <div class="text-slate-400 text-xs uppercase font-semibold mb-2 px-4">Administração</div>

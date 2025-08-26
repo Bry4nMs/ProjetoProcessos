@@ -7,6 +7,7 @@ import LoginView from '../views/LoginView.vue'
 import CadastroProcessoView from '../views/CadastroProcessoView.vue'
 import AnalisesView from '../views/AnalisesView.vue'
 import MinhaContaView from '../views/MinhaContaView.vue'
+import ControleDeAcoesView from '../views/ControleDeAcoesView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +40,11 @@ const router = createRouter({
       path: '/minha-conta',
       name: 'minha-conta',
       component: MinhaContaView,
+    },
+    {
+      path: '/controle-acoes',
+      name: 'controle-acoes',
+      component: ControleDeAcoesView,
     },
     {
       path: '/acompanhamento-especial',
