@@ -8,6 +8,30 @@
             Painel de Análises
           </h1>
 
+
+          <div class="w-full max-w-7xl mb-12">
+  <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+    <h1 class="text-3xl ...">
+
+    </h1>
+
+        <div class="flex items-center gap-4">
+           <div class="flex flex-col">
+              <label class="text-xs text-slate-400 mb-1 text-center">Filtrar por Ano</label>
+                <select
+                  v-model="filtroAno"
+                  class="px-3 py-2 rounded-lg bg-slate-800/80 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none text-sm"
+                  style="background-image: url('...');">
+                  <option value="">Todos os Anos</option>
+                  <option v-for="ano in anos" :key="ano" :value="ano">{{ ano }}</option>
+                 </select>
+               </div>
+
+               <div class="flex bg-slate-800/80 rounded-lg p-1.5 ...">
+             </div>
+            </div>
+           </div>
+          </div>
           <div class="flex bg-slate-800/80 rounded-lg p-1.5 backdrop-blur-sm border border-white/10">
             <button
                 @click="painelAtivo = 'processos'"
@@ -250,6 +274,15 @@ const processos = ref<Processo[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
 const painelAtivo = ref<'processos' | 'financeiro'>('processos')
+const filtroAno = ref<number | string>('')
+const anos = computed(() => {
+  const anoAtual = new Date().getFullYear();
+  const lista = []
+  for (let ano = 2019; ano <= anoAtual; ano++) {
+    lista.push(ano);
+  }
+  return lista.reverse();
+});
 
 // NOVO: Estado para controlar a aba ativa
 const abaAtiva = ref<'etapas' | 'alteracoes'>('etapas')
@@ -306,107 +339,115 @@ async function fetchEtapas() {
 
 // Corrigida: conta processos por code da força e mostra todas as forças
 async function fetchProcessosPorForca() {
-  const forcas = await fetchForcas()
-  const { data, error } = await supabase
-    .from('processes')
-    .select('responsible_force_id')
-    .not('responsible_force_id', 'is', null)
-    .is('deleted_at', null)
-  // Conta por id
-  const contagem: Record<number, number> = {}
+  // ✨ CORREÇÃO: Converte o ano para número antes de enviar
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+
+  const forcas = forcasMem.value.length ? forcasMem.value : await fetchForcas();
+  const { data } = await supabase.rpc('get_processos_por_forca', { p_ano });
+
+  const contagem: Record<number, number> = {};
   if (data) {
     for (const proc of data) {
-      const id = proc.responsible_force_id
-      if (!contagem[id]) contagem[id] = 0
-      contagem[id]++
+      const id = proc.responsible_force_id;
+      if (!contagem[id]) contagem[id] = 0;
+      contagem[id]++;
     }
   }
-  // Garante que todas as forças aparecem, mesmo com zero
   dadosProcessosPorForca.value = forcas.map((f) => ({
     code: f.code,
     total: contagem[f.id] || 0,
-  }))
-  // Log para depuração
-  console.log('Forças:', forcas)
-  console.log('Processos:', data, error)
-  console.log('Contagem:', contagem)
-  console.log('dadosProcessosPorForca:', dadosProcessosPorForca.value)
+  }));
 }
 
-// Corrigida: mostra todas as etapas cadastradas, mesmo com média zero
+// Em AnalisesView.vue -> <script setup>
+
 async function fetchTempoMedioPorEtapa() {
-  const etapas = await fetchEtapas()
-  const { data } = await supabase
-    .from('process_steps')
-    .select('step_template_id, started_at, ended_at, accumulated_duration_seconds, processes(deleted_at)')
-    .not('ended_at', 'is', null)
-    .not('started_at', 'is', null)
-  // Não filtra por processos excluídos, considera todas as etapas
-  const etapasAtivas = data;
-  // LOGS DE DEPURAÇÃO
-  console.log('Etapas cadastradas:', etapas);
-  console.log('Etapas ativas para o gráfico:', etapasAtivas);
-  // Agrupa por etapa e calcula média
-  const grupos: Record<number, { total: number; soma: number }> = {}
-  if (etapasAtivas) {
-    for (const step of etapasAtivas) {
-      const diffHoras = step.accumulated_duration_seconds !== undefined && step.accumulated_duration_seconds !== null
-        ? Math.abs(step.accumulated_duration_seconds) / (60 * 60)
-        : Math.abs(new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / (1000 * 60 * 60)
-      const id = step.step_template_id
-      if (!grupos[id]) grupos[id] = { total: 0, soma: 0 }
-      grupos[id].total++
-      grupos[id].soma += diffHoras
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+
+  const etapas = await fetchEtapas(); // Busca os nomes de todas as etapas possíveis
+  const { data, error } = await supabase.rpc('get_dados_tempo_etapa', { p_ano });
+
+  if (error) {
+    console.error('Erro ao buscar dados de tempo por etapa:', error);
+    dadosTempoMedioEtapa.value = []; // Zera os dados em caso de erro
+    return;
+  }
+
+  const grupos: Record<number, { total: number; soma: number }> = {};
+  if (data) {
+    for (const step of data) {
+      // Calcula a duração em horas para cada etapa retornada
+      const diffHoras = step.accumulated_duration_seconds != null
+        ? Math.abs(step.accumulated_duration_seconds) / 3600
+        : Math.abs(new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / 3600000;
+
+      const id = step.step_template_id;
+      if (!grupos[id]) grupos[id] = { total: 0, soma: 0 };
+      grupos[id].total++;
+      grupos[id].soma += diffHoras;
     }
   }
-  console.log('Grupos calculados:', grupos);
-  // Garante que todas as etapas aparecem, mesmo com média zero
+
+  // Mapeia os resultados para garantir que todas as etapas apareçam no gráfico
   dadosTempoMedioEtapa.value = etapas.map((e) => ({
     name: e.name,
     media_horas: grupos[e.id]?.total
       ? Number((grupos[e.id].soma / grupos[e.id].total).toFixed(2))
       : 0,
-  }))
-  console.log('Dados finais do gráfico:', dadosTempoMedioEtapa.value);
+  }));
 }
 
 
-async function fetchValoresPorOrgao(){
-  const { data, error} = await supabase.rpc('get_valores_por_orgao');
+async function fetchValoresPorOrgao() {
+  // ✨ CORREÇÃO: Converte o ano para número antes de enviar
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
-  if(error){
-    console.error('Erro ao buscar valores por órgão:', error);
-    dadosValoresPorOrgao.value = [];
-    return;
-  }
+  const { data, error } = await supabase.rpc('get_valores_por_orgao', { p_ano });
+  if (error) { console.error('Erro ao buscar valores por órgão:', error); dadosValoresPorOrgao.value = []; return; }
   dadosValoresPorOrgao.value = data || [];
 }
 
-async function fetchGastosPorOrgao(){
-  const { data, error} = await supabase.rpc('get_gastos_por_orgao');
-  if (error) {
-    console.error('Erro ao buscar gastos por órgão', error);
-    dadosGastosPorOrgao.value = [];
-    return;
-  }
+async function fetchGastosPorOrgao() {
+
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+
+  const { data, error} = await supabase.rpc('get_gastos_por_orgao', { p_ano });
+  if (error) { console.error('Erro ao buscar gastos por órgão:', error); dadosGastosPorOrgao.value = []; return; }
   dadosGastosPorOrgao.value = data || [];
 }
 
 async function fetchTotaisFinanceiros() {
-  // O nome da função aqui foi corrigido para 'get_totais_financeiros'
-  const { data, error } = await supabase.rpc('get_totais_financeiros');
 
-  if (error) {
-    // Este console.error é o que você está vendo no navegador
-    console.error('Erro ao buscar Totais Financeiros: ', error);
-    return;
-  }
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
+  const { data, error } = await supabase.rpc('get_totais_financeiros', { p_ano });
+  if (error) { console.error('Erro ao buscar Totais Financeiros:', error); return; }
   if (data && data.length > 0) {
     totalProjetos.value = data[0].total_projetos || 0;
     totalEconomicidade.value = data[0].total_economicidade || 0;
   }
 }
+
+async function carregarDadosDosGraficos() {
+  loading.value = true;
+  await Promise.all([
+    fetchProcessosPorForca(),
+    fetchTempoMedioPorEtapa(),
+    fetchValoresPorOrgao(),
+    fetchGastosPorOrgao(),
+    fetchTotaisFinanceiros(),
+  ]);
+  loading.value = false;
+}
+
+watch(filtroAno, () => {
+  carregarDadosDosGraficos();
+})
 
 // --- CHART DATA/OPTIONS PARA OS GRÁFICOS ---
 
@@ -829,16 +870,10 @@ onMounted(async () => {
       };
     });
   }
-  
+
   // Carrega todos os dados para os gráficos em paralelo para mais performance
-  await Promise.all([
-    fetchProcessosPorForca(),
-    fetchTempoMedioPorEtapa(),
-    fetchValoresPorOrgao(),
-    fetchGastosPorOrgao(),
-    fetchTotaisFinanceiros(),
-    fetchForcas()
-  ]);
+  await fetchForcas();
+  await carregarDadosDosGraficos();
 });
 
 const dadosFinanceirosCombinados = computed(() => {
