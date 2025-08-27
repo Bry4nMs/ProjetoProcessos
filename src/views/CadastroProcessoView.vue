@@ -49,9 +49,11 @@ const feedback = ref('')
 const loading = ref(false)
 const arquivos = ref<{ file: File, description: string }[]>([])
 const areaTematicaId = ref('')
-const forcaResponsavelId = ref('')
+const forcaResponsavelId = ref('');
+const actionId = ref('');
 const areasTematicas = ref<{ id: number; code: string; name: string }[]>([])
-const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
+const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([]);
+const acoesDisponiveis = ref<{ id: string; name: string; action_code: string }[]>([]);
 const dropZoneRef = ref<HTMLDivElement | null>(null)
 const fileUpload = ref<HTMLInputElement | null>(null)
 const valorTotal = computed(() => {
@@ -98,11 +100,32 @@ watch(anoFaf, () => {
   areaTematicaId.value = '';
 })
 
+async function carregarAcoes() {
+  try {
+    const { data, error } = await supabase
+      .from('actions')
+      .select('id, name, action_code')
+      .order('action_code');
+
+    if (error) {
+      console.error('Erro ao carregar ações:', error);
+      return;
+    }
+
+    if (data) {
+      acoesDisponiveis.value = data;
+    }
+  } catch (error) {
+    console.error('Erro ao carregar ações:', error);
+  }
+}
+
 onMounted(async () => {
   const { data: areas } = await buscarAreasTematicas()
   if (areas) areasTematicas.value = areas
   const { data: forcas } = await buscarForcasResponsaveis()
   if (forcas) forcasResponsaveis.value = forcas
+  await carregarAcoes()
 })
 
 async function registrarProcesso() {
@@ -138,6 +161,7 @@ async function registrarProcesso() {
         valor_economicidade: valorEconomicidade.value ? Number(valorEconomicidade.value) : null,
         valor_total_destinado: valorTotal.value,
         descricao_geral: descricaoGeral.value,
+        action_id: actionId.value || null,
       },
     ])
     .select('id')
@@ -259,6 +283,7 @@ function limparFormulario() {
   descricaoGeral.value = ''
   areaTematicaId.value = ''
   forcaResponsavelId.value = ''
+  actionId.value = ''
 }
 
 function handleFileSelected(event: Event) {
@@ -364,6 +389,19 @@ function handleFileSelected(event: Event) {
               class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
+        </div>
+        <div>
+          <label class="block text-slate-200 mb-1 font-semibold">Vincular à Ação (Opcional)</label>
+          <select
+            v-model="actionId"
+            class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+            style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
+          >
+            <option value="">Nenhuma ação selecionada</option>
+            <option v-for="acao in acoesDisponiveis" :key="acao.id" :value="acao.id">
+              {{ acao.action_code }} - {{ acao.name }}
+            </option>
+          </select>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
