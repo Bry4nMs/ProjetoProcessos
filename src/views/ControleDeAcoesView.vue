@@ -98,6 +98,14 @@
                   <div class="flex gap-2">
                     <button @click="visualizarAcao(acao)" class="px-3 py-1 bg-blue-600/20 text-blue-300 rounded text-xs font-semibold hover:bg-blue-600/30 transition">Ver</button>
                     <button @click="editarAcao(acao)" class="px-3 py-1 bg-yellow-600/20 text-yellow-300 rounded text-xs font-semibold hover:bg-yellow-600/30 transition">Editar</button>
+
+                    <button
+      @click="abrirModalConfirmacaoExclusao(acao)"
+      class="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-red-500/10 transition"
+      title="Excluir Ação"
+    >
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+    </button>
                   </div>
                 </td>
               </tr>
@@ -154,6 +162,7 @@
     <ProcessoEtapasModal v-if="processoSelecionado" :show="showEtapasModal" :processo="processoSelecionado" @close="fecharModalProcesso" @switch-to-detalhes="handleSwitchToDetalhes" @switch-to-registros="handleSwitchToRegistros" @atualizar-processo="atualizarProcesso" />
     <ProcessoRegistrosModal v-if="processoSelecionado" :show="showRegistrosModal" :processo="processoSelecionado" @close="fecharModalProcesso" @switch-to-detalhes="handleSwitchToDetalhes" @switch-to-etapas="handleSwitchToEtapas" @atualizar-processo="atualizarProcesso" />
     <ConfirmationModal v-if="showConfirmationModal" :show="showConfirmationModal" title="Confirmar Ação" message="Tem certeza que deseja retirar este processo da Ação?" @cancel="fecharModalConfirmacao" @confirm="handleDesvincularConfirmado" />
+    <ConfirmationModal v-if="showDeleteActionModal" :show="showDeleteActionModal" title="Confirmar Exclusão" message="Tem certeza que deseja excluir esta ação?" @cancel="fecharModalConfirmacaoExclusao" @confirm="handleExcluirAcaoConfirmado" />
   </Layout>
 </template>
 
@@ -262,6 +271,8 @@ const registrosGastos = ref<RegistroGasto[]>([]);
 const loadingRegistros = ref(false);
 const showConfirmationModal = ref(false);
 const processoParaDesvincular = ref<ProcessoAcao | null>(null);
+const showDeleteActionModal = ref(false);
+const acaoParaExcluir = ref<Action | null>(null);
 
 
 // Funções de carregamento
@@ -412,6 +423,34 @@ async function handleDesvincularConfirmado() {
   }
   fecharModalConfirmacao();
 }
+
+function abrirModalConfirmacaoExclusao(acao: Action) {
+  acaoParaExcluir.value = acao;
+  showDeleteActionModal.value = true;
+}
+
+function fecharModalConfirmacaoExclusao() {
+  showDeleteActionModal.value = false;
+  acaoParaExcluir.value = null;
+}
+
+async function handleExcluirAcaoConfirmado() {
+  if (!acaoParaExcluir.value) return;
+
+  const { error } = await supabase.rpc('delete_action_and_unlink_processes', {
+    p_action_id: acaoParaExcluir.value.id
+  });
+
+  if (error) {
+    console.error("Erro ao excluir ação:", error);
+    alert("Falha ao excluir a ação.");
+  } else {
+    // Sucesso! Recarrega a lista de ações.
+    carregarAcoes();
+    fecharModalConfirmacaoExclusao();
+  }
+}
+
 
 // Lifecycle
 onMounted(async () => {
