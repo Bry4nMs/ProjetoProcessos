@@ -120,8 +120,7 @@
     <ActionFormModal v-if="showActionModal" :show="showActionModal" :acao="acaoParaEdicao" :forcas-responsaveis="forcasResponsaveis" :areas-tematicas="areasTematicas" @close="fecharModalAcao" @acao-salva="handleAcaoSalva" />
     <AcaoDetalhesModal
       v-if="acaoSelecionada"
-      :show="showAcaoDetalhesModal"
-      :acao="acaoSelecionada"
+      :show="showAcaoDetalhesModal" :acao="acaoSelecionada"
       @close="fecharDetalhesAcao"
       @acao-atualizada="carregarAcoes"
     />
@@ -220,6 +219,7 @@ function handleAcaoSalva() {
   fecharModalAcao();
   carregarAcoes();
 }
+
 
 function visualizarAcao(acao: Action) {
   acaoSelecionada.value = acao;

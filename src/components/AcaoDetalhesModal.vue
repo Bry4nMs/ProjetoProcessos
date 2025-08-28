@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" @click="fecharModal">
+  <div v-if="show" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
     <div class="bg-slate-900 border border-slate-700 rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[90vh] flex flex-col overflow-hidden" @click.stop>
       <!-- Header -->
       <div class="flex items-center justify-between p-6 border-b border-slate-700 flex-shrink-0">
@@ -90,7 +90,7 @@
                     Ver
                   </button>
                   <button
-                    @click="desvincularProcesso(processo)"
+                    @click="abrirModalConfirmacaoDesnviular(processo)"
                     class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition"
                   >
                     Desvincular
@@ -145,7 +145,7 @@
                 <div class="flex-1">
                   <h4 class="font-semibold text-white mb-1">{{ registro.description || 'Sem descrição' }}</h4>
                   <div class="flex items-center gap-4 text-xs text-slate-400">
-                    <span>Processo: {{ registro.process_name }}</span>
+                    <span>Processo: {{ registro.process_sei }}</span>
                     <span v-if="registro.request_date">Solicitado em: {{ formatarData(registro.request_date) }}</span>
                     <span v-if="registro.acquisition_date">Adquirido em: {{ formatarData(registro.acquisition_date) }}</span>
                   </div>
@@ -179,6 +179,47 @@
       @close="fecharLinkProcessModal"
       @process-linked="handleProcessLinked"
     />
+
+    <ConfirmationModal
+    :show="showConfirmationModal"
+    title="Confirmar Desnvinculação"
+    message="Tem certeza que deseja desnvicular este processo da ação?"
+    @cancel="fecharConfirmationModal"
+    @confirm="handleDesvincularConfirmado"
+    />
+
+    <ProcessoDetalhesModal
+      v-if="processoSelecionado"
+      :show="showProcessoDetalhesModal"
+      :processo="processoSelecionado"
+       @close="fecharModalDetalhesProcesso"
+       @atualizar-proesso="atualizarProcesso"
+       @switch-to-etapas="handleSwitchToEtapas"
+       @switch-to-registros="handleSwitchToRegistros"
+    />
+
+    <ProcessoEtapasModal
+      v-if="processoSelecionado"
+      :show="showProcessoEtapasModal"
+      :processo="processoSelecionado"
+      @close="fecharModalDetalhesProcesso"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-detalhes="handleSwitchToDetalhes"
+      @switch-to-registros="handleSwitchToRegistros"
+    />
+
+    <ProcessoRegistrosModal
+      v-if="processoSelecionado"
+      :show="showProcessoRegistrosModal"
+      :processo="processoSelecionado"
+      @close="fecharModalDetalhesProcesso"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-detalhes="handleSwitchToDetalhes"
+      @switch-to-etapas="handleSwitchToEtapas"
+    />
+
+
+
   </div>
 </template>
 
@@ -187,6 +228,10 @@ import { ref, computed, watch } from 'vue';
 import { supabase } from '../services/supabase';
 import { useFormatters } from '../composables/useFormatters';
 import LinkProcessModal from './LinkProcessModal.vue';
+import ConfirmationModal from './ConfirmationModal.vue';
+import ProcessoDetalhesModal from './ProcessoDetalhesModal.vue';
+import ProcessoEtapasModal from './ProcessoEtapasModal.vue';
+import ProcessoRegistrosModal from './ProcessoRegistrosModal.vue';
 
 // Interfaces
 interface Action {
@@ -216,6 +261,7 @@ interface RegistroGasto {
   acquisition_date?: string;
   file_url?: string;
   process_name: string;
+  process_sei?: string;
 }
 
 // Props e Emits
@@ -240,6 +286,12 @@ const registrosGastos = ref<RegistroGasto[]>([]);
 const loadingProcessos = ref(false);
 const loadingRegistros = ref(false);
 const showLinkProcessModal = ref(false);
+const showConfirmationModal = ref(false);
+const processoParaDesvincular = ref<ProcessoVinculado | null>(null);
+const processoSelecionado = ref<ProcessoVinculado | null>(null);
+const showProcessoDetalhesModal = ref(false);
+const showProcessoEtapasModal = ref(false);
+const showProcessoRegistrosModal = ref(false);
 
 // Computed
 const totalGastos = computed(() => {
@@ -275,28 +327,67 @@ async function handleProcessLinked() {
   }, 1500);
 }
 
-function visualizarProcesso(processo: ProcessoVinculado) {
-  emit('visualizar-processo', processo);
+
+function abrirModalConfirmacaoDesnviular(processo: ProcessoVinculado) {
+  processoParaDesvincular.value = processo;
+  showConfirmationModal.value = true;
 }
 
-async function desvincularProcesso(processo: ProcessoVinculado) {
-  if (!confirm(`Tem certeza que deseja desvincular o processo "${processo.name}" desta ação?`)) {
-    return;
-  }
+function fecharConfirmationModal() {
+  showConfirmationModal.value = false;
+  processoParaDesvincular.value = null;
+}
+function fecharModalDetalhesProcesso() {
+  showProcessoDetalhesModal.value = false;
+  // Não limpe o processoSelecionado aqui para evitar piscar o conteúdo
+  // O v-if no template já garante que o modal será recriado corretamente
+}
 
+function visualizarProcesso(processo: ProcessoVinculado) {
+  processoSelecionado.value = processo;
+  showProcessoDetalhesModal.value = true;
+  showProcessoEtapasModal.value = false;
+  showProcessoRegistrosModal.value = false;
+}
+
+function handleSwitchToEtapas() {
+  showProcessoDetalhesModal.value = false;
+  showProcessoRegistrosModal.value = false;
+  showProcessoEtapasModal.value = true;
+}
+
+function handleSwitchToDetalhes() {
+  showProcessoDetalhesModal.value = true;
+  showProcessoEtapasModal.value = false;
+  showProcessoRegistrosModal.value = false;
+}
+
+function handleSwitchToRegistros() {
+  showProcessoDetalhesModal.value = false;
+  showProcessoEtapasModal.value = false;
+  showProcessoRegistrosModal.value = true;
+}
+
+async function atualizarProcesso() {
+  await buscarDadosDaAcao();
+}
+
+async function handleDesvincularConfirmado() {
+  if (!processoParaDesvincular.value) return;
   try {
     const { error } = await supabase
       .from('processes')
       .update({ action_id: null })
-      .eq('id', processo.id);
+      .eq('id', processoParaDesvincular.value.id);
 
     if (error) throw error;
-
     await buscarDadosDaAcao();
     emit('acao-atualizada');
   } catch (error) {
     console.error('Erro ao desvincular processo:', error);
     alert('Erro ao desvincular processo. Tente novamente.');
+  } finally {
+    fecharConfirmationModal(); // CORRIGIDO AQUI
   }
 }
 
@@ -326,9 +417,15 @@ async function buscarDadosDaAcao() {
 }
 
 // Watchers
-watch(() => props.show, (newVal) => {
-  if (newVal && props.acao?.id) {
-    buscarDadosDaAcao();
-  }
-});
+watch(
+  () => props.acao,
+  (newAcao) => {
+    if (newAcao && newAcao.id) {
+      abaAtiva.value = 'processos';
+      buscarDadosDaAcao();
+    }
+  },
+  { immediate: true }
+)
+
 </script>
