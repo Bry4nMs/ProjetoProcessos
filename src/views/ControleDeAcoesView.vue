@@ -177,7 +177,7 @@ const showDeleteActionModal = ref(false);
 const acaoParaExcluir = ref<Action | null>(null);
 
 const anoAtual = new Date().getFullYear();
-const anos = Array.from({ length: anoAtual - 2020 + 1 }, (_, i) => 2020 + i).reverse();
+const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i).reverse();
 
 // Funções
 async function carregarAcoes() {
