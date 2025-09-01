@@ -189,17 +189,17 @@
     />
 
     <ProcessoDetalhesModal
-      v-if="processoSelecionado"
+      v-show="processoSelecionado"
       :show="showProcessoDetalhesModal"
       :processo="processoSelecionado"
-       @close="fecharModalDetalhesProcesso"
-       @atualizar-proesso="atualizarProcesso"
-       @switch-to-etapas="handleSwitchToEtapas"
-       @switch-to-registros="handleSwitchToRegistros"
+      @close="fecharModalDetalhesProcesso"
+      @atualizar-proesso="atualizarProcesso"
+      @switch-to-etapas="handleSwitchToEtapas"
+      @switch-to-registros="handleSwitchToRegistros"
     />
 
     <ProcessoEtapasModal
-      v-if="processoSelecionado"
+      v-show="processoSelecionado"
       :show="showProcessoEtapasModal"
       :processo="processoSelecionado"
       @close="fecharModalDetalhesProcesso"
@@ -209,7 +209,7 @@
     />
 
     <ProcessoRegistrosModal
-      v-if="processoSelecionado"
+      v-show="processoSelecionado"
       :show="showProcessoRegistrosModal"
       :processo="processoSelecionado"
       @close="fecharModalDetalhesProcesso"
@@ -345,11 +345,53 @@ function fecharModalDetalhesProcesso() {
   showProcessoRegistrosModal.value = false;
 }
 
-function visualizarProcesso(processo: ProcessoVinculado) {
-  processoSelecionado.value = processo;
+// DENTRO DE AcaoDetalhesModal.vue
+
+async function visualizarProcesso(processo: ProcessoVinculado) {
+  // Mostra um feedback de carregamento
+  // O objeto temporário agora corresponde à interface ProcessoVinculado
+  processoSelecionado.value = {
+    id: processo.id,
+    name: 'Carregando...',
+    status: 'Carregando...',
+    created_at: new Date().toISOString(),
+    valor_total_destinado: 0,
+    codigo_transferegov: '...'
+  }; 
   showProcessoDetalhesModal.value = true;
-  showProcessoEtapasModal.value = false;
-  showProcessoRegistrosModal.value = false;
+  
+  try {
+    // Busca os dados COMPLETOS do processo usando o ID
+    const { data: processoCompleto, error } = await supabase
+      .from('processes')
+      .select(`
+        *,
+        thematic_areas ( code ),
+        responsible_forces ( code )
+      `)
+      .eq('id', processo.id)
+      .single();
+
+    if (error) throw error;
+    if (!processoCompleto) throw new Error("Processo não encontrado.");
+
+    // Atualiza a variável com os dados completos
+    processoSelecionado.value = {
+        ...processoCompleto,
+        area_code: processoCompleto.thematic_areas?.code,
+        forca_code: processoCompleto.responsible_forces?.code,
+    };
+    
+    // Garante que a aba de detalhes seja a ativa
+    showProcessoDetalhesModal.value = true;
+    showProcessoEtapasModal.value = false;
+    showProcessoRegistrosModal.value = false;
+
+  } catch (err) {
+    console.error("Erro ao buscar detalhes do processo:", err);
+    alert("Não foi possível carregar os detalhes do processo.");
+    fecharModalDetalhesProcesso(); 
+  }
 }
 
 function handleSwitchToEtapas() {

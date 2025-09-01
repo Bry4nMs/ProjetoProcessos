@@ -24,14 +24,18 @@
   </button>
 </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-white/5 p-4 rounded-lg">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white/5 p-4 rounded-lg">
         <div class="text-center">
           <p class="text-sm text-slate-300">Valor Total Destinado</p>
-          <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(processo.valor_total_destinado || 0) }}</p>
+          <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(processo.valor_total_destinado || 0) }}</p>
         </div>
         <div class="text-center">
           <p class="text-sm text-slate-300">Valor Total Utilizado</p>
-          <p class="text-2xl font-bold text-cyan-400">{{ formatarMoeda(totalUtilizado) }}</p>
+          <p class="text-2xl font-bold text-red-400">{{ formatarMoeda(totalUtilizado) }}</p>
+        </div>
+        <div class="text-center">
+          <p class="text-semibold text-slate-300">Saldo Restante</p>
+          <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoRestante) }}</p>
         </div>
       </div>
 
@@ -171,6 +175,11 @@ const totalUtilizado = computed(() => {
   return records.value.reduce((sum, record) => sum + (record.amount_used || 0), 0);
 });
 
+const saldoRestante = computed(() =>{
+  const destinado = props.processo.valor_total_destinado || 0;
+  const utilizado = totalUtilizado.value;
+  return destinado - utilizado;
+});
 
 // Funções
 

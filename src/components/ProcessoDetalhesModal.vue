@@ -397,6 +397,13 @@ const dadosRelatorio = ref(null)
 // Importar funções de formatação do composable
 const { formatarValor, formatarData, formatarTamanhoArquivo } = useFormatters()
 
+
+
+watch(() => props.show, (newValue, oldValue) => {
+  console.log(`[FILHO] Propriedade 'show' mudou de '${oldValue}' para '${newValue}'`);
+});
+
+
 // Funções de documentos
 async function carregarDocumentos() {
   carregandoDocumentos.value = true
