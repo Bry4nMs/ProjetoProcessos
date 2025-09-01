@@ -332,6 +332,18 @@ const props = defineProps({
   }
 })
 
+// Interface para o objeto de dados editáveis
+interface EditableData {
+  valor_inicial_padrao: number | string;
+  qtd_itens: number | string;
+  descricao_itens: string;
+  destinacao_itens: string;
+  valor_rendimentos: number | string;
+  valor_economicidade: number | string;
+  valor_total_destinado: number | string;
+  descricao_geral: string;
+}
+
 const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas', 'switch-to-registros'])
 
 // Estado do modal
@@ -344,7 +356,7 @@ const erroDocumentos = ref('')
 const isEditing = ref(false)
 const editLoading = ref(false)
 const editError = ref('')
-const editableData = reactive({
+const editableData = reactive<EditableData>({
   valor_inicial_padrao: 0,
   qtd_itens: '',
   descricao_itens: '',
@@ -660,34 +672,38 @@ async function salvarAlteracoes() {
   editError.value = ''
 
   try {
+    // 1. Criamos um objeto para "limpar" os dados antes de enviar
+    const dadosParaAtualizar = {
+      // Campos de texto podem ser mantidos como estão
+      descricao_itens: editableData.descricao_itens,
+      destinacao_itens: editableData.destinacao_itens,
+      descricao_geral: editableData.descricao_geral,
+
+      // --- CORREÇÃO APLICADA AQUI ---
+      // Para cada campo numérico, verificamos se está vazio. Se estiver, enviamos null.
+      // Caso contrário, garantimos que seja um número.
+      // ... dentro de dadosParaAtualizar
+      valor_inicial_padrao: String(editableData.valor_inicial_padrao) === '' ? null : Number(editableData.valor_inicial_padrao),
+      qtd_itens: editableData.qtd_itens === '' ? null : Number(editableData.qtd_itens),
+      valor_rendimentos: editableData.valor_rendimentos === '' ? null : Number(editableData.valor_rendimentos),
+      valor_economicidade: editableData.valor_economicidade === '' ? null : Number(editableData.valor_economicidade),
+      valor_total_destinado: editableData.valor_total_destinado === '' ? null : Number(editableData.valor_total_destinado),
+    };
+
+    // 2. Usamos o objeto de dados "limpo" na chamada de atualização
     const { error } = await supabase
-      .from('processes') // Assumindo que a tabela de processos é 'processes'
-      .update({
-        valor_inicial_padrao: editableData.valor_inicial_padrao,
-        qtd_itens: editableData.qtd_itens,
-        descricao_itens: editableData.descricao_itens,
-        destinacao_itens: editableData.destinacao_itens,
-        valor_rendimentos: editableData.valor_rendimentos,
-        valor_economicidade: editableData.valor_economicidade,
-        valor_total_destinado: editableData.valor_total_destinado,
-        descricao_geral: editableData.descricao_geral,
-      })
+      .from('processes')
+      .update(dadosParaAtualizar) // <-- Usando o objeto corrigido
       .eq('id', props.processo.id)
 
     if (error) throw error
 
     isEditing.value = false
-    // Criar um objeto com as atualizações em vez de emitir apenas o evento
+    
+    // Atualiza o objeto do processo com os novos dados
     const processoAtualizado = {
       ...props.processo,
-      valor_inicial_padrao: editableData.valor_inicial_padrao,
-      qtd_itens: editableData.qtd_itens,
-      descricao_itens: editableData.descricao_itens,
-      destinacao_itens: editableData.destinacao_itens,
-      valor_rendimentos: editableData.valor_rendimentos,
-      valor_economicidade: editableData.valor_economicidade,
-      valor_total_destinado: editableData.valor_total_destinado,
-      descricao_geral: editableData.descricao_geral,
+      ...dadosParaAtualizar // Usa os mesmos dados limpos para atualizar o estado local
     }
     emit('atualizar-processo', processoAtualizado)
   } catch (error) {

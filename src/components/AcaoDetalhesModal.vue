@@ -338,9 +338,11 @@ function fecharConfirmationModal() {
   processoParaDesvincular.value = null;
 }
 function fecharModalDetalhesProcesso() {
+  processoSelecionado.value = null
+  
   showProcessoDetalhesModal.value = false;
-  // Não limpe o processoSelecionado aqui para evitar piscar o conteúdo
-  // O v-if no template já garante que o modal será recriado corretamente
+  showProcessoEtapasModal.value = false;
+  showProcessoRegistrosModal.value = false;
 }
 
 function visualizarProcesso(processo: ProcessoVinculado) {
