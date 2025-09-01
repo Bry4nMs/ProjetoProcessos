@@ -85,18 +85,31 @@
         </div>
 
         <!-- Natureza da Despesa -->
-        <div>
-          <label class="block text-slate-300 font-semibold mb-2">Natureza da Despesa *</label>
-          <select
-            v-model="formData.expense_nature"
+         <div>
+           <label class="block text-slate-300 font-semibold mb-2">Natureza da Despesa *</label>
+           <select
+             v-model="formData.expense_nature"
+             required
+             class="w-full px-4 py-3 rounded-lg border border-white/20 bg-slate-900/50 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent appearance-none"
+             style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.25em 1.25em;"
+           >
+             <option value="">Selecione a natureza da despesa</option>
+             <option value="Custeio">Custeio</option>
+             <option value="Investimento">Investimento</option>
+           </select>
+        </div>
+ <div v-if="!isEditing">
+           <label class="block text-slate-300 font-semibold mb-2">Sequencial do Código *</label>
+           <input
+            v-model.number="formData.sequential_number"
+            type="number"
             required
-            class="w-full px-4 py-3 rounded-lg border border-white/20 bg-slate-900/50 text-white focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent appearance-none"
-            style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 1rem center; background-size: 1.25em 1.25em;"
-          >
-            <option value="">Selecione a natureza da despesa</option>
-            <option value="Custeio">Custeio</option>
-            <option value="Investimento">Investimento</option>
-          </select>
+            placeholder="Ex: 1"
+            min="0"
+            max="999"
+            class="w-full px-4 py-3 rounded-lg border border-white/20 bg-slate-900/50 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+          />
+          <p class="text-xs text-slate-400 mt-1">Os 3 últimos dígitos do código da ação (será formatado como 001, 002, etc.).</p>
         </div>
 
         <!-- Código da Ação (somente leitura se editando) -->
@@ -164,18 +177,14 @@ import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 
 // Interfaces
-// Em ActionFormModal.vue
-
 interface Action {
   id: string;
   name: string;
   action_code: string;
   year: number;
   expense_nature: string;
-  // IDs para formulários e relacionamentos
   thematic_area_id: number;
   responsible_force_id: number;
-  // Campos padrão
   created_at: string;
   updated_at: string;
   user_id: string;
@@ -187,6 +196,7 @@ interface FormData {
   thematic_area_id: number | string
   expense_nature: string
   responsible_force_id: number | string
+  sequential_number: number // MODIFICADO
 }
 
 // Props
@@ -213,7 +223,7 @@ const sucesso = ref('')
 
 // Opções de Ano
 const anoAtual = new Date().getFullYear()
-const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i)
+const anos = Array.from({ length: anoAtual - 2019 + 1 }, (_, i) => 2019 + i).reverse()
 
 // Dados do formulário
 const formData = ref<FormData>({
@@ -221,7 +231,8 @@ const formData = ref<FormData>({
   year: '',
   thematic_area_id: '',
   expense_nature: '',
-  responsible_force_id: ''
+  responsible_force_id: '',
+  sequential_number: 1, // MODIFICADO
 })
 
 // Computed
@@ -244,7 +255,8 @@ function resetForm() {
     year: '',
     thematic_area_id: '',
     expense_nature: '',
-    responsible_force_id: ''
+    responsible_force_id: '',
+    sequential_number: 1, // MODIFICADO
   }
   erro.value = ''
   sucesso.value = ''
@@ -257,13 +269,14 @@ function preencherForm() {
       year: props.acao.year,
       thematic_area_id: props.acao.thematic_area_id,
       expense_nature: props.acao.expense_nature,
-      responsible_force_id: props.acao.responsible_force_id
+      responsible_force_id: props.acao.responsible_force_id,
+      sequential_number: 1, // Mantém o padrão, pois não é editável na sua UI atual
     }
   }
 }
 
 function fecharModal() {
-  resetForm()
+  // Apenas emite o evento, o watcher cuidará do reset
   emit('close')
 }
 
@@ -280,15 +293,16 @@ async function salvarAcao() {
   try {
     let usuario = user.value
     if (!usuario) {
-      usuario = await fetchUser()
+      const { data } = await supabase.auth.getUser();
+      usuario = data.user
     }
     if (!usuario) {
       erro.value = 'Usuário não autenticado.'
-      return
+      throw new Error(erro.value)
     }
 
     if (isEditing.value && props.acao) {
-      // Atualizar ação existente
+      // Atualizar ação existente (lógica mantida)
       const { error } = await supabase
         .from('actions')
         .update({
@@ -301,61 +315,35 @@ async function salvarAcao() {
         })
         .eq('id', props.acao.id)
 
-      if (error) {
-        console.error('Erro ao atualizar ação:', error)
-        erro.value = 'Erro ao atualizar a ação. Tente novamente.'
-        return
-      }
+      if (error) throw error
 
       sucesso.value = 'Ação atualizada com sucesso!'
     } else {
-      // Criar nova ação
-      // Primeiro, gerar o código da ação
-      const { data: codigoData, error: codigoError } = await supabase.rpc('generate_action_code', {
+      // MODIFICADO: Criar nova ação usando a nova função RPC
+      const { data, error } = await supabase.rpc('create_or_update_action', {
+        p_id: null,
+        p_name: formData.value.name.trim(),
+        p_year: Number(formData.value.year),
         p_thematic_area_id: Number(formData.value.thematic_area_id),
         p_expense_nature: formData.value.expense_nature,
         p_responsible_force_id: Number(formData.value.responsible_force_id),
-        p_year: Number(formData.value.year)
+        p_sequential_number: formData.value.sequential_number,
+        p_user_id: usuario.id
       })
 
-      if (codigoError) {
-        console.error('Erro ao gerar código da ação:', codigoError)
-        erro.value = 'Erro ao gerar código da ação. Tente novamente.'
-        return
-      }
-
-      const actionCode = codigoData
-
-      // Criar a ação
-      const { error } = await supabase
-        .from('actions')
-        .insert({
-          name: formData.value.name.trim(),
-          action_code: actionCode,
-          year: Number(formData.value.year),
-          thematic_area_id: Number(formData.value.thematic_area_id),
-          expense_nature: formData.value.expense_nature,
-          responsible_force_id: Number(formData.value.responsible_force_id),
-          user_id: usuario.id
-        })
-
-      if (error) {
-        console.error('Erro ao criar ação:', error)
-        erro.value = 'Erro ao criar a ação. Tente novamente.'
-        return
-      }
-
-      sucesso.value = `Ação criada com sucesso! Código: ${actionCode}`
+      if (error) throw error
+      
+      sucesso.value = `Ação criada com sucesso! Código: ${data.action_code}`
     }
 
-    // Aguardar um pouco para mostrar a mensagem de sucesso
     setTimeout(() => {
       emit('acao-salva')
+      // fecharModal() será chamado pelo componente pai ao receber 'acao-salva'
     }, 1500)
 
-  } catch (error) {
-    console.error('Erro inesperado:', error)
-    erro.value = 'Erro inesperado. Tente novamente.'
+  } catch (err: any) {
+    console.error('Erro ao salvar ação:', err)
+    erro.value = err.message || 'Ocorreu uma falha ao salvar a ação.'
   } finally {
     salvando.value = false
   }
@@ -364,7 +352,7 @@ async function salvarAcao() {
 // Watchers
 watch(() => props.show, (newVal) => {
   if (newVal) {
-    if (isEditing.value) {
+    if (isEditing.value && props.acao) {
       preencherForm()
     } else {
       resetForm()
