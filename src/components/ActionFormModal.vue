@@ -98,9 +98,9 @@
              <option value="Investimento">Investimento</option>
            </select>
         </div>
- <div v-if="!isEditing">
-           <label class="block text-slate-300 font-semibold mb-2">Sequencial do Código *</label>
-           <input
+        <div v-if="!isEditing">
+          <label class="block text-slate-300 font-semibold mb-2">Sequencial do Código *</label>
+          <input
             v-model.number="formData.sequential_number"
             type="number"
             required
@@ -110,6 +110,13 @@
             class="w-full px-4 py-3 rounded-lg border border-white/20 bg-slate-900/50 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
           />
           <p class="text-xs text-slate-400 mt-1">Os 3 últimos dígitos do código da ação (será formatado como 001, 002, etc.).</p>
+        </div>
+        
+        <div v-if="!isEditing" class="mt-2">
+          <label class="block text-slate-400 font-semibold text-sm mb-1">Prévia do Código</label>
+          <div class="w-full px-4 py-3 rounded-lg bg-slate-800/50 text-slate-300 border border-white/20 font-mono font-semibold">
+            {{ codigoAcaoPreview }}
+          </div>
         </div>
 
         <!-- Código da Ação (somente leitura se editando) -->
@@ -248,6 +255,8 @@ const formValido = computed(() => {
   )
 })
 
+
+
 // Funções
 function resetForm() {
   formData.value = {
@@ -275,10 +284,40 @@ function preencherForm() {
   }
 }
 
+const codigoAcaoPreview = computed(() => {
+
+  const ano = formData.value.year;
+  const areaId = formData.value.thematic_area_id;
+  const natureza = formData.value.expense_nature;
+  const forcaId = formData.value.responsible_force_id;
+  const sequencial = formData.value.sequential_number;
+
+  const partA = ano ? String(ano).slice(-2) : 'XX';
+
+  const partB = areaId || 'X';
+
+  let partC = 'X';
+  if (natureza === 'Custeio') {
+    partC = '3';
+  } else if (natureza === 'Investimento') {
+    partC = '4';
+  }
+
+  const partD = '1';
+
+  const partE = forcaId || 'X';
+
+  const partF = String(sequencial || 0).padStart(3, '0');
+
+  return `${partA}.${partB}.${partC}.${partD}.${partE}.${partF}`
+})
+
 function fecharModal() {
   // Apenas emite o evento, o watcher cuidará do reset
   emit('close')
 }
+
+
 
 async function salvarAcao() {
   if (!formValido.value) {
