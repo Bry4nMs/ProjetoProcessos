@@ -60,33 +60,15 @@
       </div>
 
       <div v-if="painelAtivo === 'processos'" class="w-full max-w-7xl mx-auto space-y-12">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[420px]">
-            <div class="flex items-center gap-3 mb-4">
-              <svg class="w-7 h-7 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-              <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Processos por Força Responsável</h2>
-            </div>
-            <div v-if="dadosProcessosPorForca.length > 0" class="text-center mb-4">
-              <div class="text-5xl font-bold text-white">{{ totalProcessosGrafico }}</div>
-              <div class="text-sm text-slate-400">Total de Processos</div>
-            </div>
-            <div class="flex-1 w-full flex items-center justify-center">
-              <BarChart v-if="dadosProcessosPorForca.length > 0 && !loading" :data="chartDataForca" :options="chartOptionsForca" class="w-full h-full" />
-              <div v-else-if="loading" class="text-center"><div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-teal-400"></div><p class="text-slate-400 mt-2">Carregando...</p></div>
-              <div v-else class="text-center"><svg class="w-16 h-16 mx-auto text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg><p class="text-slate-400 mt-2">Nenhum processo para exibir.</p></div>
-            </div>
-            <div class="flex items-center gap-3 mt-4">
-              <button @click="exportToCSV(['Forca_Responsavel', 'Total_Processos'], dadosProcessosPorForca.map(item => ({ 'Forca_Responsavel': item.code, 'Total_Processos': item.total })), 'processos_por_forca.csv')" class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition">Exportar (CSV)</button>
-            </div>
-          </div>
-          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col items-center min-h-[420px]">
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-12">
+          <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col max-h-[500px] overflow-y-auto">
             <div class="flex items-center gap-3 mb-4 self-start">
               <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
               <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">Análise de Tempo por Etapa</h2>
             </div>
             <div class="flex-1 w-full overflow-x-auto">
-              <div :style="{ minWidth: chartWidthEtapa + 'px' }">
-                <BarChart v-if="dadosTempoMedioEtapa.length" :data="chartDataEtapa" :options="chartOptionsEtapa" class="w-full" :height="320" :width="chartWidthEtapa" />
+              <div :style="{ height: chartHeightEtapa + 'px', minWidth: '500px'}">
+                <BarChart v-if="dadosTempoMedioEtapa.length" :data="chartDataEtapa" :options="chartOptionsEtapa" class="w-full" :height="320" :width="chartHeightEtapa" />
                 <div v-else class="text-slate-400 text-center py-12">Carregando gráfico...</div>
               </div>
             </div>
@@ -303,13 +285,6 @@ const totalProjetos = ref(0);
 const totalEconomicidade = ref(0);
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
-const chartWidthEtapa = computed(() => {
-  const itemsCount = dadosTempoMedioEtapa.value.length
-  if (itemsCount === 0) return 600
-  // 80px por etapa, mínimo 600px
-  return Math.max(itemsCount * 80, 600)
-})
-
 // --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
 
 const router = useRouter()
@@ -508,15 +483,27 @@ const chartDataEtapa = computed(() => ({
     {
       label: 'Média (horas)',
       data: dadosTempoMedioEtapa.value.map((e) => e.media_horas),
-      backgroundColor: '#14b8a6',
-      borderRadius: 8,
+
+      backgroundColor: dadosTempoMedioEtapa.value.map((_, index) =>
+    index % 2 === 0 ? '#4ade80' : '#22d3ee'
+  ),
+    borderRadius: 6,
     },
   ],
 }));
 
+// SUBSTITUA TODO O SEU 'chartOptionsEtapa' POR ESTE
+
 const chartOptionsEtapa = {
+  indexAxis: 'y' as const,
   responsive: true,
   maintainAspectRatio: false,
+  datasets: { // <-- NOVO: Adicionado para controlar a espessura
+    bar: {
+      barPercentage: 0.7, // A barra ocupa 70% do espaço disponível
+      categoryPercentage: 0.8, // O grupo de barras ocupa 80% da categoria
+    }
+  },
   plugins: {
     legend: { display: false },
     tooltip: {
@@ -524,17 +511,53 @@ const chartOptionsEtapa = {
       backgroundColor: 'rgba(0,0,0,0.7)',
       titleColor: '#fff',
       bodyColor: '#fff',
+      callbacks: {
+        // CORRIGIDO: Garante que a função seja executada
+        label: (context) => {
+          let label = context.dataset.label || '';
+          if (label) {
+            label += ': ';
+          }
+          if (context.parsed.x !== null) {
+            label += context.parsed.x.toFixed(2) + ' horas';
+          }
+          return label;
+        }
+      }
     },
+    datalabels: {
+      color: '#ffffff',
+      anchor: 'end' as const,
+      align: 'end' as const,
+      offset: 8, // Offset positivo para colocar o texto fora da barra
+      font: {
+        weight: 'bold' as const,
+        size: 12,
+      },
+      // CORRIGIDO: Garante que a função formatter seja executada
+      formatter: (value, context) => {
+        if (value > 0) {
+          return `${Number(value).toFixed(2)}h`;
+        }
+        return '';
+      }
+    }
   },
   scales: {
     y: {
-      beginAtZero: true,
-      ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
-      grid: { color: 'rgba(255,255,255,0.1)' },
-    },
-    x: {
       ticks: { color: '#cbd5e1', font: { weight: 'bold' as const } },
       grid: { color: 'rgba(255,255,255,0.05)' },
+    },
+    x: {
+      beginAtZero: true,
+      ticks: {
+        color: '#cbd5e1', font: { weight: 'bold' as const },
+        // CORRIGIDO: Garante que a função callback seja executada
+        callback: (value, index, ticks) => {
+          return `${Number(value)}h`;
+        }
+      },
+      grid: { color: 'rgba(255,255,255,0.1)' },
     },
   },
 };
@@ -723,6 +746,13 @@ const chartOptionsQuantidadeProcessos = {
   }
 };
 
+
+const chartHeightEtapa = computed(() => {
+  const itemsCount = dadosTempoMedioEtapa.value.length;
+  if (itemsCount === 0) return 400;
+
+  return Math.max(itemsCount *50, 400);
+});
 
 // --- LINHA DO TEMPO (JÁ EXISTENTE) ---
 
