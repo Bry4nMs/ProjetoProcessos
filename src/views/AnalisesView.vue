@@ -85,15 +85,27 @@
               <Combobox v-model="processoSelecionado">
                 <div class="relative">
                   <div class="relative w-full cursor-default overflow-hidden rounded-lg bg-slate-900 text-left border border-teal-400 focus-within:ring-2 focus-within:ring-white/75 sm:text-sm">
-                    <ComboboxInput
-                      class="w-full border-none bg-transparent py-2 pl-3 pr-10 text-sm leading-5 text-white focus:ring-0 h-10"
-                      :displayValue="(id) => processos.find(p => p.id === id)?.nome_acao || ''"
-                      @change="queryHistorico = $event.target.value"
-              />
-              <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
-                </ComboboxButton>
-              </div>
+  <ComboboxInput
+    class="w-full border-none bg-transparent py-2 pl-3 pr-10 text-sm leading-5 text-white focus:ring-0 h-10"
+    :displayValue="(id) => processos.find(p => p.id === id)?.nome_acao || ''"
+    @change="queryHistorico = $event.target.value"
+  />
+
+  <button
+    v-if="processoSelecionado"
+    @click="limparSelecaoHistorico"
+    class="absolute inset-y-0 right-10 flex items-center pr-2"
+    title="Limpar seleção"
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-400 hover:text-white" viewBox="0 0 20 20" fill="currentColor">
+      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+    </svg>
+  </button>
+  
+  <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
+    <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+  </ComboboxButton>
+</div>
                 <transition leave-active-class="transition duration-100 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
                 <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-800 py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10">
               <div v-if="processosFiltrados.length === 0 && queryHistorico !== ''" class="relative cursor-default select-none py-2 px-4 text-gray-400">
@@ -989,6 +1001,10 @@ const queryHistorico = ref('')
 
 // Formata a data/hora para exibição amigável com hora e minuto (específica para análises)
 
+function limparSelecaoHistorico() {
+  processoSelecionado.value = ''; // Limpa o valor selecionado
+  queryHistorico.value = '';     // Limpa o texto do campo de busca
+}
 
 // ATUALIZADO: Função para obter nome do usuário (mais robusta)
 function obterNomeUsuario(profileOrId: { nome?: string } | string | null | undefined) {
