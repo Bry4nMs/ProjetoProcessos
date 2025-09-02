@@ -924,11 +924,13 @@ onMounted(async () => {
   }
 
   // Carrega processos para o dropdown do histórico
-  const { data } = await supabase
-    .from('processes')
-    .select('id, nome_acao, codigo_transferegov, thematic_areas(id, code)')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+  // DENTRO DE onMounted()
+
+const { data } = await supabase
+  .from('processes')
+  .select('id, nome_acao, codigo_transferegov, thematic_areas(id, code)') // <-- VERIFIQUE SE 'codigo_transferegov' ESTÁ AQUI
+  .is('deleted_at', null)
+  .order('created_at', { ascending: false });
 
   if (data) {
     processos.value = (data as Processo[]).map((proc) => {
