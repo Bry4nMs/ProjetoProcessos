@@ -77,23 +77,53 @@
             </div>
           </div>
         </div>
-        <div class="w-full max-w-4xl mx-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-10">
+        <div class="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8">
           <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">Histórico</h1>
           <p class="text-slate-300 mb-6">Visualize a linha do tempo de todos os processos.</p>
-          <div class="mb-8">
-            <label class="block text-white font-semibold mb-2">Selecionar Processo</label>
-            <select v-model="processoSelecionado" class="w-full md:w-96 px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 appearance-none" style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;">
-              <option value="">Selecione um processo</option>
-              <option v-for="processo in processos" :key="processo.id" :value="processo.id">{{ processo.nome_acao || 'Processo sem nome' }} - {{ processo.area_code || 'N/A' }}</option>
-            </select>
-          </div>
-          <div v-if="loading" class="text-center py-12"><span class="text-lg font-semibold text-teal-400">Carregando histórico...</span></div>
-          <div v-else-if="processoSelecionado">
+          <div class="mb-8 w-full md:w-96">
+            <label class="block text-white font-semibold mb-2">Buscar Processo por Nome ou SEI</label>
+              <Combobox v-model="processoSelecionado">
+                <div class="relative">
+                  <div class="relative w-full cursor-default overflow-hidden rounded-lg bg-slate-900 text-left border border-teal-400 focus-within:ring-2 focus-within:ring-white/75 sm:text-sm">
+                    <ComboboxInput
+                      class="w-full border-none bg-transparent py-2 pl-3 pr-10 text-sm leading-5 text-white focus:ring-0 h-10"
+                      :displayValue="(id) => processos.find(p => p.id === id)?.nome_acao || ''"
+                      @change="queryHistorico = $event.target.value"
+              />
+              <ComboboxButton class="absolute inset-y-0 right-0 flex items-center pr-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                </ComboboxButton>
+              </div>
+                <transition leave-active-class="transition duration-100 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <ComboboxOptions class="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-800 py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm z-10">
+              <div v-if="processosFiltrados.length === 0 && queryHistorico !== ''" class="relative cursor-default select-none py-2 px-4 text-gray-400">
+                Nenhum processo encontrado.
+              </div>
+                <ComboboxOption
+                  v-for="processo in processosFiltrados"
+                  :key="processo.id"
+                  :value="processo.id"
+                  v-slot="{ selected, active }"
+                  >
+                    <li :class="{ 'bg-teal-600 text-white': active, 'text-slate-200': !active }" class="relative cursor-default select-none py-2 pl-4 pr-4">
+                      <span :class="{ 'font-medium': selected, 'font-normal': !selected }" class="block">
+                        {{ processo.nome_acao || 'Processo sem nome' }}
+                        <span class="text-xs text-slate-400 block">{{ processo.codigo_transferegov || 'Sem SEI' }}</span>
+                      </span>
+                    </li>
+                  </ComboboxOption>
+                </ComboboxOptions>
+              </transition>
+            </div>
+          </Combobox>
+        </div>
+        <div v-if="loading" class="text-center py-12"><span class="text-lg font-semibold text-teal-400">Carregando histórico...</span></div>
+        <div v-else-if="processoSelecionado">
             <div class="mb-6 flex justify-center border-b border-white/20">
               <button @click="abaAtiva = 'etapas'" :class="['px-6 py-2 text-lg font-semibold transition-colors duration-200', abaAtiva === 'etapas' ? 'text-teal-300 border-b-2 border-teal-300' : 'text-slate-400 hover:text-white']">Etapas</button>
               <button @click="abaAtiva = 'alteracoes'" :class="['px-6 py-2 text-lg font-semibold transition-colors duration-200', abaAtiva === 'alteracoes' ? 'text-teal-300 border-b-2 border-teal-300' : 'text-slate-400 hover:text-white']">Alterações</button>
             </div>
-            <div v-if="abaAtiva === 'etapas'">
+            <div v-if="abaAtiva === 'etapas'" class="max-h-[400px] overflow-y-auto pr-4">
               <div v-if="historicoEtapas.length > 0" class="space-y-6">
                 <div class="relative"><div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
                   <div class="space-y-6">
@@ -108,7 +138,7 @@
               </div>
               <div v-else class="text-center py-12"><span class="text-lg font-semibold text-slate-400">Nenhum histórico de etapas encontrado.</span></div>
             </div>
-            <div v-if="abaAtiva === 'alteracoes'">
+            <div v-if="abaAtiva === 'alteracoes'" class="max-h-[400px] overflow-y-auto pr-4">
               <div v-if="historicoAlteracoes.length > 0" class="space-y-6">
                 <div class="relative"><div class="absolute left-6 top-0 bottom-0 w-0.5 bg-teal-400/50"></div>
                   <div class="space-y-6">
@@ -198,7 +228,8 @@ import { useAuth } from '../composables/useAuth'
 import { useDashboardFilters } from '../composables/useDashboardFilters'
 import { useRouter } from 'vue-router'
 import { useFormatters } from '../composables/useFormatters'
-
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
+import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
 import { Bar } from 'vue-chartjs'
 import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
@@ -213,6 +244,7 @@ interface Processo {
   id: string
   nome_acao?: string
   area_code?: string
+  codigo_transferegov?: string
   thematic_areas?: { id: number; code: string } | { id: number; code: string }[]
 }
 interface EventoHistorico {
@@ -828,6 +860,7 @@ const nomesAmigaveisCampos: Record<string, string> = {
   // Adicione outros campos da tabela 'processes' aqui conforme precisar
 };
 
+
 // 2. Função que traduz o nome do campo
 function formatarCampo(fieldName: string): string {
   return nomesAmigaveisCampos[fieldName] || fieldName;
@@ -881,7 +914,7 @@ onMounted(async () => {
   // Carrega processos para o dropdown do histórico
   const { data } = await supabase
     .from('processes')
-    .select('id, nome_acao, thematic_areas(id, code)')
+    .select('id, nome_acao, codigo_transferegov, thematic_areas(id, code)')
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
@@ -935,6 +968,21 @@ const dadosRankingPagamento = computed(() => {
     }))
     .sort((a, b) => b.percentual - a.percentual);
 })
+
+// Adicione esta computed property
+const processosFiltrados = computed(() =>
+  queryHistorico.value === ''
+    ? processos.value
+    : processos.value.filter((processo) => {
+        const nome = processo.nome_acao?.toLowerCase() || ''
+        const sei = processo.codigo_transferegov?.toLowerCase() || ''
+        const query = queryHistorico.value.toLowerCase()
+        
+        return nome.includes(query) || sei.includes(query)
+      })
+)
+
+const queryHistorico = ref('')
 
 // Importar funções de formatação do composable
 // Usar formatarDataSimples para datas sem hora
