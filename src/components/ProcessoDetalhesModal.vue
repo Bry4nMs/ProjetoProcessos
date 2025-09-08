@@ -37,13 +37,14 @@
         </button>
       </div>
       <div v-if="isAdmin" class="flex flex-col mb-4">
-        <label for="status-selector" class="text-sm font-semibold text-slate-300 mb-1">Status:</label>
+        <label for="status-selector" class="block text-slate-200 mb-1 font-semibold">Status:</label>
         <select 
           id="status-selector"
           v-model="novoStatus"
           @change="mudarStatus"
-          class="block w-full p-2 border border-white/20 bg-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
-        >
+          class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+          style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
+          >
           <option value="Em Andamento">Em Andamento</option>
           <option value="Concluído">Concluído</option>
           <option value="Cancelado">Cancelado</option>
