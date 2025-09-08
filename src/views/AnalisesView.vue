@@ -440,15 +440,35 @@ async function fetchGastosPorOrgao() {
 }
 
 async function fetchTotaisFinanceiros() {
-
   const anoSelecionado = filtroAno.value;
   const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
-  const { data, error } = await supabase.rpc('get_totais_financeiros', { p_ano });
-  if (error) { console.error('Erro ao buscar Totais Financeiros:', error); return; }
-  if (data && data.length > 0) {
-    totalProjetos.value = data[0].total_projetos || 0;
-    totalEconomicidade.value = data[0].total_economicidade || 0;
+  try {
+    // ✨ NOVO: Busca a economicidade total a partir da nova função RPC
+    const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_total_economicidade', { p_ano });
+    
+    // Antigo RPC para o total de projetos (mantido para o outro card)
+    const { data: projetosData, error: projetosError } = await supabase.rpc('get_totais_financeiros', { p_ano });
+
+    if (economicidadeError) {
+      console.error('Erro ao buscar economicidade total:', economicidadeError);
+      totalEconomicidade.value = 0;
+    } else {
+      totalEconomicidade.value = economicidadeData || 0;
+    }
+
+    if (projetosError) {
+      console.error('Erro ao buscar total de projetos:', projetosError);
+      totalProjetos.value = 0;
+    } else {
+      if (projetosData && projetosData.length > 0) {
+        totalProjetos.value = projetosData[0].total_projetos || 0;
+      }
+    }
+  } catch (error) {
+    console.error('Erro geral ao buscar totais financeiros:', error);
+    totalProjetos.value = 0;
+    totalEconomicidade.value = 0;
   }
 }
 
