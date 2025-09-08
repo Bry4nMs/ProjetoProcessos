@@ -36,6 +36,19 @@
           <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         </button>
       </div>
+      <div v-if="isAdmin" class="flex flex-col mb-4">
+        <label for="status-selector" class="text-sm font-semibold text-slate-300 mb-1">Status:</label>
+        <select 
+          id="status-selector"
+          v-model="novoStatus"
+          @change="mudarStatus"
+          class="block w-full p-2 border border-white/20 bg-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+        >
+          <option value="Em Andamento">Em Andamento</option>
+          <option value="Concluído">Concluído</option>
+          <option value="Cancelado">Cancelado</option>
+        </select>
+      </div>
       <!-- Conteúdo das Abas -->
       <div v-if="activeModalTab === 'detalhes'">
       <!-- Navegação entre modais -->
@@ -329,8 +342,14 @@ const props = defineProps({
   processo: {
     type: Object,
     required: true
+  },
+  isAdmin: {
+    type: Boolean,
+    required: true
   }
 })
+
+
 
 // Interface para o objeto de dados editáveis
 interface EditableData {
@@ -344,7 +363,11 @@ interface EditableData {
   descricao_geral: string;
 }
 
-const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas', 'switch-to-registros'])
+const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas', 'switch-to-registros', 'status-changed']) 
+
+const novoStatus = ref(props.processo.status);
+
+
 
 // Estado do modal
 const activeModalTab = ref('detalhes')
@@ -391,8 +414,48 @@ const commentLoading = ref(false)
 const gerandoPDF = ref(false)
 const dadosRelatorio = ref(null)
 
+const mudarStatus = async () => {
+  // A ÚNICA REGRA DE SEGURANÇA:
+  // Se o usuário NÃO for Admin, exibe um alerta e para a função imediatamente.
+  if (user.value?.role !== 'Admin') {
+    alert('Apenas administradores podem alterar o status de um processo.');
+    // Reseta o status no dropdown para o valor original do processo
+    novoStatus.value = props.processo.status;
+    return;
+  }
+  
+  // Confirmação para todas as mudanças de status (que agora só podem ser feitas por Admins)
+  if (!confirm(`Tem certeza que deseja mudar o status para "${novoStatus.value}"?`)) {
+    // Reseta o status para o valor original se a confirmação for negada
+    novoStatus.value = props.processo.status;
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('update_process_status', {
+      p_process_id: props.processo.id,
+      p_new_status: novoStatus.value
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    emit('status-changed');
+    alert('Status atualizado com sucesso!');
+  } catch (error) {
+    alert('Erro ao atualizar status: ' + error.message);
+    console.error(error);
+    // Em caso de erro, reseta o status no dropdown
+    novoStatus.value = props.processo.status;
+  }
+};
 
 
+// sincronizar o novoStatus quando a prop mudar
+watch(() => props.processo?.status, (newStatus) => {
+  novoStatus.value = newStatus;
+});
 
 // Importar funções de formatação do composable
 const { formatarValor, formatarData, formatarTamanhoArquivo } = useFormatters()
@@ -771,7 +834,12 @@ async function gerarRelatorioPDF() {
 // Watchers e lifecycle hooks
 // CÓDIGO NOVO E CORRIGIDO em ProcessoDetalhesModal.vue
 
-
+watch(user, (novoUser) => {
+  if (novoUser) {
+    console.log('Dados do usuário carregados:', novoUser);
+    console.log('Role do usuário:', novoUser.role);
+  }
+}, { immediate: true });
 
 watch(
   [() => props.show, () => props.processo?.id],

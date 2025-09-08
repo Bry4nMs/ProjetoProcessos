@@ -1,14 +1,37 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import {
   login as loginService,
   criarConta as criarContaService,
   logout as logoutService,
   obterUsuario,
 } from '../services/auth'
+import { supabase } from '@/services/supabase'
 
 const user = ref(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const isAdmin = ref(false) // Variável reativa para o status de admin
+
+// ✨ FUNÇÃO CORRIGIDA: Recebe o objeto do usuário para verificar o perfil
+async function checkAdminStatus(currentUser: { id: string } | null) {
+  if (!currentUser) {
+    isAdmin.value = false;
+    return;
+  }
+  
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', currentUser.id)
+      .single();
+
+    isAdmin.value = profile?.role === 'Admin';
+  } catch (err) {
+    console.error('Erro ao verificar status de admin:', err);
+    isAdmin.value = false;
+  }
+}
 
 export function useAuth() {
   async function login(email: string, password: string) {
@@ -44,11 +67,17 @@ export function useAuth() {
   async function fetchUser() {
     loading.value = true
     error.value = null
-    user.value = await obterUsuario()
+    const fetchedUser = await obterUsuario()
+    user.value = fetchedUser
     loading.value = false
     return user.value
   }
 
+  // Watcher que observa mudanças na variável 'user'
+  watch(user, (novoUser) => {
+    checkAdminStatus(novoUser); // ✨ CHAMA A FUNÇÃO CORRIGIDA COM O NOVO OBJETO DE USUÁRIO
+  }, { immediate: true });
+  
   return {
     user,
     loading,
@@ -57,5 +86,6 @@ export function useAuth() {
     criarConta,
     logout,
     fetchUser,
+    isAdmin, // Expor a nova propriedade
   }
 }

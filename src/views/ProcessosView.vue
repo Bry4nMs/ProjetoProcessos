@@ -204,14 +204,16 @@
 
     <!-- Modal de Detalhes do Processo -->
     <ProcessoDetalhesModal
-      v-if="processoSelecionado"
-      :show="showDetalhesModal"
-      :processo="processoSelecionado"
-      @close="fecharModalDetalhes"
-      @atualizar-processo="atualizarProcesso"
-      @switch-to-etapas="handleSwitchToEtapas"
-      @switch-to-registros="handleSwitchToRegistros"
-    />
+  v-if="processoSelecionado"
+  :show="showDetalhesModal"
+  :processo="processoSelecionado"
+  @close="fecharModalDetalhes"
+  @atualizar-processo="atualizarProcesso"
+  @switch-to-etapas="handleSwitchToEtapas"
+  @switch-to-registros="handleSwitchToRegistros"
+  :isAdmin="isAdmin"
+  @status-changed="carregarProcessos"
+/>
 
     <!-- Modal de Etapas do Processo -->
     <ProcessoEtapasModal
@@ -343,7 +345,7 @@ interface Processo {
   thematic_areas?: { id: number; code: string }
   is_favorited?: boolean
 }
-const { user, fetchUser } = useAuth()
+const { user, fetchUser, isAdmin } = useAuth();
 const processos = ref<Processo[]>([])
 const loadingProcessos = ref(false)
 

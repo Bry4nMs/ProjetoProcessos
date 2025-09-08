@@ -634,21 +634,8 @@ function toggleSecao(categoria: string) {
   secoesAbertas.value[categoria] = !secoesAbertas.value[categoria]
 }
 
-const { user } = useAuth()
-const isAdmin = ref(false)
+const { user, isAdmin } = useAuth()
 
-async function fetchProfileRole() {
-  if (!user.value) {
-    isAdmin.value = false
-    return
-  }
-  const { data } = await supabase.from('profiles').select('role').eq('id', user.value.id).single()
-  isAdmin.value = data?.role === 'Admin'
-}
-
-watch(user, () => {
-  fetchProfileRole()
-}, { immediate: true })
 
 const processosVisiveis = ref(5)
 

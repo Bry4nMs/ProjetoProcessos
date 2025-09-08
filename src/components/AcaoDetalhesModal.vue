@@ -188,15 +188,7 @@
     @confirm="handleDesvincularConfirmado"
     />
 
-    <ProcessoDetalhesModal
-      v-show="processoSelecionado"
-      :show="showProcessoDetalhesModal"
-      :processo="processoSelecionado"
-      @close="fecharModalDetalhesProcesso"
-      @atualizar-proesso="atualizarProcesso"
-      @switch-to-etapas="handleSwitchToEtapas"
-      @switch-to-registros="handleSwitchToRegistros"
-    />
+    
 
     <ProcessoEtapasModal
       v-show="processoSelecionado"
@@ -206,6 +198,7 @@
       @atualizar-processo="atualizarProcesso"
       @switch-to-detalhes="handleSwitchToDetalhes"
       @switch-to-registros="handleSwitchToRegistros"
+      :isAdmin="user?.role === 'Admin'"
     />
 
     <ProcessoRegistrosModal
@@ -232,6 +225,10 @@ import ConfirmationModal from './ConfirmationModal.vue';
 import ProcessoDetalhesModal from './ProcessoDetalhesModal.vue';
 import ProcessoEtapasModal from './ProcessoEtapasModal.vue';
 import ProcessoRegistrosModal from './ProcessoRegistrosModal.vue';
+import { useAuth } from '../composables/useAuth';
+
+
+const { user } = useAuth();
 
 // Interfaces
 interface Action {

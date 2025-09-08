@@ -5,6 +5,7 @@ import { useToast } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 import Modal from '../components/ModalDialog.vue'
 import Layout from '../components/Layout.vue'
+import { useAuth } from '../composables/useAuth'
 
 interface Usuario {
   id: string
