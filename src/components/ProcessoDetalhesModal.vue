@@ -142,10 +142,11 @@
               <input v-else v-model.number="editableData.valor_economicidade" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-blue-400 font-bold text-lg" />
             </div>
             <div class="bg-white/5 rounded-lg p-4 text-center">
-              <div class="text-slate-300 text-xs mb-1">Valor Total Destinado</div>
-              <div v-if="!isEditing" class="text-teal-400 font-bold text-lg">{{ formatarValor(processo.valor_total_destinado || 0) }}</div>
-              <input v-else v-model.number="editableData.valor_total_destinado" type="number" class="bg-white/10 border border-white/20 rounded px-2 py-1 w-full text-teal-400 font-bold text-lg" />
-            </div>
+  <div class="text-slate-300 text-xs mb-1">Valor Total Destinado</div>
+  <div class="text-teal-400 font-bold text-lg">
+    {{ formatarValor(isEditing ? valorTotalDestinadoCalculado : processo.valor_total_destinado || 0) }}
+  </div>
+</div>
           </div>
         </div>
 
@@ -325,7 +326,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted, nextTick } from 'vue'
+import { ref, reactive, watch, onMounted, nextTick, computed } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
 import { useFormatters } from '../composables/useFormatters'
@@ -461,6 +462,12 @@ watch(() => props.processo?.status, (newStatus) => {
 // Importar funções de formatação do composable
 const { formatarValor, formatarData, formatarTamanhoArquivo } = useFormatters()
 
+const valorTotalDestinadoCalculado = computed(() => {
+  const inicial = Number(editableData.valor_inicial_padrao) || 0;
+  const rendimentos = Number(editableData.valor_rendimentos) || 0;
+  const economicidade = Number(editableData.valor_economicidade) || 0;
+  return inicial + rendimentos + economicidade;
+});
 
 
 watch(() => props.show, (newValue, oldValue) => {
@@ -733,7 +740,6 @@ function iniciarEdicao() {
   editableData.destinacao_itens = props.processo.destinacao_itens || ''
   editableData.valor_rendimentos = props.processo.valor_rendimentos || 0
   editableData.valor_economicidade = props.processo.valor_economicidade || 0
-  editableData.valor_total_destinado = props.processo.valor_total_destinado || 0
   editableData.descricao_geral = props.processo.descricao_geral || ''
   isEditing.value = true
 }
@@ -743,39 +749,33 @@ async function salvarAlteracoes() {
   editError.value = ''
 
   try {
-    // 1. Criamos um objeto para "limpar" os dados antes de enviar
     const dadosParaAtualizar = {
-      // Campos de texto podem ser mantidos como estão
+      // Campos de texto
       descricao_itens: editableData.descricao_itens,
       destinacao_itens: editableData.destinacao_itens,
       descricao_geral: editableData.descricao_geral,
 
-      // --- CORREÇÃO APLICADA AQUI ---
-      // Para cada campo numérico, verificamos se está vazio. Se estiver, enviamos null.
-      // Caso contrário, garantimos que seja um número.
-      // ... dentro de dadosParaAtualizar
+      // Campos numéricos. Note que o 'valor_total_destinado' foi removido daqui.
       valor_inicial_padrao: String(editableData.valor_inicial_padrao) === '' ? null : Number(editableData.valor_inicial_padrao),
       qtd_itens: editableData.qtd_itens === '' ? null : Number(editableData.qtd_itens),
       valor_rendimentos: editableData.valor_rendimentos === '' ? null : Number(editableData.valor_rendimentos),
       valor_economicidade: editableData.valor_economicidade === '' ? null : Number(editableData.valor_economicidade),
-      valor_total_destinado: editableData.valor_total_destinado === '' ? null : Number(editableData.valor_total_destinado),
     };
 
-    // 2. Usamos o objeto de dados "limpo" na chamada de atualização
     const { error } = await supabase
       .from('processes')
-      .update(dadosParaAtualizar) // <-- Usando o objeto corrigido
+      .update(dadosParaAtualizar)
       .eq('id', props.processo.id)
 
     if (error) throw error
 
     isEditing.value = false
     
-    // Atualiza o objeto do processo com os novos dados
     const processoAtualizado = {
       ...props.processo,
-      ...dadosParaAtualizar // Usa os mesmos dados limpos para atualizar o estado local
+      ...dadosParaAtualizar
     }
+    // O valor_total_destinado será recalculado automaticamente no componente pai
     emit('atualizar-processo', processoAtualizado)
   } catch (error) {
     console.error('Erro ao salvar alterações:', error)
