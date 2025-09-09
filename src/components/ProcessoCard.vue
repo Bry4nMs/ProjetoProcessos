@@ -105,8 +105,11 @@ async function toggleFavorite() {
         <span :class="[
           'text-xs font-bold px-3 py-1 rounded-full',
           processo.status === 'Em Andamento'
-            ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white'
-            : 'bg-gradient-to-r from-green-600 to-emerald-500 text-white'
+            ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white':
+            (processo.status === 'Concluído'
+              ?'bg-gradient-to-r from-green-600 to-emerald-500 text-white'
+              : 'bg-gradient-to-r from-red-600 to-rose-500 text-white')
+            
         ]">
           {{ processo.status }}
         </span>

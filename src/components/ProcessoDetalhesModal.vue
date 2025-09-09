@@ -37,19 +37,26 @@
         </button>
       </div>
       <div v-if="isAdmin" class="flex flex-col mb-4">
-        <label for="status-selector" class="block text-slate-200 mb-1 font-semibold">Status:</label>
-        <select 
-          id="status-selector"
-          v-model="novoStatus"
-          @change="mudarStatus"
-          class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
-          style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
-          >
-          <option value="Em Andamento">Em Andamento</option>
-          <option value="Concluído">Concluído</option>
-          <option value="Cancelado">Cancelado</option>
-        </select>
-      </div>
+  <label for="status-selector" class="block text-slate-200 mb-1 font-semibold">Status:</label>
+  <div class="flex items-center gap-2">
+    <select 
+      id="status-selector"
+      v-model="novoStatus"
+      class="w-full px-4 py-2 rounded-lg bg-slate-900 text-white border border-teal-400 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none"
+      style="background-image: url('data:image/svg+xml;utf8,<svg fill=\'white\' height=\'20\' viewBox=\'0 0 20 20\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z\'/></svg>'); background-repeat: no-repeat; background-position: right 0.75rem center; background-size: 1.25em 1.25em;"
+    >
+      <option value="Em Andamento">Em Andamento</option>
+      <option value="Concluído">Concluído</option>
+      <option value="Cancelado">Cancelado</option>
+    </select>
+    <button
+      @click="abrirModalConfirmacao"
+      class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold transition"
+    >
+      Alterar
+    </button>
+  </div>
+</div>
       <!-- Conteúdo das Abas -->
       <div v-if="activeModalTab === 'detalhes'">
       <!-- Navegação entre modais -->
@@ -314,6 +321,14 @@
       </div>
     </div>
 
+    <ConfirmationModal
+  :show="showConfirmationModal"
+  title="Confirmação de Alteração de Status"
+  :message="confirmationMessage"
+  @confirm="handleConfirmation"
+  @cancel="handleCancellation"
+/>
+    
     <!-- Componente de relatório oculto para captura do PDF -->
     <div style="position: fixed; left: -9999px; top: 0; width: 800px;">
       <RelatorioProcesso
@@ -334,6 +349,7 @@ import RelatorioProcesso from './RelatorioProcesso.vue'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import Tribute from 'tributejs'
+import ConfirmationModal from './ConfirmationModal.vue'
 
 // Props e emits
 const props = defineProps({
@@ -369,7 +385,9 @@ const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-etapas', 'sw
 
 const novoStatus = ref(props.processo.status);
 
-
+const showConfirmationModal = ref(false)
+const confirmationMessage = ref('')
+const newStatusToConfirm = ref('')
 
 // Estado do modal
 const activeModalTab = ref('detalhes')
@@ -401,7 +419,7 @@ const isOverModal = ref(false)
 const dropZoneModalRef = ref(null)
 
 // Estado de comentários
-const { user } = useAuth()
+const { user, isAdmin } = useAuth()
 const comments = ref([])
 const loadingComments = ref(false)
 const newComment = ref('')
@@ -416,27 +434,19 @@ const commentLoading = ref(false)
 const gerandoPDF = ref(false)
 const dadosRelatorio = ref(null)
 
-const mudarStatus = async () => {
-  // A ÚNICA REGRA DE SEGURANÇA:
-  // Se o usuário NÃO for Admin, exibe um alerta e para a função imediatamente.
-  if (user.value?.role !== 'Admin') {
-    alert('Apenas administradores podem alterar o status de um processo.');
-    // Reseta o status no dropdown para o valor original do processo
-    novoStatus.value = props.processo.status;
-    return;
-  }
-  
-  // Confirmação para todas as mudanças de status (que agora só podem ser feitas por Admins)
-  if (!confirm(`Tem certeza que deseja mudar o status para "${novoStatus.value}"?`)) {
-    // Reseta o status para o valor original se a confirmação for negada
-    novoStatus.value = props.processo.status;
-    return;
-  }
+const abrirModalConfirmacao = () => {
+  // Apenas seta as variáveis de estado para exibir o modal de confirmação
+  confirmationMessage.value = `Você tem certeza que deseja mudar o status para "${novoStatus.value}"?`;
+  newStatusToConfirm.value = novoStatus.value;
+  showConfirmationModal.value = true;
+};
 
+const handleConfirmation = async () => {
+  showConfirmationModal.value = false;
   try {
-    const { data, error } = await supabase.rpc('update_process_status', {
+    const { error } = await supabase.rpc('update_process_status', {
       p_process_id: props.processo.id,
-      p_new_status: novoStatus.value
+      p_new_status: newStatusToConfirm.value
     });
 
     if (error) {
@@ -444,15 +454,17 @@ const mudarStatus = async () => {
     }
 
     emit('status-changed');
-    alert('Status atualizado com sucesso!');
   } catch (error) {
     alert('Erro ao atualizar status: ' + error.message);
     console.error(error);
-    // Em caso de erro, reseta o status no dropdown
     novoStatus.value = props.processo.status;
   }
 };
 
+const handleCancellation = () => {
+  showConfirmationModal.value = false;
+  novoStatus.value = props.processo.status;
+};
 
 // sincronizar o novoStatus quando a prop mudar
 watch(() => props.processo?.status, (newStatus) => {

@@ -5,14 +5,15 @@ import {
   logout as logoutService,
   obterUsuario,
 } from '../services/auth'
+// ✨ Importe o cliente Supabase aqui
 import { supabase } from '@/services/supabase'
 
 const user = ref(null)
-const loading = ref(false)
+const loading = ref(true)
 const error = ref<string | null>(null)
 const isAdmin = ref(false) // Variável reativa para o status de admin
 
-// ✨ FUNÇÃO CORRIGIDA: Recebe o objeto do usuário para verificar o perfil
+// ✨ FUNÇÃO CENTRALIZADA: Verifica a role do perfil
 async function checkAdminStatus(currentUser: { id: string } | null) {
   if (!currentUser) {
     isAdmin.value = false;
@@ -74,8 +75,11 @@ export function useAuth() {
   }
 
   // Watcher que observa mudanças na variável 'user'
-  watch(user, (novoUser) => {
-    checkAdminStatus(novoUser); // ✨ CHAMA A FUNÇÃO CORRIGIDA COM O NOVO OBJETO DE USUÁRIO
+  // Este é o único ponto onde a role é verificada
+  watch(user, async (novoUser) => {
+    loading.value = true
+    await checkAdminStatus(novoUser)
+    loading.value = false
   }, { immediate: true });
   
   return {
