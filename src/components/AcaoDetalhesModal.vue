@@ -173,6 +173,7 @@
     </div>
 
     <!-- Link Process Modal -->
+    <div>
     <LinkProcessModal
       :show="showLinkProcessModal"
       :action-id="acao.id"
@@ -181,17 +182,26 @@
     />
 
     <ConfirmationModal
-    :show="showConfirmationModal"
-    title="Confirmar Desnvinculação"
-    message="Tem certeza que deseja desnvicular este processo da ação?"
-    @cancel="fecharConfirmationModal"
-    @confirm="handleDesvincularConfirmado"
+      :show="showConfirmationModal"
+      title="Confirmar Desnvinculação"
+      message="Tem certeza que deseja desnvicular este processo da ação?"
+      @cancel="fecharConfirmationModal"
+      @confirm="handleDesvincularConfirmado"
     />
 
-    
+    <ProcessoDetalhesModal
+      v-if="processoSelecionado"
+      :show="showProcessoDetalhesModal"
+      :processo="processoSelecionado"
+      @close="fecharModalDetalhesProcesso"
+      @atualizar-processo="atualizarProcesso"
+      @switch-to-etapas="handleSwitchToEtapas"
+      @switch-to-registros="handleSwitchToRegistros"
+      :isAdmin="user?.role === 'Admin'"
+    />
 
     <ProcessoEtapasModal
-      v-show="processoSelecionado"
+      v-if="processoSelecionado"
       :show="showProcessoEtapasModal"
       :processo="processoSelecionado"
       @close="fecharModalDetalhesProcesso"
@@ -202,7 +212,7 @@
     />
 
     <ProcessoRegistrosModal
-      v-show="processoSelecionado"
+      v-if="processoSelecionado"
       :show="showProcessoRegistrosModal"
       :processo="processoSelecionado"
       @close="fecharModalDetalhesProcesso"
@@ -211,7 +221,7 @@
       @switch-to-etapas="handleSwitchToEtapas"
     />
 
-
+    </div>
 
   </div>
 </template>
