@@ -174,8 +174,12 @@
 
       <div v-else-if="painelAtivo === 'financeiro'" class="w-full max-w-7xl space-y-8">
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
-    <div class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6">
+  <div v-if="subPainelFinanceiroAtivo === 'resumo'" class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+
+    <div 
+      class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6 cursor-pointer hover:bg-slate-700/50 transition-colors"
+      @click="handleCardClick('resumo')"
+    >
       <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
       </div>
@@ -185,8 +189,11 @@
       </div>
     </div>
 
-    <div class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6">
-       <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
+    <div 
+      class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6 cursor-pointer hover:bg-slate-700/50 transition-colors"
+      @click="handleCardClick('economicidade')"
+    >
+      <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
       </div>
       <div>
@@ -196,7 +203,68 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <div v-else-if="subPainelFinanceiroAtivo === 'economicidade'">
+    <div class="flex items-center gap-4 mb-6">
+      <button @click="subPainelFinanceiroAtivo = 'resumo'" class="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold flex items-center gap-2 hover:bg-white/20 transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        Voltar ao Resumo
+      </button>
+      <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+        Economicidade Detalhada
+      </h2>
+    </div>
+
+    <p class="text-slate-400 mb-8">Economicidade particionada por Área Temática e Tipo de Despesa.</p>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
+        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+          Economicidade por Área e Tipo de Despesa
+        </h2>
+        <div class="flex-1 w-full">
+          <div :style="{ height: chartHeightEconomicidade + 'px', minWidth: '500px'}">
+            <BarChart v-if="dadosEconomicidadeDetalhada.length && !loading" :data="chartDataEconomicidadeDetalhada" :options="chartOptionsEconomicidadeDetalhada" />
+            <div v-else-if="!loading" class="text-slate-400 text-center pt-24">Nenhum dado de economicidade detalhada para o ano selecionado.</div>
+            <div v-else class="text-slate-400 text-center pt-24">Carregando dados de economicidade...</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-4">
+          <button @click="exportToCSV(['Area', 'Tipo_Despesa', 'Economicidade'], dadosEconomicidadeDetalhada.map(item => ({ 'Area': item.thematic_area_code, 'Tipo_Despesa': item.tipo_despesa, 'Economicidade': item.total_economicidade })), 'economicidade_detalhada.csv')" class="ml-auto px-3 py-1 text-xs bg-white/10 border border-teal-400 text-teal-400 rounded hover:bg-teal-400 hover:text-white transition">Exportar (CSV)</button>
+        </div>
+      </div>
+
+      <div class="lg:col-span-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col">
+        <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-6">
+          Filtrar por Ano
+        </h2>
+        <div class="flex flex-col gap-3 max-h-[400px] overflow-y-auto pr-2">
+          <button
+            @click="filtroAnoEconomicidade = ''"
+            :class="[
+              'px-4 py-2 rounded-lg text-lg font-semibold transition-colors duration-200',
+              filtroAnoEconomicidade === '' ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-md' : 'text-slate-300 hover:bg-white/10'
+            ]"
+          >
+            Todos os Anos
+          </button>
+          <button
+            v-for="ano in anos"
+            :key="ano"
+            @click="filtroAnoEconomicidade = ano"
+            :class="[
+              'px-4 py-2 rounded-lg text-lg font-semibold transition-colors duration-200',
+              filtroAnoEconomicidade === ano ? 'bg-gradient-to-r from-teal-600 to-cyan-500 text-white shadow-md' : 'text-slate-300 hover:bg-white/5'
+            ]"
+          >
+            Análise {{ ano }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div v-if="subPainelFinanceiroAtivo === 'resumo'" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
       <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
         Comparativo de Valor por Órgão
@@ -209,25 +277,25 @@
 
     <div class="lg:col-span-1 flex flex-col gap-8">
       <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
-         <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Ranking de Pagamento</h2>
-         <div class="flex-1 w-full">
-           <BarChart v-if="dadosRankingPagamento.length" :data="chartDataRankingPagamento" :options="chartOptionsRankingPagamento" />
-           <div v-else class="text-slate-400 text-center pt-16">Calculando ranking...</div>
-         </div>
+        <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Ranking de Pagamento</h2>
+        <div class="flex-1 w-full">
+          <BarChart v-if="dadosRankingPagamento.length" :data="chartDataRankingPagamento" :options="chartOptionsRankingPagamento" />
+          <div v-else class="text-slate-400 text-center pt-16">Calculando ranking...</div>
+        </div>
       </div>
       <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col min-h-[350px]">
-         <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Qtd. de Processos por Órgão</h2>
-         <div class="flex-1 w-full">
-           <BarChart v-if="dadosProcessosPorForca.length" :data="chartDataQuantidadeProcessos" :options="chartOptionsQuantidadeProcessos" />
-           <div v-else class="text-slate-400 text-center pt-16">Carregando...</div>
-         </div>
+        <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Qtd. de Processos por Órgão</h2>
+        <div class="flex-1 w-full">
+          <BarChart v-if="dadosProcessosPorForca.length" :data="chartDataQuantidadeProcessos" :options="chartOptionsQuantidadeProcessos" />
+          <div v-else class="text-slate-400 text-center pt-16">Carregando...</div>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
 </div>
 
-    </div>
   </Layout>
 </template>
 
@@ -300,6 +368,7 @@ const processos = ref<Processo[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
 const painelAtivo = ref<'processos' | 'financeiro'>('processos')
+const subPainelFinanceiroAtivo = ref<'resumo' | 'economicidade'>('resumo')
 const filtroAno = ref<number | string>('')
 const anos = computed(() => {
   const anoAtual = new Date().getFullYear();
@@ -327,6 +396,8 @@ const dadosGastosPorOrgao = ref<Array<{ id: number; code: string; total_gasto: n
 
 const totalProjetos = ref(0);
 const totalEconomicidade = ref(0);
+const dadosEconomicidadeDetalhada = ref<Array<{ thematic_area_code: string; tipo_despesa: string; total_economicidade: number }>>([]);
+const filtroAnoEconomicidade = ref<number | string>('');
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
 // --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
@@ -473,20 +544,57 @@ async function fetchTotaisFinanceiros() {
 }
 
 async function carregarDadosDosGraficos() {
-  loading.value = true;
-  await Promise.all([
-    fetchProcessosPorForca(),
-    fetchTempoMedioPorEtapa(),
-    fetchValoresPorOrgao(),
-    fetchGastosPorOrgao(),
-    fetchTotaisFinanceiros(),
-  ]);
-  loading.value = false;
+    loading.value = true;
+    if (painelAtivo.value === 'processos' || (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'resumo')) {
+        await Promise.all([
+            fetchProcessosPorForca(),
+            fetchTempoMedioPorEtapa(),
+            fetchValoresPorOrgao(),
+            fetchGastosPorOrgao(),
+            fetchTotaisFinanceiros(),
+        ]);
+    } else if (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'economicidade') {
+        await fetchEconomicidadeDetalhada();
+    }
+    loading.value = false;
+}
+
+function handleCardClick(card: 'resumo' | 'economicidade') {
+    subPainelFinanceiroAtivo.value = card;
 }
 
 watch(filtroAno, () => {
   carregarDadosDosGraficos();
 })
+
+watch(filtroAnoEconomicidade, () => {
+    if (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'economicidade') {
+        fetchEconomicidadeDetalhada();
+    }
+});
+
+watch(subPainelFinanceiroAtivo, (newValue) => {
+  if (painelAtivo.value === 'financeiro'){
+    carregarDadosDosGraficos();
+  }
+})
+
+async function fetchEconomicidadeDetalhada() {
+  loading.value = true;
+  const anoSelecionado = filtroAnoEconomicidade.value || filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+
+  const { data, error } = await supabase.rpc('get_economicidade_detalhada', { p_ano });
+
+  if (error) {
+    console.error('Erro ao buscar economicidade detalhada:', error)
+    dadosEconomicidadeDetalhada.value = [];
+    loading.value = false;
+    return;
+  }
+  dadosEconomicidadeDetalhada.value = data || [];
+  loading.value = false;
+}
 
 // --- CHART DATA/OPTIONS PARA OS GRÁFICOS ---
 
@@ -809,6 +917,116 @@ const chartOptionsQuantidadeProcessos = {
     }
   }
 };
+
+// ... (depois de chartOptionsQuantidadeProcessos)
+
+const chartDataEconomicidadeDetalhada = computed(() => {
+    const areas = Array.from(new Set(dadosEconomicidadeDetalhada.value.map(d => d.thematic_area_code))).sort();
+
+    const investimentoData = areas.map(area => {
+        const item = dadosEconomicidadeDetalhada.value.find(d => d.thematic_area_code === area && d.tipo_despesa === 'Investimento');
+        return item ? item.total_economicidade : 0;
+    });
+
+    const custeioData = areas.map(area => {
+        const item = dadosEconomicidadeDetalhada.value.find(d => d.thematic_area_code === area && d.tipo_despesa === 'Custeio');
+        return item ? item.total_economicidade : 0;
+    });
+
+    return {
+        labels: areas,
+        datasets: [
+            {
+                label: 'Investimento',
+                data: investimentoData,
+                backgroundColor: '#00ff00', // emerald-500
+                borderRadius: 6,
+            },
+            {
+                label: 'Custeio',
+                data: custeioData,
+                backgroundColor: '#00ffff', // cyan-600
+                borderRadius: 6,
+            }
+        ]
+    };
+});
+
+const chartOptionsEconomicidadeDetalhada = {
+    indexAxis: 'y' as const, // Barras horizontais
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            display: true,
+            position: 'top' as const,
+            labels: {
+                color: '#cbd5e1',
+                font: { size: 14 }
+            }
+        },
+        tooltip: {
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            callbacks: {
+                label: ({ dataset, parsed }) => {
+                    let label = dataset.label || '';
+                    if (label) {
+                        label += ': ';
+                    }
+                    if (parsed.x !== null) {
+                        label += formatarMoeda(parsed.x);
+                    }
+                    return label;
+                }
+            }
+        },
+        datalabels: {
+            color: '#ffffff',
+            anchor: 'end' as const,
+            align: 'end' as const,
+            offset: -8, // Dentro da barra
+            font: {
+                weight: 'bold' as const,
+                size: 12,
+            },
+            formatter: (value) => {
+                if (value > 0) {
+                    return formatarMoeda(value);
+                }
+                return '';
+            }
+        }
+    },
+    scales: {
+        y: {
+            ticks: {
+                color: '#cbd5e1',
+                font: { weight: 'bold' as const }
+            },
+            grid: { color: 'rgba(255,255,255,0.01)' },
+        },
+        x: {
+            ticks: {
+                color: '#cbd5e1',
+                callback: (value) => {
+                    const num = Number(value);
+                    if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
+                    if (num >= 1000) return 'R$' + (num / 1000) + 'K';
+                    return formatarMoeda(num);
+                }
+            },
+            grid: { color: 'rgba(255,255,255,0.1)' },
+        },
+    },
+};
+
+const chartHeightEconomicidade = computed(() => {
+    const itemsCount = chartDataEconomicidadeDetalhada.value.labels.length;
+    if (itemsCount === 0) return 400;
+    return Math.max(itemsCount * 60, 400); // Ajuste a altura baseada na quantidade de itens
+});
 
 
 const chartHeightEtapa = computed(() => {
