@@ -349,6 +349,31 @@ const { user, fetchUser, isAdmin } = useAuth();
 const processos = ref<Processo[]>([])
 const loadingProcessos = ref(false)
 
+const totalProcessos = ref(0)
+const processosConcluidos = ref(0)
+const processosEmAndamento = ref(0)
+const processosCancelados = ref(0)
+
+async function fetchDashboardCounts() {
+  const { data, error } = await supabase.rpc('get_status_counts');
+
+  if(error) {
+    console.error("Erro ao buscar contagens do painel:", error)
+    return;
+  }
+
+  const counts = data.reduce((acc, current) => {
+    acc[current.status] = current.count;
+    return acc;
+  }, {})
+
+   totalProcessos.value = (counts['Em Andamento'] || 0) + (counts['Concluído'] || 0) + (counts['Cancelado'] || 0);
+   processosConcluidos.value = counts['Concluído'] || 0;
+   processosEmAndamento.value = counts['Em Andamento'] || 0;
+   processosCancelados.value = counts['Cancelado'] || 0;
+}
+
+
 async function carregarProcessos() {
   loadingProcessos.value = true;
   let usuario = user.value;
@@ -424,6 +449,7 @@ onMounted(async () => {
     limparFiltros()
   }
   await carregarProcessos()
+  await fetchDashboardCounts();
   const { data: forcas } = await buscarForcasResponsaveis()
   if (forcas) forcasResponsaveis.value = forcas
   const { data: areas } = await buscarAreasTematicas()
@@ -568,7 +594,7 @@ const processosFiltrados = computed(() => {
       !filtroData.value ||
       (proc.data_encaminhamento_aprovacao &&
         proc.data_encaminhamento_aprovacao === filtroData.value)
-    const statusMatch = mostrarConcluidos.value ? true : proc.status !== 'Concluído'
+    const statusMatch = mostrarConcluidos.value ? true : (proc.status !== 'Concluído' && proc.status !== 'Cancelado');
     return nomeMatch && seiMatch && anoMatch && forcaMatch && areaMatch && dataMatch && statusMatch
   })
 })
