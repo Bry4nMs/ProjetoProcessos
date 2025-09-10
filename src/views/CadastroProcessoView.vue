@@ -61,6 +61,7 @@ const fileUpload = ref<HTMLInputElement | null>(null)
 const saldoEconomicidadeDisponivel = ref(0)
 const isLoadingSaldo = ref(false)
 const economicidadeExcedeSaldo = ref(false)
+const feedbackErroEconomicidade = ref('');
 
 const valorTotal = computed(() => {
   const v1 = parseCurrency(valor.value);
@@ -145,41 +146,63 @@ async function carregarAcoes() {
 
 // Função para buscar saldo de economicidade via RPC do Supabase
 async function fetchSaldoEconomicidade() {
-  // Só busca se todos os campos necessários estiverem preenchidos
   if (!anoFaf.value || !areaTematicaId.value || !tipoNatureza.value) {
     saldoEconomicidadeDisponivel.value = 0
+    economicidadeExcedeSaldo.value = false
+    console.log("RPC fetchSaldoEconomicidade: Condições para chamada não atendidas."); // Debug
     return
   }
 
   isLoadingSaldo.value = true
-  
+
+  console.log('Chamando RPC get_saldo_economicidade_disponivel com:', {
+    p_ano_faf: Number(anoFaf.value),
+    p_thematic_area_id: Number(areaTematicaId.value),
+    p_tipo_natureza_despesa: tipoNatureza.value,
+    p_processo_id_excluir: null
+  });
+
+
   try {
-    const { data, error } = await supabase.rpc('get_saldo_economicidade', {
-      p_ano_faf: parseInt(anoFaf.value),
-      p_area_tematica_id: parseInt(areaTematicaId.value),
-      p_tipo_natureza: tipoNatureza.value
+    // CORREÇÃO FINAL AQUI: ALINHADO COM A ASSINATURA EXATA DO SUPABASE
+    const { data, error } = await supabase.rpc('get_saldo_economicidade_disponivel', {
+      p_ano_faf: Number(anoFaf.value),
+      p_thematic_area_id: Number(areaTematicaId.value),
+      p_tipo_natureza_despesa: tipoNatureza.value,
+      p_processo_id_excluir: null // Garante que este componente não está ignorando um processo que está sendo editado/excluido em outro lugar
     })
 
     if (error) {
       console.error('Erro ao buscar saldo de economicidade:', error)
       saldoEconomicidadeDisponivel.value = 0
+      // ATUALIZAÇÃO: Usar a variável de feedback específica
+      feedbackErroEconomicidade.value = 'Erro ao carregar saldo de economicidade: ' + error.message;
     } else {
       saldoEconomicidadeDisponivel.value = data || 0
     }
   } catch (error) {
     console.error('Erro ao buscar saldo de economicidade:', error)
     saldoEconomicidadeDisponivel.value = 0
+    // ATUALIZAÇÃO: Usar a variável de feedback específica
+    feedbackErroEconomicidade.value = 'Erro inesperado ao carregar saldo de economicidade: ' + (error as Error).message;
   } finally {
     isLoadingSaldo.value = false
-    // Revalida após buscar o saldo
     validateEconomicidadeEntrada()
   }
 }
 
+
 // Função para validar se o valor de economicidade excede o saldo disponível
 function validateEconomicidadeEntrada() {
   const valorEcon = parseCurrency(valorEconomicidade.value)
-  economicidadeExcedeSaldo.value = valorEcon > saldoEconomicidadeDisponivel.value
+  economicidadeExcedeSaldo.value = valorEcon > saldoEconomicidadeDisponivel.value;
+  // ATUALIZAÇÃO: Se excede, define o feedback de erro
+  if (economicidadeExcedeSaldo.value) {
+    feedbackErroEconomicidade.value = 'O valor de Economicidade de Entrada excede o saldo disponível. Por favor, ajuste o valor.';
+  } else {
+    // Se não excede, limpa o feedback de erro específico da economicidade
+    feedbackErroEconomicidade.value = '';
+  }
 }
 
 onMounted(async () => {
@@ -192,12 +215,12 @@ onMounted(async () => {
 
 async function registrarProcesso() {
   feedback.value = ''
+  feedbackErroEconomicidade.value = '';
   loading.value = true
 
   // Validação final antes de enviar
   validateEconomicidadeEntrada()
   if (economicidadeExcedeSaldo.value) {
-    feedback.value = 'O valor de Economicidade de Entrada excede o saldo disponível. Por favor, ajuste o valor.'
     loading.value = false
     return
   }
@@ -355,6 +378,7 @@ function limparFormulario() {
   areaTematicaId.value = ''
   forcaResponsavelId.value = ''
   actionId.value = ''
+  feedbackErroEconomicidade.value = ''
 }
 
 function handleFileSelected(event: Event) {
@@ -605,42 +629,3 @@ function handleFileSelected(event: Event) {
   </Layout>
 </template>
 
-// Função para buscar saldo de economicidade
-async function fetchSaldoEconomicidade() {
-  // Verificar se todos os campos necessários estão preenchidos
-  if (!anoFaf.value || !areaTematicaId.value || !tipoNatureza.value) {
-    saldoEconomicidadeDisponivel.value = 0
-    economicidadeExcedeSaldo.value = false
-    return
-  }
-
-  isLoadingSaldo.value = true
-  
-  try {
-    const { data, error } = await supabase.rpc('get_saldo_economicidade_disponivel', {
-      p_ano_faf: Number(anoFaf.value),
-      p_thematic_area_id: Number(areaTematicaId.value),
-      p_tipo_natureza_despesa: tipoNatureza.value,
-      p_processo_id_excluir: null // Para novos cadastros
-    })
-
-    if (error) {
-      console.error('Erro ao buscar saldo de economicidade:', error)
-      saldoEconomicidadeDisponivel.value = 0
-    } else {
-      saldoEconomicidadeDisponivel.value = data || 0
-    }
-  } catch (error) {
-    console.error('Erro ao buscar saldo de economicidade:', error)
-    saldoEconomicidadeDisponivel.value = 0
-  } finally {
-    isLoadingSaldo.value = false
-    validateEconomicidadeEntrada()
-  }
-}
-
-// Função para validar entrada de economicidade
-function validateEconomicidadeEntrada() {
-  const valorEconomicidadeNumerico = parseCurrency(valorEconomicidade.value)
-  economicidadeExcedeSaldo.value = valorEconomicidadeNumerico > 0 && valorEconomicidadeNumerico > saldoEconomicidadeDisponivel.value
-}
