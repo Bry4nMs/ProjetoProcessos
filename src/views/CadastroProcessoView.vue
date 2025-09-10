@@ -56,6 +56,12 @@ const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const acoesDisponiveis = ref<{ id: string; name: string; action_code: string }[]>([]);
 const dropZoneRef = ref<HTMLDivElement | null>(null)
 const fileUpload = ref<HTMLInputElement | null>(null)
+
+// Estado reativo para economicidade
+const saldoEconomicidadeDisponivel = ref(0)
+const isLoadingSaldo = ref(false)
+const economicidadeExcedeSaldo = ref(false)
+
 const valorTotal = computed(() => {
   const v1 = parseCurrency(valor.value);
   const v2 = parseCurrency(valorRendimentos.value);
@@ -68,8 +74,15 @@ function onDrop(files: File[] | null) {
     arquivos.value = files.map(file => ({ file, description: '' }))
   }
 }
-const dropZone = useDropZone(dropZoneRef, { onDrop })
-const isOver = dropZone && 'isOver' in dropZone ? dropZone.isOver : ref(false)
+
+const isOver = ref(false); // Declare isOver como uma ref inicializada com false
+
+useDropZone(dropZoneRef, {
+  onDrop,
+  // Adiciona callbacks para atualizar isOver
+  onOver: () => { isOver.value = true; },
+  onLeave: () => { isOver.value = false; }
+});
 
 const { user, fetchUser } = useAuth()
 
@@ -97,7 +110,17 @@ const areasTematicasFiltradas = computed(() => {
 // Observador para limpar a área temática ao mudar o ano
 watch(anoFaf, () => {
   // Limpa o valor selecionado da área temática
-  areaTematicaId.value = '';
+  areaTematicaId.value = ''
+})
+
+// Watcher para buscar saldo quando campos relevantes mudarem
+watch([anoFaf, areaTematicaId, tipoNatureza], () => {
+  fetchSaldoEconomicidade()
+}, { immediate: true })
+
+// Watcher para validar economicidade quando valor mudar
+watch(valorEconomicidade, () => {
+  validateEconomicidadeEntrada()
 })
 
 async function carregarAcoes() {
@@ -120,6 +143,45 @@ async function carregarAcoes() {
   }
 }
 
+// Função para buscar saldo de economicidade via RPC do Supabase
+async function fetchSaldoEconomicidade() {
+  // Só busca se todos os campos necessários estiverem preenchidos
+  if (!anoFaf.value || !areaTematicaId.value || !tipoNatureza.value) {
+    saldoEconomicidadeDisponivel.value = 0
+    return
+  }
+
+  isLoadingSaldo.value = true
+  
+  try {
+    const { data, error } = await supabase.rpc('get_saldo_economicidade', {
+      p_ano_faf: parseInt(anoFaf.value),
+      p_area_tematica_id: parseInt(areaTematicaId.value),
+      p_tipo_natureza: tipoNatureza.value
+    })
+
+    if (error) {
+      console.error('Erro ao buscar saldo de economicidade:', error)
+      saldoEconomicidadeDisponivel.value = 0
+    } else {
+      saldoEconomicidadeDisponivel.value = data || 0
+    }
+  } catch (error) {
+    console.error('Erro ao buscar saldo de economicidade:', error)
+    saldoEconomicidadeDisponivel.value = 0
+  } finally {
+    isLoadingSaldo.value = false
+    // Revalida após buscar o saldo
+    validateEconomicidadeEntrada()
+  }
+}
+
+// Função para validar se o valor de economicidade excede o saldo disponível
+function validateEconomicidadeEntrada() {
+  const valorEcon = parseCurrency(valorEconomicidade.value)
+  economicidadeExcedeSaldo.value = valorEcon > saldoEconomicidadeDisponivel.value
+}
+
 onMounted(async () => {
   const { data: areas } = await buscarAreasTematicas()
   if (areas) areasTematicas.value = areas
@@ -131,6 +193,15 @@ onMounted(async () => {
 async function registrarProcesso() {
   feedback.value = ''
   loading.value = true
+
+  // Validação final antes de enviar
+  validateEconomicidadeEntrada()
+  if (economicidadeExcedeSaldo.value) {
+    feedback.value = 'O valor de Economicidade de Entrada excede o saldo disponível. Por favor, ajuste o valor.'
+    loading.value = false
+    return
+  }
+
   let usuario = user.value
   if (!usuario) {
     usuario = await fetchUser()
@@ -454,9 +525,17 @@ function handleFileSelected(event: Event) {
             <input
               v-model="valorEconomicidade"
               type="text"
-              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              :class="{'border-red-500': economicidadeExcedeSaldo, 'border-white/20': !economicidadeExcedeSaldo}"
               placeholder="R$ 0,00"
             />
+            <p v-if="isLoadingSaldo" class="text-sm text-teal-300 mt-1">Carregando saldo de economicidade...</p>
+            <p v-else-if="anoFaf && areaTematicaId && tipoNatureza" class="text-sm text-slate-400 mt-1">
+              Saldo disponível: {{ saldoEconomicidadeDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}
+            </p>
+            <p v-if="economicidadeExcedeSaldo" class="text-sm text-red-500 mt-1 font-semibold">
+              O valor de Economicidade de Entrada excede o saldo disponível.
+            </p>
           </div>
           <div>
             <label class="block text-slate-200 mb-1 font-semibold"
@@ -509,7 +588,7 @@ function handleFileSelected(event: Event) {
           <button
             type="submit"
             class="px-6 py-3 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg shadow hover:from-teal-700 hover:to-cyan-600 transition font-bold"
-            :disabled="loading"
+            :disabled="loading || economicidadeExcedeSaldo"
           >
             Registrar Ação
           </button>
@@ -525,3 +604,43 @@ function handleFileSelected(event: Event) {
     </div>
   </Layout>
 </template>
+
+// Função para buscar saldo de economicidade
+async function fetchSaldoEconomicidade() {
+  // Verificar se todos os campos necessários estão preenchidos
+  if (!anoFaf.value || !areaTematicaId.value || !tipoNatureza.value) {
+    saldoEconomicidadeDisponivel.value = 0
+    economicidadeExcedeSaldo.value = false
+    return
+  }
+
+  isLoadingSaldo.value = true
+  
+  try {
+    const { data, error } = await supabase.rpc('get_saldo_economicidade_disponivel', {
+      p_ano_faf: Number(anoFaf.value),
+      p_thematic_area_id: Number(areaTematicaId.value),
+      p_tipo_natureza_despesa: tipoNatureza.value,
+      p_processo_id_excluir: null // Para novos cadastros
+    })
+
+    if (error) {
+      console.error('Erro ao buscar saldo de economicidade:', error)
+      saldoEconomicidadeDisponivel.value = 0
+    } else {
+      saldoEconomicidadeDisponivel.value = data || 0
+    }
+  } catch (error) {
+    console.error('Erro ao buscar saldo de economicidade:', error)
+    saldoEconomicidadeDisponivel.value = 0
+  } finally {
+    isLoadingSaldo.value = false
+    validateEconomicidadeEntrada()
+  }
+}
+
+// Função para validar entrada de economicidade
+function validateEconomicidadeEntrada() {
+  const valorEconomicidadeNumerico = parseCurrency(valorEconomicidade.value)
+  economicidadeExcedeSaldo.value = valorEconomicidadeNumerico > 0 && valorEconomicidadeNumerico > saldoEconomicidadeDisponivel.value
+}
