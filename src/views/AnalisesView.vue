@@ -515,14 +515,14 @@ async function fetchTotaisFinanceiros() {
   const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
   try {
-    // ✨ NOVO: Busca a economicidade total a partir da nova função RPC
-    const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_total_economicidade', { p_ano });
+    // ✨ MUDANÇA AQUI: Chamamos a nova função para obter o SALDO LÍQUIDO
+    const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_saldo_liquido_economicidade', { p_ano });
     
-    // Antigo RPC para o total de projetos (mantido para o outro card)
+    // O restante da função para buscar o total de projetos pode continuar igual
     const { data: projetosData, error: projetosError } = await supabase.rpc('get_totais_financeiros', { p_ano });
 
     if (economicidadeError) {
-      console.error('Erro ao buscar economicidade total:', economicidadeError);
+      console.error('Erro ao buscar saldo líquido de economicidade:', economicidadeError);
       totalEconomicidade.value = 0;
     } else {
       totalEconomicidade.value = economicidadeData || 0;
