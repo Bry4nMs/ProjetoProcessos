@@ -9,6 +9,7 @@ import {
   buscarAreasTematicas,
   registrarEventoHistorico,
 } from '../services/auth'
+import { useFormatters } from '@/composables/useFormatters'
 
 
 function parseCurrency(value: string): number {
@@ -60,7 +61,17 @@ const fileUpload = ref<HTMLInputElement | null>(null)
 // Estado reativo para economicidade
 const saldoEconomicidadeDisponivel = ref(0)
 const isLoadingSaldo = ref(false)
-const economicidadeExcedeSaldo = ref(false)
+
+const economicidadeExcedeSaldo = computed(() => {
+    // Se não houver valor, retorna false.
+    if (!valorEconomicidade.value) {
+        return false;
+    }
+    // Converte o valor para número antes de comparar
+    return Number(valorEconomicidade.value) > saldoEconomicidadeDisponivel.value;
+});
+
+const { formatarValor: formatarMoeda } = useFormatters();
 const feedbackErroEconomicidade = ref('');
 
 const valorTotal = computed(() => {
@@ -146,61 +157,51 @@ async function carregarAcoes() {
 
 // Função para buscar saldo de economicidade via RPC do Supabase
 async function fetchSaldoEconomicidade() {
+  feedbackErroEconomicidade.value = '';
+
   if (!anoFaf.value || !areaTematicaId.value || !tipoNatureza.value) {
-    saldoEconomicidadeDisponivel.value = 0
-    economicidadeExcedeSaldo.value = false
-    console.log("RPC fetchSaldoEconomicidade: Condições para chamada não atendidas."); // Debug
-    return
+    saldoEconomicidadeDisponivel.value = 0;
+    return;
   }
 
-  isLoadingSaldo.value = true
-
-  console.log('Chamando RPC get_saldo_economicidade_disponivel com:', {
-    p_ano_faf: Number(anoFaf.value),
-    p_thematic_area_id: Number(areaTematicaId.value),
-    p_tipo_natureza_despesa: tipoNatureza.value,
-    p_processo_id_excluir: null
-  });
-
-
+  isLoadingSaldo.value = true;
+  
+  // SEU BLOCO DE CÓDIGO VEM AQUI DENTRO
   try {
-    // CORREÇÃO FINAL AQUI: ALINHADO COM A ASSINATURA EXATA DO SUPABASE
     const { data, error } = await supabase.rpc('get_saldo_economicidade_disponivel', {
       p_ano_faf: Number(anoFaf.value),
       p_thematic_area_id: Number(areaTematicaId.value),
       p_tipo_natureza_despesa: tipoNatureza.value,
-      p_processo_id_excluir: null // Garante que este componente não está ignorando um processo que está sendo editado/excluido em outro lugar
-    })
+      p_processo_id_excluir: null
+    });
 
     if (error) {
-      console.error('Erro ao buscar saldo de economicidade:', error)
-      saldoEconomicidadeDisponivel.value = 0
-      // ATUALIZAÇÃO: Usar a variável de feedback específica
-      feedbackErroEconomicidade.value = 'Erro ao carregar saldo de economicidade: ' + error.message;
+      console.error('Erro ao buscar saldo de economicidade:', error);
+      saldoEconomicidadeDisponivel.value = 0;
+      feedbackErroEconomicidade.value = 'Erro ao carregar saldo: ' + error.message;
     } else {
-      saldoEconomicidadeDisponivel.value = data || 0
+      saldoEconomicidadeDisponivel.value = data || 0;
     }
   } catch (error) {
-    console.error('Erro ao buscar saldo de economicidade:', error)
-    saldoEconomicidadeDisponivel.value = 0
-    // ATUALIZAÇÃO: Usar a variável de feedback específica
-    feedbackErroEconomicidade.value = 'Erro inesperado ao carregar saldo de economicidade: ' + (error as Error).message;
+    console.error('Erro inesperado ao buscar saldo:', error);
+    saldoEconomicidadeDisponivel.value = 0;
+    feedbackErroEconomicidade.value = 'Erro inesperado ao carregar saldo: ' + (error as Error).message;
   } finally {
-    isLoadingSaldo.value = false
-    validateEconomicidadeEntrada()
+    isLoadingSaldo.value = false;
+    // Removi validateEconomicidadeEntrada() daqui para evitar loops, é melhor chamá-lo em um watch separado.
   }
 }
 
 
+
 // Função para validar se o valor de economicidade excede o saldo disponível
 function validateEconomicidadeEntrada() {
-  const valorEcon = parseCurrency(valorEconomicidade.value)
-  economicidadeExcedeSaldo.value = valorEcon > saldoEconomicidadeDisponivel.value;
-  // ATUALIZAÇÃO: Se excede, define o feedback de erro
+  // A computada 'economicidadeExcedeSaldo' já fez o cálculo e tem o valor true/false.
+  // Nós apenas lemos o resultado dela para definir a mensagem de feedback.
   if (economicidadeExcedeSaldo.value) {
     feedbackErroEconomicidade.value = 'O valor de Economicidade de Entrada excede o saldo disponível. Por favor, ajuste o valor.';
   } else {
-    // Se não excede, limpa o feedback de erro específico da economicidade
+    // Se não excede, limpa o feedback de erro específico da economicidade.
     feedbackErroEconomicidade.value = '';
   }
 }
@@ -545,22 +546,33 @@ function handleFileSelected(event: Event) {
             />
           </div>
           <div>
-            <label class="block text-slate-200 mb-1 font-semibold">Valor de Economicidade</label>
-            <input
-              v-model="valorEconomicidade"
-              type="text"
-              class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400"
-              :class="{'border-red-500': economicidadeExcedeSaldo, 'border-white/20': !economicidadeExcedeSaldo}"
-              placeholder="R$ 0,00"
-            />
-            <p v-if="isLoadingSaldo" class="text-sm text-teal-300 mt-1">Carregando saldo de economicidade...</p>
-            <p v-else-if="anoFaf && areaTematicaId && tipoNatureza" class="text-sm text-slate-400 mt-1">
-              Saldo disponível: {{ saldoEconomicidadeDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}
-            </p>
-            <p v-if="economicidadeExcedeSaldo" class="text-sm text-red-500 mt-1 font-semibold">
-              O valor de Economicidade de Entrada excede o saldo disponível.
-            </p>
-          </div>
+  <label class="block text-slate-200 mb-1 font-semibold">Valor de Economicidade</label>
+  <input
+    v-model="valorEconomicidade"
+    type="text"
+    class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    :class="{'border-red-500': economicidadeExcedeSaldo, 'border-white/20': !economicidadeExcedeSaldo}"
+    placeholder="R$ 0,00"
+    :disabled="!anoFaf || !areaTematicaId || !tipoNatureza"
+  />
+
+  <div class="mt-2 text-sm h-5"> <p v-if="isLoadingSaldo" class="text-teal-300 animate-pulse">
+      Calculando saldo disponível...
+    </p>
+    <div v-else-if="anoFaf && areaTematicaId && tipoNatureza">
+      <p v-if="feedbackErroEconomicidade" class="font-semibold text-red-400">
+        {{ feedbackErroEconomicidade }}
+      </p>
+      <p v-else class="text-slate-400">
+        Saldo disponível: 
+        <span class="font-bold text-teal-400">{{ formatarMoeda(saldoEconomicidadeDisponivel) }}</span>
+      </p>
+    </div>
+    <p v-else class="text-slate-500">
+      Preencha Ano, Área e Tipo para ver o saldo.
+    </p>
+  </div>
+  </div>
           <div>
             <label class="block text-slate-200 mb-1 font-semibold"
               >Valor Total Destinado à Ação</label
