@@ -150,9 +150,9 @@
             </div>
             <div class="bg-white/5 rounded-lg p-4 text-center">
   <div class="text-slate-300 text-xs mb-1">Valor Total Destinado</div>
-  <div class="text-teal-400 font-bold text-lg">
-    {{ formatarValor(isEditing ? valorTotalDestinadoCalculado : processo.valor_total_destinado || 0) }}
-  </div>
+    <div class="text-teal-400 font-bold text-lg">
+      {{ formatarValor(isEditing ? valorTotalDestinadoCalculado : valorTotalDestinadoVisualizacao) }}
+    </div>
 </div>
           </div>
         </div>
@@ -481,6 +481,14 @@ const valorTotalDestinadoCalculado = computed(() => {
   return inicial + rendimentos + economicidade;
 });
 
+// Adicione esta nova propriedade computada
+const valorTotalDestinadoVisualizacao = computed(() => {
+  const inicial = Number(props.processo.valor_inicial_padrao) || 0;
+  const rendimentos = Number(props.processo.valor_rendimentos) || 0;
+  const economicidade = Number(props.processo.valor_economicidade) || 0;
+  return inicial + rendimentos + economicidade;
+});
+
 
 watch(() => props.show, (newValue, oldValue) => {
   console.log(`[FILHO] Propriedade 'show' mudou de '${oldValue}' para '${newValue}'`);
@@ -772,6 +780,8 @@ async function salvarAlteracoes() {
       qtd_itens: editableData.qtd_itens === '' ? null : Number(editableData.qtd_itens),
       valor_rendimentos: editableData.valor_rendimentos === '' ? null : Number(editableData.valor_rendimentos),
       valor_economicidade: editableData.valor_economicidade === '' ? null : Number(editableData.valor_economicidade),
+    
+      valor_total_destinado: valorTotalDestinadoCalculado.value
     };
 
     const { error } = await supabase
