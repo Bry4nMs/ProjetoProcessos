@@ -27,7 +27,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white/5 p-4 rounded-lg">
         <div class="text-center">
           <p class="text-sm text-slate-300">Valor Total Destinado</p>
-          <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(processo.valor_total_destinado || 0) }}</p>
+          <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado || 0) }}</p>
         </div>
         <div class="text-center">
           <p class="text-sm text-slate-300">Valor Total Utilizado</p>
@@ -133,9 +133,18 @@ interface ProcessRecord {
 }
 
 // Props e Emits
+interface ProcessoCompleto {
+  id: string;
+  valor_total_destinado?: number;
+  valor_inicial_padrao?: number;
+  valor_rendimentos?: number;
+  valor_economicidade?: number;
+  // adicione outros campos do processo que precisar
+}
+
 const props = defineProps<{
   show: boolean;
-  processo: { id: string; valor_total_destinado?: number };
+  processo: ProcessoCompleto; // <<<<<< MUDANÇA AQUI
 }>();
 
 const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes', 'switch-to-etapas']);
@@ -176,10 +185,10 @@ const totalUtilizado = computed(() => {
 });
 
 const saldoRestante = computed(() =>{
-  const destinado = props.processo.valor_total_destinado || 0;
+  const destinado = valorTotalDestinadoCalculado.value || 0;
   const utilizado = totalUtilizado.value;
-  return destinado - utilizado;
-});
+  return destinado - utilizado
+})
 
 // Funções
 
@@ -191,6 +200,17 @@ function onFileChange(event: Event){
     newRecordFile.value = null
   }
 }
+
+// Esta propriedade computada será a nossa "fonte da verdade" para o valor destinado
+const valorTotalDestinadoCalculado = computed(() => {
+  const inicial = Number(props.processo.valor_inicial_padrao) || 0;
+  const rendimentos = Number(props.processo.valor_rendimentos) || 0;
+  const economicidade = Number(props.processo.valor_economicidade) || 0;
+  return inicial + rendimentos + economicidade;
+});
+
+
+
 
 async function fetchRecords() {
   if (!props.processo.id) return;
@@ -271,6 +291,8 @@ async function salvarRegistro() {
     }
 
     await fetchRecords();
+
+    emit('atualizar-processo')
 
   } catch (err: unknown) {
     const error = err as Error;
