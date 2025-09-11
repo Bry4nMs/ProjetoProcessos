@@ -581,10 +581,10 @@ watch(subPainelFinanceiroAtivo, (newValue) => {
 
 async function fetchEconomicidadeDetalhada() {
   loading.value = true;
-  const anoSelecionado = filtroAnoEconomicidade.value || filtroAno.value;
+  const anoSelecionado = filtroAnoEconomicidade.value || filtroAno.value; 
   const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
-  const { data, error } = await supabase.rpc('get_economicidade_detalhada', { p_ano });
+  const { data, error } = await supabase.rpc('get_economicidade_detalhada_chart', { p_ano });
 
   if (error) {
     console.error('Erro ao buscar economicidade detalhada:', error)
@@ -592,6 +592,10 @@ async function fetchEconomicidadeDetalhada() {
     loading.value = false;
     return;
   }
+  
+  // ADICIONE ESTA LINHA PARA DEPURAR
+  console.log('Dados recebidos do Supabase:', data); 
+
   dadosEconomicidadeDetalhada.value = data || [];
   loading.value = false;
 }
@@ -921,34 +925,43 @@ const chartOptionsQuantidadeProcessos = {
 // ... (depois de chartOptionsQuantidadeProcessos)
 
 const chartDataEconomicidadeDetalhada = computed(() => {
-    const areas = Array.from(new Set(dadosEconomicidadeDetalhada.value.map(d => d.thematic_area_code))).sort();
+    const dados = dadosEconomicidadeDetalhada.value;
+    if (!dados || dados.length === 0) {
+        return { labels: [], datasets: [] };
+    }
 
-    const investimentoData = areas.map(area => {
-        const item = dadosEconomicidadeDetalhada.value.find(d => d.thematic_area_code === area && d.tipo_despesa === 'Investimento');
-        return item ? item.total_economicidade : 0;
-    });
+    // 1. Pega todos os códigos de área únicos e os ordena alfabeticamente para consistência.
+    const labels = Array.from(new Set(dados.map(d => d.thematic_area_code))).sort();
 
-    const custeioData = areas.map(area => {
-        const item = dadosEconomicidadeDetalhada.value.find(d => d.thematic_area_code === area && d.tipo_despesa === 'Custeio');
-        return item ? item.total_economicidade : 0;
-    });
+    // 2. Cria um mapa para facilitar a busca de dados.
+    // A chave será "CODE-TIPO", ex: "VPSP-Custeio"
+    const dadosMapeados = new Map<string, number>();
+    for (const item of dados) {
+        const chave = `${item.thematic_area_code}-${item.tipo_despesa.toLowerCase()}`;
+        dadosMapeados.set(chave, item.total_economicidade);
+    }
+
+    // 3. Monta os datasets de forma segura, garantindo a ordem e as cores.
+    const datasets = [
+        {
+            label: 'Investimento',
+            // Para cada área (label), busca o valor correspondente no mapa. Se não encontrar, o valor é 0.
+            data: labels.map(label => dadosMapeados.get(`${label}-investimento`) || 0),
+            backgroundColor: '#00ff00', // Verde para Investimento
+            borderRadius: 6,
+        },
+        {
+            label: 'Custeio',
+            // Faz o mesmo para Custeio.
+            data: labels.map(label => dadosMapeados.get(`${label}-custeio`) || 0),
+            backgroundColor: '#00ffff', // Ciano para Custeio
+            borderRadius: 6,
+        }
+    ];
 
     return {
-        labels: areas,
-        datasets: [
-            {
-                label: 'Investimento',
-                data: investimentoData,
-                backgroundColor: '#00ff00', // emerald-500
-                borderRadius: 6,
-            },
-            {
-                label: 'Custeio',
-                data: custeioData,
-                backgroundColor: '#00ffff', // cyan-600
-                borderRadius: 6,
-            }
-        ]
+        labels: labels,
+        datasets: datasets
     };
 });
 
