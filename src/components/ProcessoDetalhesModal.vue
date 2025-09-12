@@ -753,15 +753,33 @@ function initTribute() {
 }
 
 // Funções de edição
-function iniciarEdicao() {
-  editableData.valor_inicial_padrao = props.processo.valor_inicial_padrao || 0
-  editableData.qtd_itens = props.processo.qtd_itens || ''
-  editableData.descricao_itens = props.processo.descricao_itens || ''
-  editableData.destinacao_itens = props.processo.destinacao_itens || ''
-  editableData.valor_rendimentos = props.processo.valor_rendimentos || 0
-  editableData.valor_economicidade = props.processo.valor_economicidade || 0
-  editableData.descricao_geral = props.processo.descricao_geral || ''
-  isEditing.value = true
+async function iniciarEdicao() {
+  try {
+    // 1. Busca os dados mais recentes do processo no banco
+    const { data: processoAtualizado, error } = await supabase
+      .from('processes')
+      .select('*')
+      .eq('id', props.processo.id)
+      .single();
+
+    if (error) throw error;
+    if (!processoAtualizado) throw new Error("Processo não encontrado.");
+
+    // 2. Preenche o formulário de edição com os dados frescos
+    editableData.valor_inicial_padrao = processoAtualizado.valor_inicial_padrao || 0;
+    editableData.qtd_itens = processoAtualizado.qtd_itens || '';
+    editableData.descricao_itens = processoAtualizado.descricao_itens || '';
+    editableData.destinacao_itens = processoAtualizado.destinacao_itens || '';
+    editableData.valor_rendimentos = processoAtualizado.valor_rendimentos || 0;
+    editableData.valor_economicidade = processoAtualizado.valor_economicidade || 0;
+    editableData.descricao_geral = processoAtualizado.descricao_geral || '';
+    
+    isEditing.value = true; // Só entra em modo de edição se os dados foram carregados com sucesso
+
+  } catch (error: any) {
+    console.error("Erro ao carregar dados para edição:", error);
+    alert("Não foi possível carregar os dados mais recentes para edição: " + error.message);
+  }
 }
 
 async function salvarAlteracoes() {
@@ -775,13 +793,13 @@ async function salvarAlteracoes() {
       destinacao_itens: editableData.destinacao_itens,
       descricao_geral: editableData.descricao_geral,
 
-      // Campos numéricos. Note que o 'valor_total_destinado' foi removido daqui.
+      // Campos numéricos
       valor_inicial_padrao: String(editableData.valor_inicial_padrao) === '' ? null : Number(editableData.valor_inicial_padrao),
       qtd_itens: editableData.qtd_itens === '' ? null : Number(editableData.qtd_itens),
       valor_rendimentos: editableData.valor_rendimentos === '' ? null : Number(editableData.valor_rendimentos),
       valor_economicidade: editableData.valor_economicidade === '' ? null : Number(editableData.valor_economicidade),
-    
-      valor_total_destinado: valorTotalDestinadoCalculado.value
+
+      // A linha 'valor_total_destinado' foi removida. O banco cuidará disso!
     };
 
     const { error } = await supabase

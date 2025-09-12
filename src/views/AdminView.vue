@@ -176,7 +176,7 @@
                   <td class="px-3 py-2">{{ proc.status as string }}</td>
                   <td class="px-3 py-2">{{ new Date(proc.created_at as string).toLocaleString() }}</td>
                   <td class="px-3 py-2">
-                    <button @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)" class="text-red-600 hover:underline">Excluir</button>
+                    <button @click="confirmarExclusaoProcesso(proc.id as string, proc.nome_acao as string)" class="text-red-600 hover:underline">Excluir</button>
                   </td>
                 </tr>
               </tbody>
@@ -242,19 +242,19 @@
                 <td class="px-3 py-2">
                   <!-- Botão condicional baseado no estado da lixeira -->
                   <button
-                    v-if="!mostrandoLixeira"
-                    @click="handleDeleteProcess(proc.id as string, proc.nome_acao as string)"
-                    class="text-red-600 hover:underline"
-                  >
-                    Excluir
-                  </button>
-                  <button
-                    v-else
-                    @click="handleRestoreProcess(proc.id as string, proc.nome_acao as string)"
-                    class="text-green-500 hover:underline"
-                  >
-                    Restaurar
-                  </button>
+  v-if="!mostrandoLixeira"
+  @click="confirmarExclusaoProcesso(proc.id as string, proc.nome_acao as string)"
+  class="text-red-600 hover:underline"
+>
+  Excluir
+</button>
+<button
+  v-else
+  @click="confirmarRestauracaoProcesso(proc.id as string, proc.nome_acao as string)"
+  class="text-green-500 hover:underline"
+>
+  Restaurar
+</button>
                 </td>
               </tr>
             </tbody>
@@ -262,6 +262,13 @@
         </div>
       </div>
     </div>
+    <ConfirmationModal
+      :show="showConfirmationModal"
+      :title="confirmationTitle"
+      :message="confirmationMessage"
+      @confirm="onConfirmAction"
+      @cancel="onCancelAction"
+    />
   </Layout>
 </template>
 
@@ -270,6 +277,7 @@ import Layout from '../components/Layout.vue'
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { supabase } from '../services/supabase'
 import { useAuth } from '../composables/useAuth'
+import ConfirmationModal from '../components/ConfirmationModal.vue';
 
 // Tipos explícitos para evitar 'any'
 interface Regra {
@@ -299,6 +307,13 @@ const searchTerm = ref('')
 const statusFilter = ref('')
 const processosListados = ref<Record<string, unknown>[]>([])
 const loadingProcessos = ref(false)
+
+// Adicione estas variáveis de estado para o modal de confirmação
+const showConfirmationModal = ref(false);
+const confirmationTitle = ref('');
+const confirmationMessage = ref('');
+// Esta variável "guarda" a ação a ser executada se o usuário clicar em "Confirmar"
+const actionToConfirm = ref<(() => void) | null>(null);
 
 // Estado para controlar a visualização da lixeira
 const mostrandoLixeira = ref(false)
@@ -352,67 +367,106 @@ watch(mostrandoLixeira, () => {
 })
 
 // [4] --- NOVO: Função de exclusão (soft delete) ---
-async function handleDeleteProcess(processoId: string, processoNome: string) {
-  if (!window.confirm(`Tem certeza que deseja excluir o processo "${processoNome}"?`)) return
-  const { data, error } = await supabase.from('processes').update({ deleted_at: new Date().toISOString() }).eq('id', processoId)
-  // Bloco de debug detalhado
-  console.debug('Resultado da exclusão:', { data, error })
-  if (!error) {
-    // Registrar auditoria
-    // Obter nome do administrador para registro (não utilizado diretamente)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _adminName = user.value?.user_metadata?.name || user.value?.email || 'Admin'
-    const auditRes = await supabase.from('audit_log').insert({
+
+
+// 2. A função que realmente faz o trabalho (sua lógica antiga, sem o confirm)
+function confirmarExclusaoProcesso(processoId: string, processoNome: string) {
+  confirmationTitle.value = 'Confirmar Exclusão';
+  confirmationMessage.value = `Tem certeza que deseja mover o processo "${processoNome}" para a lixeira?`;
+  actionToConfirm.value = () => executarExclusaoProcesso(processoId);
+  showConfirmationModal.value = true;
+}
+
+async function executarExclusaoProcesso(processoId: string) {
+  try {
+    // 1. Tenta fazer o soft delete
+    const { error: updateError } = await supabase
+      .from('processes')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', processoId);
+
+    if (updateError) throw updateError;
+
+    // 2. Tenta registrar a auditoria
+    const { error: auditError } = await supabase.from('audit_log').insert({
       process_id: processoId,
       user_id: user.value?.id,
       field_name: 'deleted_at',
       old_value: 'NULL',
       new_value: 'data de exclusão'
-    })
-    console.debug('Resultado da auditoria:', auditRes)
-    fetchProcesses()
-  } else {
-    alert('Erro ao excluir processo: ' + (error.message || JSON.stringify(error) || 'Erro desconhecido'))
+    });
+
+    if (auditError) {
+      // Mesmo que a auditoria falhe, o processo foi excluído.
+      // Apenas avisamos sobre a falha no log.
+      console.warn('O processo foi excluído, mas houve uma falha ao registrar a auditoria:', auditError);
+    }
+
+    // 3. Atualiza a lista de processos na tela
+    fetchProcesses();
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error) || 'Erro desconhecido';
+    console.error('Erro ao excluir processo:', error);
+    // Agora, qualquer erro (seja no update ou na auditoria) será exibido
+    alert('Erro ao excluir processo: ' + errorMessage);
   }
 }
 
-// [4.1] --- NOVO: Função de restauração de processo ---
-async function handleRestoreProcess(processoId: string, processoNome: string) {
-  if (!window.confirm(`Tem certeza que deseja restaurar o processo "${processoNome}"?`)) return
+// --- 4. Refatore a lógica de RESTAURAR ---
+// Função que abre o modal de confirmação para a restauração
+function confirmarRestauracaoProcesso(processoId: string, processoNome: string) {
+  confirmationTitle.value = 'Confirmar Restauração';
+  confirmationMessage.value = `Tem certeza que deseja restaurar o processo "${processoNome}"? Ele voltará para a lista de processos ativos.`;
+  // Guarda a função de execução que será chamada se o usuário confirmar
+  actionToConfirm.value = () => executarRestauracaoProcesso(processoId);
+  showConfirmationModal.value = true; // Mostra o modal
+}
 
+// Função que executa a restauração (sua lógica antiga, sem confirm e sem alert de sucesso)
+async function executarRestauracaoProcesso(processoId: string) {
   try {
-    // Primeiro, atualizar o processo diretamente
     const { error: updateError } = await supabase
       .from('processes')
       .update({ deleted_at: null })
-      .eq('id', processoId)
+      .eq('id', processoId);
 
     if (updateError) throw updateError;
 
-    // Registrar na auditoria manualmente
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _adminName = user.value?.user_metadata?.name || user.value?.email || 'Admin' // Nome do admin para registro (não utilizado diretamente)
-    const { error: auditError } = await supabase.from('audit_log').insert({
+    // Sua lógica de auditoria (opcional, mas recomendado)
+    await supabase.from('audit_log').insert({
       process_id: processoId,
       user_id: user.value?.id,
       field_name: 'deleted_at',
       old_value: 'data de exclusão',
       new_value: 'NULL'
-    })
+    });
 
-    if (auditError) {
-      console.error('Erro ao registrar auditoria:', auditError)
-      // Continuar mesmo com erro na auditoria
-    }
+    fetchProcesses(); // Atualiza a lista, o que já é um feedback visual
 
-    // Atualizar a lista após restauração bem-sucedida
-    fetchProcesses()
-    alert(`O processo "${processoNome}" foi restaurado com sucesso.`)
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error) || 'Erro desconhecido'
-    console.error('Erro ao restaurar processo:', error)
-    alert('Erro ao restaurar processo: ' + errorMessage)
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error) || 'Erro desconhecido';
+    console.error('Erro ao restaurar processo:', error);
+    // Para erros, um alert ainda pode ser útil, ou você pode usar um componente de notificação mais elegante
+    alert('Erro ao restaurar processo: ' + errorMessage);
   }
+}
+
+
+function onConfirmAction() {
+  if (actionToConfirm.value) {
+    actionToConfirm.value(); // Executa a ação que foi guardada
+  }
+  closeConfirmationModal();
+}
+
+function onCancelAction() {
+  closeConfirmationModal();
+}
+
+function closeConfirmationModal() {
+  showConfirmationModal.value = false;
+  actionToConfirm.value = null; // Limpa a ação guardada
 }
 
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, defineProps, defineEmits, watch } from 'vue'
+import { ref, defineProps, defineEmits, watch, computed } from 'vue'
 // As importações desnecessárias (onMounted, reactive, etc.) e as de bibliotecas
 // que foram movidas (Tribute, jsPDF, etc.) foram removidas.
 import {registrarEventoHistorico } from '../services/auth'
@@ -32,6 +32,13 @@ function abrirEtapas(e: Event) {
   // Emitir evento para o componente pai (ProcessosView.vue) abrir o modal de etapas
   emit('mostrar-etapas', props.processo)
 }
+
+const valorTotalDestinadoCalculado = computed(() => {
+  const inicial = Number(props.processo.valor_inicial_padrao) || 0;
+  const rendimentos = Number(props.processo.valor_rendimentos) || 0;
+  const economicidade = Number(props.processo.valor_economicidade) || 0;
+  return inicial + rendimentos + economicidade;
+});
 
 // Em ProcessoCard.vue -> <script setup>
 
@@ -131,8 +138,8 @@ async function toggleFavorite() {
         {{ processo.forca_code || 'Não definido' }}
       </div>
       <div class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-2">
-        {{ formatarValor(processo.valor_total_destinado || 0) }}
-      </div>
+  {{ formatarValor(valorTotalDestinadoCalculado) }}
+</div>
       <div class="flex flex-wrap gap-2 mb-2">
         <span class="border border-teal-400/50 text-teal-300 bg-teal-500/10 text-xs px-2 py-1 rounded">
           {{ processo.tipo_natureza_despesa || 'Não definido' }}
