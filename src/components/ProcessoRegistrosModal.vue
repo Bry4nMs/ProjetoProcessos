@@ -8,21 +8,21 @@
       class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] flex flex-col"
     >
       <div class="flex items-center gap-4 mb-4">
-  <div class="flex bg-slate-800/50 rounded-lg p-1">
-    <button @click="trocarParaDetalhes" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
-      Detalhes
-    </button>
-    <button @click="trocarParaEtapas" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
-      Etapas
-    </button>
-    <button class="px-4 py-1.5 rounded-md font-medium bg-gradient-to-r from-teal-600 to-cyan-500 text-white">
-      Registros
-    </button>
-  </div>
-  <button @click="fecharModal" class="ml-auto p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-red-400 transition" title="Fechar">
-    <svg class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
-  </button>
-</div>
+        <div class="flex bg-slate-800/50 rounded-lg p-1">
+          <button @click="trocarParaDetalhes" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
+            Detalhes
+          </button>
+          <button @click="trocarParaEtapas" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
+            Etapas
+          </button>
+          <button class="px-4 py-1.5 rounded-md font-medium bg-gradient-to-r from-teal-600 to-cyan-500 text-white">
+            Registros
+          </button>
+        </div>
+        <button @click="fecharModal" class="ml-auto p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-red-400 transition" title="Fechar">
+          <svg class='w-6 h-6' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M18 6L6 18M6 6l12 12'/></svg>
+        </button>
+      </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white/5 p-4 rounded-lg">
         <div class="text-center">
@@ -43,42 +43,43 @@
         <div class="bg-white/5 p-4 rounded-lg mb-6">
           <h3 class="font-semibold text-white mb-3">Adicionar Novo Registro de Gasto</h3>
           <form @submit.prevent="salvarRegistro" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Data de Solicitação</label>
-                <input v-model="newRecord.request_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Data de Aquisição</label>
-                <input v-model="newRecord.acquisition_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Valor Utilizado</label>
-                <input v-model.number="newRecord.amount_used" type="number" step="0.01" placeholder="R$ 0,00" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" required>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-1">Descrição dos Itens/Serviços</label>
-              <textarea v-model="newRecord.description" rows="2" placeholder="Descreva o que foi adquirido..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"></textarea>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Data de Solicitação</label>
+        <input v-model="newRecord.request_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Data de Aquisição</label>
+        <input v-model="newRecord.acquisition_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Valor Utilizado</label>
+        <input v-model.number="newRecord.amount_used" type="number" step="0.01" placeholder="R$ 0,00" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" required>
+      </div>
+    </div>
+    
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">Descrição dos Itens/Serviços</label>
+      <textarea v-model="newRecord.description" rows="2" placeholder="Descreva o que foi adquirido..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"></textarea>
+    </div>
 
-            <div>
-              <label class="block text-sm font-medium text-slate-300 mb-1">Anexar Comprovante (Opcional)</label>
-              <div class="flex items-center gap-4 bg-white/10 border border-white/20 rounded-lg px-3 py-2">
-                <label for="record-file-input" class="px-3 py-1 bg-white/10 border border-white/20 rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-white/20 transition">
-                  Escolher Arquivo
-                </label>
-                <input id="record-file-input" type="file" @change="onFileChange" class="hidden" />
-                <span class="text-sm text-slate-300 truncate">{{  newRecordFile?.name || 'Nenhum arquivo selecionado...'}}</span>
-              </div>
-            </div>
+    <div>
+      <label class="block text-sm font-medium text-slate-300 mb-1">Anexar Comprovante (Opcional)</label>
+      <div class="flex items-center gap-4 bg-white/10 border border-white/20 rounded-lg px-3 py-2">
+        <label for="record-file-input" class="px-3 py-1 bg-white/10 border border-white/20 rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-white/20 transition">
+          Escolher Arquivo
+        </label>
+        <input id="record-file-input" type="file" @change="onFileChange" class="hidden" />
+        <span class="text-sm text-slate-300 truncate">{{ newRecordFile?.name || 'Nenhum arquivo selecionado...' }}</span>
+      </div>
+    </div>
 
-            <div class="flex justify-end">
-              <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ isSubmitting ? 'Salvando...' : 'Salvar Registro' }}
-              </button>
-            </div>
-          </form>
+    <div class="flex justify-end">
+      <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed">
+        {{ isSubmitting ? 'Salvando...' : 'Salvar Registro' }}
+      </button>
+    </div>
+  </form>
         </div>
 
         <div>
@@ -86,31 +87,45 @@
           <div v-if="loadingRecords" class="text-center p-4">Carregando...</div>
           <div v-else-if="records.length === 0" class="text-center text-slate-400 p-4">Nenhum registro de gasto encontrado.</div>
           <div v-else class="space-y-3">
-            <div v-for="record in records" :key="record.id" class="bg-white/5 p-3 rounded-lg flex items-center justify-between gap-4">
-  <div>
-    <p class="font-semibold text-white">{{ record.description || 'Registro sem descrição' }}</p>
-    <div class="flex items-center gap-4 text-sm text-slate-300">
-      <span>Solicitado: {{ formatarData(record.request_date) }}</span>
-      <span>Adquirido: {{ formatarData(record.acquisition_date) }}</span>
+            <div v-for="record in records" :key="record.id" class="bg-white/5 p-3 rounded-lg flex items-center justify-between gap-4 group">
+              <div>
+                <p class="font-semibold text-white">{{ record.description || 'Registro sem descrição' }}</p>
+                <div class="flex items-center gap-4 text-sm text-slate-300 mt-1">
+                  <span>Solicitado: {{ formatarData(record.request_date) }}</span>
+                  <span>Adquirido: {{ formatarData(record.acquisition_date) }}</span>
+                  <a
+                    v-if="record.file_url"
+                    :href="record.file_url"
+                    target="_blank"
+                    class="flex items-center gap-1 text-teal-400 hover:text-teal-300 hover:underline"
+                    title="Ver anexo"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    Ver Comprovante
+                  </a>
+                </div>
+              </div>
 
-      <a
-        v-if="record.file_url"
-        :href="record.file_url"
-        target="_blank"
-        class="flex items-center gap-1 text-teal-400 hover:text-teal-300 hover:underline"
-        title="Ver anexo"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-        Ver Comprovante
-      </a>
-    </div>
-  </div>
-  <p class="text-lg font-bold text-teal-300 flex-shrink-0">{{ formatarMoeda(record.amount_used) }}</p>
-</div>
+              <div class="flex items-center gap-4">
+                <p class="text-lg font-bold text-teal-300 flex-shrink-0">{{ formatarMoeda(record.amount_used) }}</p>
+                <button
+                  @click="confirmarExclusaoRegistro(record)"
+                  class="p-2 border border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent rounded font-semibold transition opacity-0 group-hover:opacity-100"
+                  title="Excluir Registro"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 18h6l3-18H3zM5 6h14M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-6 6v6m4-6v6"></path></svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </div> </div> <ConfirmationModal
+      :show="showConfirmationModal"
+      :title="confirmationTitle"
+      :message="confirmationMessage"
+      @confirm="onConfirmAction"
+      @cancel="onCancelAction"
+    />
   </div>
 </template>
 
@@ -119,6 +134,7 @@ import { ref, reactive, watch, computed } from 'vue';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../composables/useAuth';
 import { useFormatters } from '../composables/useFormatters';
+import ConfirmationModal from './ConfirmationModal.vue';
 
 
 interface ProcessRecord {
@@ -147,7 +163,29 @@ const props = defineProps<{
   processo: ProcessoCompleto; // <<<<<< MUDANÇA AQUI
 }>();
 
+const showConfirmationModal = ref(false);
+const confirmationTitle = ref('');
+const confirmationMessage = ref('');
+const actionToConfirm = ref<(() => void) | null>(null);
+
 const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes', 'switch-to-etapas']);
+
+
+function onConfirmAction() {
+  if (actionToConfirm.value) {
+    actionToConfirm.value();
+  }
+  closeConfirmationModal();
+}
+
+function onCancelAction() {
+  closeConfirmationModal();
+}
+
+function closeConfirmationModal() {
+  showConfirmationModal.value = false;
+  actionToConfirm.value = null;
+}
 
 function fecharModal() {
   emit('close');
@@ -298,6 +336,36 @@ async function salvarRegistro() {
     const error = err as Error;
     console.error('Erro ao salvar registro:', error);
     alert(`Não foi possível salvar o registro: ${error.message}`);
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+function confirmarExclusaoRegistro(record: ProcessRecord) {
+  confirmationTitle.value = 'Confirmar Exclusão de Registro';
+  confirmationMessage.value = `Tem certeza que deseja excluir o registro de gasto "${record.description || 'sem descrição'}" no valor de ${formatarMoeda(record.amount_used)}? Esta ação não pode ser desfeita.`;
+  actionToConfirm.value = () => executarExclusaoRegistro(record);
+  showConfirmationModal.value = true;
+}
+
+// 2. Função que FAZ o trabalho de exclusão
+async function executarExclusaoRegistro(record: ProcessRecord) {
+  isSubmitting.value = true;
+  try {
+    if (record.storage_path) {
+      await supabase.storage.from('documents').remove([record.storage_path]);
+    }
+    const { error: dbError } = await supabase
+      .from('process_records')
+      .delete()
+      .eq('id', record.id);
+    if (dbError) throw dbError;
+    await fetchRecords();
+    emit('atualizar-processo');
+  } catch (err: unknown) {
+    const error = err as Error;
+    console.error('Erro ao excluir registro:', error);
+    alert(`Não foi possível excluir o registro: ${error.message}`);
   } finally {
     isSubmitting.value = false;
   }
