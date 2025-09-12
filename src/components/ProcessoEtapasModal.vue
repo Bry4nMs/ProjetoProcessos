@@ -71,15 +71,11 @@
           >
             <!-- Círculo colorido -->
             <div
-              class="w-8 h-8 rounded-full flex items-center justify-center border-2"
-              :style="{
-                borderColor: idx <= etapaAtual ? '#14b8a6' : '#334155',
-                background: idx < etapaAtual ? 'linear-gradient(to right, #14b8a6cc, #06b6d4cc)' : '#1e293b',
-                color: idx < etapaAtual ? '#fff' : '#14b8a6',
-              }"
-            >
-              <span class="font-bold">{{ idx + 1 }}</span>
-            </div>
+  class="w-8 h-8 rounded-full flex items-center justify-center border-2 font-bold"
+  :style="getEtapaStyle(etapa, idx)"
+>
+  <span>{{ idx + 1 }}</span>
+</div>
             <div class="flex-1">
               <div class="flex items-center justify-between">
                 <h3 class="font-semibold text-white">{{ etapa.nome }}</h3>
@@ -210,6 +206,24 @@ const carregandoChecklist = ref(false)
 // Computed properties
 const tempoTotal = computed(() => tempoTotalProcesso(etapas.value))
 
+const etapaCanceladaIndex = computed(() => {
+  // Se o processo não está cancelado, não há etapa cancelada.
+  if (props.processo.status !== 'Cancelado') {
+    return -1;
+  }
+  
+  // Se estiver cancelado, encontramos o índice da última etapa que foi iniciada.
+  // Procuramos de trás para frente para garantir que pegamos a mais avançada.
+  let lastStartedIndex = -1;
+  for (let i = etapas.value.length - 1; i >= 0; i--) {
+    if (etapas.value[i].started_at) {
+      lastStartedIndex = i;
+      break;
+    }
+  }
+  return lastStartedIndex;
+})
+
 // Funções
 async function carregarEtapas() {
   carregandoEtapas.value = true
@@ -267,6 +281,44 @@ function toggleEtapa(etapaId: string) {
   } else {
     etapaExpandidaId.value = etapaId;
   }
+}
+
+function getEtapaStyle(etapa: Etapa, index: number) {
+  const isConcluida = !!etapa.ended_at;
+
+  // 1. VERIFICAÇÃO DE PRIORIDADE MÁXIMA: É a etapa onde o processo foi cancelado?
+  if (props.processo.status === 'Cancelado' && index === etapaCanceladaIndex.value) {
+    return {
+      borderColor: '#ef4444', // Vermelho
+      background: 'linear-gradient(to right, #ef4444cc, #dc2626cc)',
+      color: '#fff',
+    };
+  }
+
+  // 2. Se não for, verifica se a etapa foi concluída normalmente.
+  if (isConcluida) {
+    return {
+      borderColor: '#22c55e', // Verde
+      background: 'linear-gradient(to right, #22c55ecc, #16a34acc)',
+      color: '#fff',
+    };
+  }
+
+  // 3. Se não, verifica se é a etapa atual de um processo em andamento.
+  if (etapa.is_current) {
+    return {
+      borderColor: '#14b8a6', // Teal
+      background: 'linear-gradient(to right, #14b8a6cc, #06b6d4cc)',
+      color: '#fff',
+    };
+  }
+
+  // 4. Caso contrário, é uma etapa futura.
+  return {
+    borderColor: '#334155', // Cinza
+    background: '#1e293b',
+    color: '#94a3b8',
+  };
 }
 
 // Função para adicionar uma nova subtarefa
