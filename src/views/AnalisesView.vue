@@ -281,7 +281,7 @@
     
     <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
       <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-        Valor Específico
+        {{ tituloGraficoValorEspecifico }}
       </h2>
       <div class="flex-1 w-full">
         <BarChart v-if="dadosDistribuicaoValores && !loading" :data="chartDataValoresEspecificos" :options="chartOptionsValoresEspecificos" />
@@ -455,6 +455,28 @@ const filtroForcaProjetos = ref<number | null>(null);
 const dadosValoresEspecificos = ref<Array<{ code: string; valor_inicial: number; valor_rendimentos: number; valor_economicidade: number }>>([]);
 const dadosDistribuicaoValores = ref<{ total_inicial: number; total_rendimentos: number; total_economicidade: number } | null>(null);
 
+
+// Adicione esta propriedade computada junto com as outras
+const tituloGraficoValorEspecifico = computed(() => {
+  const forcaIdSelecionada = filtroForcaProjetos.value;
+
+  // Se o filtro estiver em "Todas as Forças" (valor nulo)
+  if (!forcaIdSelecionada) {
+    return 'Valor Específico Total';
+  }
+
+  // Se uma força específica estiver selecionada, encontra o 'code' dela
+  const forcaSelecionada = forcasMem.value.find(f => f.id === forcaIdSelecionada);
+
+  // Retorna o título dinâmico com o código da força
+  if (forcaSelecionada) {
+    return `Valor Específico ${forcaSelecionada.code}`;
+  }
+  
+  // Fallback caso algo dê errado
+  return 'Valor Específico';
+});
+
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
 // --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
 
@@ -506,7 +528,7 @@ async function fetchProcessosPorForca() {
   }));
 }
 
-// Em AnalisesView.vue -> <script setup>
+
 
 async function fetchTempoMedioPorEtapa() {
   const anoSelecionado = filtroAno.value;
@@ -858,78 +880,98 @@ const chartDataValores = computed(() => ({
   ]
 }));
 
-const chartOptionsValores = {
-  indexAxis: 'y' as const,
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top' as const,
-      labels: {
-        color: '#cbd5e1',
+const chartOptionsValores = computed(() => {
+  // Encontra o valor máximo em todos os datasets para usar como referência
+  let maxValue = 0;
+  chartDataValores.value.datasets.forEach(dataset => {
+    dataset.data.forEach(value => {
+      if (value > maxValue) {
+        maxValue = value;
+      }
+    });
+  });
+
+  return {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top' as const,
+        labels: {
+          color: '#cbd5e1',
+          font: { size: 14 }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        callbacks: {
+          label: ({ dataset, parsed }) => {
+            let label = dataset.label || '';
+            if (label) { label += ': '; }
+            if (parsed.x !== null) {
+              label += formatarMoeda(parsed.x);
+            }
+            return label;
+          }
+        }
+      },
+      // ✨ A LÓGICA INTELIGENTE PARA OS RÓTULOS ESTÁ AQUI ✨
+      datalabels: {
+        anchor: 'end' as const,
+        // O alinhamento muda com base no tamanho da barra
+        align: (context) => {
+          const value = context.dataset.data[context.dataIndex] as number;
+          // Se a barra for longa (> 70% do máximo), o texto fica DENTRO à esquerda
+          return value > maxValue * 0.7 ? 'start' : 'end';
+        },
+        // A cor também muda para garantir a legibilidade
+        color: (context) => {
+          const value = context.dataset.data[context.dataIndex] as number;
+          // Se a barra é longa (texto dentro), a cor é branca. Senão, é a cor do eixo.
+          return value > maxValue * 0.7 ? '#ffffff' : '#cbd5e1';
+        },
+        offset: 8, // Um pequeno espaçamento da borda da barra
         font: {
-          size: 14,
-        }
-      }
-    },
-    tooltip: {
-      backgroundColor: 'rgba(0,0,0,0.7)',
-      titleColor: '#fff',
-      bodyColor: '#fff',
-      callbacks: {
-        label: ({ dataset, parsed }) => {
-          let label = dataset.label || '';
-          if (label) {
-            label += ': ';
+          weight: 'bold' as const,
+          size: 12,
+        },
+        formatter: (value) => {
+          if (value > 0) {
+            return formatarMoeda(value);
           }
-          if (parsed.x !== null) {
-            label += formatarMoeda(parsed.x);
-          }
-          return label;
+          return '';
         }
       }
     },
-    datalabels: {
-      color: '#ffffff',
-      anchor: 'end' as const,
-      align: 'end' as const,
-      offset: -8,
-      font: {
-        weight: 'bold' as const,
-        size: 12,
+    scales: {
+      y: {
+        ticks: {
+          color: '#cbd5e1',
+          font: { weight: 'bold' as const }
+        },
+        grid: { color: 'rgba(255,255,255,0.05)' },
       },
-      formatter: (value) => {
-        if (value > 0) {
-          return formatarMoeda(value);
-        }
-        return '';
-      }
-    }
-  },
-  scales: {
-    y: {
-      ticks: {
-        color: '#cbd5e1',
-        font: { weight: 'bold' as const }
-      },
-      grid: { color: 'rgba(255,255,255,0.05)' },
-    },
-    x: {
-      ticks: {
-        color: '#cbd5e1',
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        callback: (value, index, ticks) => {
+      x: {
+        // Adiciona um 'respiro' de 20% no eixo para os rótulos externos caberem
+        grace: '20%', 
+        ticks: {
+          color: '#cbd5e1',
+          callback: (value) => {
             const num = Number(value);
             if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return 'R$' + (num / 1000) + 'K';
             return formatarMoeda(num);
-        }
+          }
+        },
+        grid: { color: 'rgba(255,255,255,0.1)' },
       },
-      grid: { color: 'rgba(255,255,255,0.1)' },
     },
-  },
-};
+  };
+});
 
 const chartDataRankingPagamento = computed(() => ({
   labels: dadosRankingPagamento.value.map(d => d.code),
@@ -1149,61 +1191,81 @@ const chartDataValoresEspecificos = computed(() => {
             {
                 label: 'Valor Total',
                 data: [dados.total_inicial, dados.total_rendimentos, dados.total_economicidade],
-                backgroundColor: ['#2dd4bf', '#38bdf8', '#818cf8'], // Teal, Blue, Indigo
+                backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6'],
                 borderRadius: 6,
             }
         ]
     };
 });
 
-const chartOptionsValoresEspecificos = computed(() => ({
-    indexAxis: 'y' as const, // <<<< Barras na Horizontal
+const chartOptionsValoresEspecificos = computed(() => {
+  // Pega os dados do gráfico para descobrir o valor máximo
+  const datasetData = chartDataValoresEspecificos.value.datasets[0]?.data || [];
+  const maxValue = Math.max(...datasetData);
+
+  return {
+    indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
     datasets: {
-        bar: {
-            barPercentage: 0.6,    // <<<< Barras mais "gordas"
-            categoryPercentage: 0.7,
-        }
-    },
-    plugins: {
-        legend: { display: false },
-        tooltip: {
-            callbacks: {
-                label: (context) => formatarMoeda(context.parsed.x || 0)
-            }
-        },
-        datalabels: {
-            color: '#ffffff',
-            anchor: 'end' as const,
-            align: 'end' as const,
-            offset: 8,
-            font: { weight: 'bold' as const },
-            formatter: (value) => {
-                if (value > 0) return formatarMoeda(value);
-                return '';
-            }
-        }
+      bar: {
+        barPercentage: 0.6,
+        categoryPercentage: 0.7,
+      }
     },
     scales: {
-        x: {
-            ticks: {
-                color: '#cbd5e1',
-                callback: (value) => {
-                    const num = Number(value);
-                    if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
-                    if (num >= 1000) return 'R$' + (num / 1000) + 'K';
-                    return formatarMoeda(num);
-                }
-            },
-            grid: { color: 'rgba(255,255,255,0.1)' },
+      x: {
+        // Adiciona um pouco de espaço extra no final do eixo X
+        // para garantir que os rótulos externos caibam.
+        grace: '15%', // Aumenta o eixo em 15% além do valor máximo
+        ticks: {
+          color: '#ffffff',
+          callback: (value) => {
+            const num = Number(value);
+            if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return 'R$' + (num / 1000) + 'K';
+            return formatarMoeda(num);
+          }
         },
-        y: {
-            ticks: { color: '#cbd5e1', font: { weight: 'bold' as const }},
-            grid: { display: false },
+        grid: { color: 'rgba(255,255,255,0.1)' },
+      },
+      y: {
+        ticks: { color: '#ffffff', font: { weight: 'bold' as const }},
+        grid: { display: false },
+      }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context) => formatarMoeda(context.parsed.x || 0)
         }
-    }
-}));
+      },
+      // ✨ A MÁGICA ACONTECE AQUI ✨
+      datalabels: {
+        anchor: 'end' as const,
+        // O alinhamento agora é uma função que decide a posição
+        align: (context) => {
+          const value = context.dataset.data[context.dataIndex] as number;
+          // Se a barra for maior que 60% do valor máximo, alinha o texto DENTRO, à esquerda.
+          return value > maxValue * 0.6 ? 'start' : 'end';
+        },
+        // A cor também é dinâmica
+        color: (context) => {
+          const value = context.dataset.data[context.dataIndex] as number;
+          // Se a barra for longa (texto dentro), a cor é branca. Senão, é a cor do eixo.
+          return value > maxValue * 0.6 ? '#ffffff' : '#ffffff';
+        },
+        offset: 8, // Um pequeno espaçamento
+        font: { weight: 'bold' as const },
+        formatter: (value) => {
+          if (value > 0) return formatarMoeda(value);
+          return '';
+        }
+      }
+    },
+  };
+});
 
 // Para o novo gráfico de Pizza (adicione o componente PieChart no template)
 // <PieChart v-if="dadosDistribuicaoValores" :data="chartDataDistribuicaoValores" :options="chartOptionsDistribuicaoValores" />
@@ -1230,7 +1292,7 @@ const chartDataDistribuicaoValores = computed(() => {
                 (dados.total_rendimentos / total) * 100,
                 (dados.total_economicidade / total) * 100
             ],
-            backgroundColor: ['#2dd4bf', '#38bdf8', '#818cf8'],
+            backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6'],
         }]
     };
 });
@@ -1241,7 +1303,7 @@ const chartOptionsDistribuicaoValores = {
     plugins: {
         legend: {
             position: 'bottom' as const,
-            labels: { color: '#cbd5e1' }
+            labels: { color: '#ffffff' }
         },
         tooltip: {
             callbacks: {
