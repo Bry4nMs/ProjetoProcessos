@@ -281,10 +281,10 @@
     
     <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
       <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
-        Valor Específico por Órgão
+        Valor Específico
       </h2>
       <div class="flex-1 w-full">
-        <BarChart v-if="dadosValoresEspecificos.length && !loading" :data="chartDataValoresEspecificos" :options="chartOptionsValoresEspecificos" />
+        <BarChart v-if="dadosDistribuicaoValores && !loading" :data="chartDataValoresEspecificos" :options="chartOptionsValoresEspecificos" />
         <div v-else class="text-slate-400 text-center pt-24">Carregando dados...</div>
       </div>
     </div>
@@ -599,13 +599,6 @@ async function fetchTotaisFinanceiros() {
   }
 }
 
-async function fetchValoresEspecificos() {
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
-  const { data, error } = await supabase.rpc('get_valores_especificos_por_orgao', { p_ano });
-  if (error) console.error('Erro ao buscar valores específicos:', error);
-  else dadosValoresEspecificos.value = data || [];
-}
 
 async function fetchDistribuicaoValores() {
   const anoSelecionado = filtroAno.value;
@@ -643,7 +636,6 @@ async function carregarDadosDosGraficos() {
         await fetchEconomicidadeDetalhada();
       } else if (subPainelFinanceiroAtivo.value === 'projetos') {
         await Promise.all([
-          fetchValoresEspecificos(),
           fetchDistribuicaoValores(),
         ]);
       }
@@ -1146,40 +1138,143 @@ const chartOptionsEconomicidadeDetalhada = {
 };
 
 // Para o novo gráfico de Barras
+// Para o novo gráfico de Barras
 const chartDataValoresEspecificos = computed(() => {
-    const labels = dadosValoresEspecificos.value.map(d => d.code);
+    const dados = dadosDistribuicaoValores.value;
+    if (!dados) return { labels: [], datasets: [] };
+    
     return {
-        labels,
+        labels: ['Valor Inicial', 'Rendimentos', 'Economicidade'],
         datasets: [
-            { label: 'Valor Inicial', data: dadosValoresEspecificos.value.map(d => d.valor_inicial), backgroundColor: '#2dd4bf' },
-            { label: 'Rendimentos', data: dadosValoresEspecificos.value.map(d => d.valor_rendimentos), backgroundColor: '#38bdf8' },
-            { label: 'Economicidade', data: dadosValoresEspecificos.value.map(d => d.valor_economicidade), backgroundColor: '#818cf8' },
+            {
+                label: 'Valor Total',
+                data: [dados.total_inicial, dados.total_rendimentos, dados.total_economicidade],
+                backgroundColor: ['#2dd4bf', '#38bdf8', '#818cf8'], // Teal, Blue, Indigo
+                borderRadius: 6,
+            }
         ]
     };
 });
-const chartOptionsValoresEspecificos = { /* ... opções similares ao seu chartOptionsValores ... */ };
+
+const chartOptionsValoresEspecificos = computed(() => ({
+    indexAxis: 'y' as const, // <<<< Barras na Horizontal
+    responsive: true,
+    maintainAspectRatio: false,
+    datasets: {
+        bar: {
+            barPercentage: 0.6,    // <<<< Barras mais "gordas"
+            categoryPercentage: 0.7,
+        }
+    },
+    plugins: {
+        legend: { display: false },
+        tooltip: {
+            callbacks: {
+                label: (context) => formatarMoeda(context.parsed.x || 0)
+            }
+        },
+        datalabels: {
+            color: '#ffffff',
+            anchor: 'end' as const,
+            align: 'end' as const,
+            offset: 8,
+            font: { weight: 'bold' as const },
+            formatter: (value) => {
+                if (value > 0) return formatarMoeda(value);
+                return '';
+            }
+        }
+    },
+    scales: {
+        x: {
+            ticks: {
+                color: '#cbd5e1',
+                callback: (value) => {
+                    const num = Number(value);
+                    if (num >= 1000000) return 'R$' + (num / 1000000).toFixed(1) + 'M';
+                    if (num >= 1000) return 'R$' + (num / 1000) + 'K';
+                    return formatarMoeda(num);
+                }
+            },
+            grid: { color: 'rgba(255,255,255,0.1)' },
+        },
+        y: {
+            ticks: { color: '#cbd5e1', font: { weight: 'bold' as const }},
+            grid: { display: false },
+        }
+    }
+}));
 
 // Para o novo gráfico de Pizza (adicione o componente PieChart no template)
 // <PieChart v-if="dadosDistribuicaoValores" :data="chartDataDistribuicaoValores" :options="chartOptionsDistribuicaoValores" />
 const chartDataDistribuicaoValores = computed(() => {
     const dados = dadosDistribuicaoValores.value;
     if (!dados) return { labels: [], datasets: [] };
+    
+    // Calcula o total para encontrar a porcentagem
+    const total = dados.total_inicial + dados.total_rendimentos + dados.total_economicidade;
+    
+    // Evita divisão por zero
+    if (total === 0) {
+        return {
+            labels: ['Valor Inicial', 'Rendimentos', 'Economicidade'],
+            datasets: [{ data: [0, 0, 0] }]
+        };
+    }
+    
     return {
         labels: ['Valor Inicial', 'Rendimentos', 'Economicidade'],
         datasets: [{
-            data: [dados.total_inicial, dados.total_rendimentos, dados.total_economicidade],
+            data: [
+                (dados.total_inicial / total) * 100,
+                (dados.total_rendimentos / total) * 100,
+                (dados.total_economicidade / total) * 100
+            ],
             backgroundColor: ['#2dd4bf', '#38bdf8', '#818cf8'],
         }]
     };
 });
-const chartOptionsDistribuicaoValores = { /* ... opções básicas para um gráfico de pizza ... */ };
+
+const chartOptionsDistribuicaoValores = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: {
+            position: 'bottom' as const,
+            labels: { color: '#cbd5e1' }
+        },
+        tooltip: {
+            callbacks: {
+                // Formata o tooltip para mostrar porcentagem
+                label: (context) => {
+                    const label = context.label || '';
+                    const value = context.parsed || 0;
+                    return `${label}: ${value.toFixed(2)}%`;
+                }
+            }
+        },
+        datalabels: {
+            color: '#ffffff',
+            font: { weight: 'bold' as const },
+            // Formata o rótulo para mostrar porcentagem
+            formatter: (value) => {
+                if (value < 5) return ''; // Esconde rótulos muito pequenos
+                return `${value.toFixed(1)}%`;
+            }
+        }
+    }
+};
 
 const chartHeightEconomicidade = computed(() => {
-    const itemsCount = chartDataEconomicidadeDetalhada.value.labels.length;
-    if (itemsCount === 0) return 400;
-    return Math.max(itemsCount * 60, 400); // Ajuste a altura baseada na quantidade de itens
-});
+  // Pega a quantidade de 'labels' (áreas) que serão exibidas no gráfico
+  const itemsCount = chartDataEconomicidadeDetalhada.value.labels.length;
+  
+  // Se não houver itens, usa uma altura padrão
+  if (itemsCount === 0) return 400;
 
+  // Calcula uma altura dinâmica (ex: 60px por item) mas com um mínimo de 400px
+  return Math.max(itemsCount * 60, 400);
+});
 
 const chartHeightEtapa = computed(() => {
   const itemsCount = dadosTempoMedioEtapa.value.length;
