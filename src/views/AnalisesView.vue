@@ -178,7 +178,7 @@
 
     <div 
       class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl shadow-xl p-6 flex items-center gap-6 cursor-pointer hover:bg-slate-700/50 transition-colors"
-      @click="handleCardClick('resumo')"
+      @click="handleCardClick('projetos')"
     >
       <div class="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-lg flex items-center justify-center">
         <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
@@ -213,6 +213,8 @@
         Economicidade Detalhada
       </h2>
     </div>
+
+
 
     <p class="text-slate-400 mb-8">Economicidade particionada por Área Temática e Tipo de Despesa.</p>
 
@@ -264,6 +266,53 @@
 
   </div>
 
+  <div v-else-if="subPainelFinanceiroAtivo === 'projetos'" class="space-y-8">
+  <div class="flex items-center gap-4">
+    <button @click="subPainelFinanceiroAtivo = 'resumo'" class="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white font-semibold flex items-center gap-2 hover:bg-white/20 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+      Voltar ao Resumo
+    </button>
+    <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+      Análise Detalhada de Projetos
+    </h2>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
+      <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
+        Valor Específico por Órgão
+      </h2>
+      <div class="flex-1 w-full">
+        <BarChart v-if="dadosValoresEspecificos.length && !loading" :data="chartDataValoresEspecificos" :options="chartOptionsValoresEspecificos" />
+        <div v-else class="text-slate-400 text-center pt-24">Carregando dados...</div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-1 flex flex-col gap-8">
+      
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col">
+        <h2 class="text-lg font-bold text-slate-200 mb-4">Filtrar por Força</h2>
+        <select v-model="filtroForcaProjetos" class="w-full px-3 py-2 rounded bg-slate-800 border border-white/20 text-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/70">
+          <option :value="null">Todas as Forças</option>
+          <option v-for="forca in forcasMem" :key="forca.id" :value="forca.id">
+            {{ forca.code }}
+          </option>
+        </select>
+      </div>
+      
+      <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-6 flex flex-col flex-1">
+        <h2 class="text-lg font-bold text-slate-200 mb-4 text-center">Distribuição de Tipos de Valor</h2>
+        <div class="flex-1 w-full flex items-center justify-center min-h-[250px]">
+          <PieChart v-if="dadosDistribuicaoValores" :data="chartDataDistribuicaoValores" :options="chartOptionsDistribuicaoValores" />
+          <div v-else class="text-slate-400 text-center">Carregando...</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
   <div v-if="subPainelFinanceiroAtivo === 'resumo'" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
     <div class="lg:col-span-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-xl p-8 flex flex-col min-h-[500px]">
       <h2 class="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent mb-4">
@@ -311,13 +360,16 @@ import { useFormatters } from '../composables/useFormatters'
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
-import { Bar } from 'vue-chartjs'
-import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend } from 'chart.js'
+import { Bar, Pie } from 'vue-chartjs'
+import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement } from 'chart.js' 
+Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels, ArcElement) 
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels)
+
+
 
 // COMPONENTE DE GRÁFICO REUTILIZÁVEL
 const BarChart = Bar
+const PieChart = Pie
 
 // Tipos auxiliares para tipagem dos dados
 interface Processo {
@@ -368,7 +420,7 @@ const processos = ref<Processo[]>([])
 const processoSelecionado = ref('')
 const loading = ref(false)
 const painelAtivo = ref<'processos' | 'financeiro'>('processos')
-const subPainelFinanceiroAtivo = ref<'resumo' | 'economicidade'>('resumo')
+const subPainelFinanceiroAtivo = ref<'resumo' | 'economicidade' | 'projetos'>('resumo')
 const filtroAno = ref<number | string>('')
 const anos = computed(() => {
   const anoAtual = new Date().getFullYear();
@@ -398,6 +450,10 @@ const totalProjetos = ref(0);
 const totalEconomicidade = ref(0);
 const dadosEconomicidadeDetalhada = ref<Array<{ thematic_area_code: string; tipo_despesa: string; total_economicidade: number }>>([]);
 const filtroAnoEconomicidade = ref<number | string>('');
+
+const filtroForcaProjetos = ref<number | null>(null);
+const dadosValoresEspecificos = ref<Array<{ code: string; valor_inicial: number; valor_rendimentos: number; valor_economicidade: number }>>([]);
+const dadosDistribuicaoValores = ref<{ total_inicial: number; total_rendimentos: number; total_economicidade: number } | null>(null);
 
 // Propriedade computada para largura dinâmica do gráfico de etapas (barras verticais)
 // --- FUNÇÕES DE BUSCA PARA OS GRÁFICOS ---
@@ -543,23 +599,66 @@ async function fetchTotaisFinanceiros() {
   }
 }
 
-async function carregarDadosDosGraficos() {
-    loading.value = true;
-    if (painelAtivo.value === 'processos' || (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'resumo')) {
-        await Promise.all([
-            fetchProcessosPorForca(),
-            fetchTempoMedioPorEtapa(),
-            fetchValoresPorOrgao(),
-            fetchGastosPorOrgao(),
-            fetchTotaisFinanceiros(),
-        ]);
-    } else if (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'economicidade') {
-        await fetchEconomicidadeDetalhada();
-    }
-    loading.value = false;
+async function fetchValoresEspecificos() {
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+  const { data, error } = await supabase.rpc('get_valores_especificos_por_orgao', { p_ano });
+  if (error) console.error('Erro ao buscar valores específicos:', error);
+  else dadosValoresEspecificos.value = data || [];
 }
 
-function handleCardClick(card: 'resumo' | 'economicidade') {
+async function fetchDistribuicaoValores() {
+  const anoSelecionado = filtroAno.value;
+  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+  const { data, error } = await supabase.rpc('get_distribuicao_valores', { 
+    p_ano, 
+    p_forca_id: filtroForcaProjetos.value 
+  });
+  if (error) console.error('Erro ao buscar distribuição de valores:', error);
+  else dadosDistribuicaoValores.value = (data && data.length > 0) ? data[0] : null;
+}
+
+
+async function carregarDadosDosGraficos() {
+  loading.value = true;
+  try {
+    if (painelAtivo.value === 'processos') {
+      // Carrega apenas os dados necessários para a aba de Processos
+      await Promise.all([
+        fetchProcessosPorForca(),
+        fetchTempoMedioPorEtapa(),
+      ]);
+    } 
+    else if (painelAtivo.value === 'financeiro') {
+      // Lógica específica para a aba Financeira
+      if (subPainelFinanceiroAtivo.value === 'resumo') {
+        // Carrega todos os dados para a visão de Resumo Financeiro
+        await Promise.all([
+          fetchValoresPorOrgao(),
+          fetchGastosPorOrgao(),
+          fetchTotaisFinanceiros(),
+          fetchProcessosPorForca(), // O gráfico 'Qtd. de Processos' também está no resumo
+        ]);
+      } else if (subPainelFinanceiroAtivo.value === 'economicidade') {
+        await fetchEconomicidadeDetalhada();
+      } else if (subPainelFinanceiroAtivo.value === 'projetos') {
+        await Promise.all([
+          fetchValoresEspecificos(),
+          fetchDistribuicaoValores(),
+        ]);
+      }
+    }
+  } catch (error) {
+      console.error("Erro grave ao carregar dados dos gráficos:", error);
+      // Opcional: zerar os dados em caso de erro
+      // totalProjetos.value = 0;
+      // totalEconomicidade.value = 0;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function handleCardClick(card: 'resumo' | 'economicidade' | 'projetos') {
     subPainelFinanceiroAtivo.value = card;
 }
 
@@ -578,6 +677,17 @@ watch(subPainelFinanceiroAtivo, (newValue) => {
     carregarDadosDosGraficos();
   }
 })
+
+watch(filtroForcaProjetos, () => {
+    if (subPainelFinanceiroAtivo.value === 'projetos') {
+        fetchDistribuicaoValores();
+    }
+});
+
+watch(painelAtivo, () => {
+  // Quando mudamos de aba principal, sempre recarregamos os dados
+  carregarDadosDosGraficos();
+});
 
 async function fetchEconomicidadeDetalhada() {
   loading.value = true;
@@ -1034,6 +1144,35 @@ const chartOptionsEconomicidadeDetalhada = {
         },
     },
 };
+
+// Para o novo gráfico de Barras
+const chartDataValoresEspecificos = computed(() => {
+    const labels = dadosValoresEspecificos.value.map(d => d.code);
+    return {
+        labels,
+        datasets: [
+            { label: 'Valor Inicial', data: dadosValoresEspecificos.value.map(d => d.valor_inicial), backgroundColor: '#2dd4bf' },
+            { label: 'Rendimentos', data: dadosValoresEspecificos.value.map(d => d.valor_rendimentos), backgroundColor: '#38bdf8' },
+            { label: 'Economicidade', data: dadosValoresEspecificos.value.map(d => d.valor_economicidade), backgroundColor: '#818cf8' },
+        ]
+    };
+});
+const chartOptionsValoresEspecificos = { /* ... opções similares ao seu chartOptionsValores ... */ };
+
+// Para o novo gráfico de Pizza (adicione o componente PieChart no template)
+// <PieChart v-if="dadosDistribuicaoValores" :data="chartDataDistribuicaoValores" :options="chartOptionsDistribuicaoValores" />
+const chartDataDistribuicaoValores = computed(() => {
+    const dados = dadosDistribuicaoValores.value;
+    if (!dados) return { labels: [], datasets: [] };
+    return {
+        labels: ['Valor Inicial', 'Rendimentos', 'Economicidade'],
+        datasets: [{
+            data: [dados.total_inicial, dados.total_rendimentos, dados.total_economicidade],
+            backgroundColor: ['#2dd4bf', '#38bdf8', '#818cf8'],
+        }]
+    };
+});
+const chartOptionsDistribuicaoValores = { /* ... opções básicas para um gráfico de pizza ... */ };
 
 const chartHeightEconomicidade = computed(() => {
     const itemsCount = chartDataEconomicidadeDetalhada.value.labels.length;
