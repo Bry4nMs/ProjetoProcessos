@@ -17,20 +17,41 @@
 
         <div class="flex items-center gap-4">
            <div class="flex flex-col">
-              <label class="text-xs text-slate-400 mb-1 text-center">Filtrar por Ano</label>
-                <select
-                  v-model="filtroAno"
-                  class="px-3 py-2 rounded-lg bg-slate-800/80 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-teal-400 appearance-none text-sm"
-                  style="background-image: url('...');">
-                  <option value="">Todos os Anos</option>
-                  <option v-for="ano in anos" :key="ano" :value="ano">{{ ano }}</option>
-                 </select>
-               </div>
+  <label class="text-xs text-slate-400 mb-1 text-center">Filtrar por Ano</label>
 
-               <div class="flex bg-slate-800/80 rounded-lg p-1.5 ...">
-             </div>
-            </div>
-           </div>
+  <div class="relative">
+    <button @click="dropdownAberto = !dropdownAberto" class="px-3 py-2 w-48 text-center rounded-lg bg-slate-800/80 text-white border border-white/10 focus:outline-none focus:ring-2 focus:ring-teal-400 text-sm">
+      {{ textoFiltroAno }}
+    </button>
+    
+    <div 
+      v-if="dropdownAberto" 
+      class="absolute top-full mt-2 w-48 bg-slate-800 border border-white/20 rounded-lg shadow-lg z-10 p-2"
+    >
+      <button @click="filtroAno = []" class="w-full text-left text-sm px-2 py-1.5 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-md mb-1">
+        Limpar seleção
+      </button>
+
+      <div v-for="ano in anos" :key="ano">
+        <label 
+          :for="'ano-' + ano" 
+          class="w-full flex items-center p-2 hover:bg-slate-700/50 rounded-md cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            :id="'ano-' + ano"
+            :value="ano"
+            v-model="filtroAno"
+            class="w-4 h-4 accent-teal-500 bg-slate-700 border-slate-600 rounded"
+          />
+          <span class="ml-3 text-white">{{ ano }}</span>
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+        </div>
+        </div>
           </div>
           <div class="flex bg-slate-800/80 rounded-lg p-1.5 backdrop-blur-sm border border-white/10">
             <button
@@ -361,10 +382,9 @@ import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headless
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 // IMPORTAÇÃO DOS COMPONENTES DE GRÁFICO
 import { Bar, Pie } from 'vue-chartjs'
-import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement } from 'chart.js' 
-Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels, ArcElement) 
+import { Chart, BarElement, CategoryScale, LinearScale, Tooltip, Legend, ArcElement, Title } from 'chart.js' 
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-
+Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend, ChartDataLabels, ArcElement, Title) 
 
 
 // COMPONENTE DE GRÁFICO REUTILIZÁVEL
@@ -421,7 +441,7 @@ const processoSelecionado = ref('')
 const loading = ref(false)
 const painelAtivo = ref<'processos' | 'financeiro'>('processos')
 const subPainelFinanceiroAtivo = ref<'resumo' | 'economicidade' | 'projetos'>('resumo')
-const filtroAno = ref<number | string>('')
+const filtroAno = ref<number[]>([]);
 const anos = computed(() => {
   const anoAtual = new Date().getFullYear();
   const lista = []
@@ -429,6 +449,14 @@ const anos = computed(() => {
     lista.push(ano);
   }
   return lista.reverse();
+});
+const dropdownAberto = ref(false);
+
+const textoFiltroAno = computed(() => {
+  const count = filtroAno.value.length;
+  if (count === 0) return 'Todos os Anos';
+  if (count === 1) return filtroAno.value[0].toString();
+  return `${count} Anos Selecionados`;
 });
 
 // NOVO: Estado para controlar a aba ativa
@@ -507,12 +535,10 @@ async function fetchEtapas() {
 
 // Corrigida: conta processos por code da força e mostra todas as forças
 async function fetchProcessosPorForca() {
-  // ✨ CORREÇÃO: Converte o ano para número antes de enviar
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
   const forcas = forcasMem.value.length ? forcasMem.value : await fetchForcas();
-  const { data } = await supabase.rpc('get_processos_por_forca', { p_ano });
+  // ✨ CORREÇÃO: Passa o array 'filtroAno.value' diretamente para 'p_anos'
+  const { data } = await supabase.rpc('get_processos_por_forca', { p_anos: filtroAno.value });
 
   const contagem: Record<number, number> = {};
   if (data) {
@@ -531,11 +557,11 @@ async function fetchProcessosPorForca() {
 
 
 async function fetchTempoMedioPorEtapa() {
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
 
-  const etapas = await fetchEtapas(); // Busca os nomes de todas as etapas possíveis
-  const { data, error } = await supabase.rpc('get_dados_tempo_etapa', { p_ano });
+
+  const etapas = await fetchEtapas();
+  // ✨ CORREÇÃO: Passa o array 'filtroAno.value' diretamente para 'p_anos'
+  const { data, error } = await supabase.rpc('get_dados_tempo_etapa', { p_anos: filtroAno.value });
 
   if (error) {
     console.error('Erro ao buscar dados de tempo por etapa:', error);
@@ -570,34 +596,25 @@ async function fetchTempoMedioPorEtapa() {
 
 async function fetchValoresPorOrgao() {
   // ✨ CORREÇÃO: Converte o ano para número antes de enviar
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
-
-  const { data, error } = await supabase.rpc('get_valores_por_orgao', { p_ano });
+  // ✨ CORREÇÃO: Passa o array 'filtroAno.value' diretamente para 'p_anos'
+  const { data, error } = await supabase.rpc('get_valores_por_orgao', { p_anos: filtroAno.value });
   if (error) { console.error('Erro ao buscar valores por órgão:', error); dadosValoresPorOrgao.value = []; return; }
   dadosValoresPorOrgao.value = data || [];
 }
 
 async function fetchGastosPorOrgao() {
-
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
-
-  const { data, error} = await supabase.rpc('get_gastos_por_orgao', { p_ano });
+  // ✨ CORREÇÃO: Passa o array 'filtroAno.value' diretamente para 'p_anos'
+  const { data, error} = await supabase.rpc('get_gastos_por_orgao', { p_anos: filtroAno.value });
   if (error) { console.error('Erro ao buscar gastos por órgão:', error); dadosGastosPorOrgao.value = []; return; }
   dadosGastosPorOrgao.value = data || [];
 }
 
 async function fetchTotaisFinanceiros() {
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
+
 
   try {
-    // ✨ MUDANÇA AQUI: Chamamos a nova função para obter o SALDO LÍQUIDO
-    const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_saldo_liquido_economicidade', { p_ano });
-    
-    // O restante da função para buscar o total de projetos pode continuar igual
-    const { data: projetosData, error: projetosError } = await supabase.rpc('get_totais_financeiros', { p_ano });
+    const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_saldo_liquido_economicidade', { p_anos: filtroAno.value });
+    const { data: projetosData, error: projetosError } = await supabase.rpc('get_totais_financeiros', { p_anos: filtroAno.value });
 
     if (economicidadeError) {
       console.error('Erro ao buscar saldo líquido de economicidade:', economicidadeError);
@@ -623,10 +640,8 @@ async function fetchTotaisFinanceiros() {
 
 
 async function fetchDistribuicaoValores() {
-  const anoSelecionado = filtroAno.value;
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
   const { data, error } = await supabase.rpc('get_distribuicao_valores', { 
-    p_ano, 
+    p_anos: filtroAno.value, 
     p_forca_id: filtroForcaProjetos.value 
   });
   if (error) console.error('Erro ao buscar distribuição de valores:', error);
@@ -637,36 +652,37 @@ async function fetchDistribuicaoValores() {
 async function carregarDadosDosGraficos() {
   loading.value = true;
   try {
+
+    if (forcasMem.value.length === 0) {
+        await fetchForcas();
+    }
+     // Agora, carregamos os dados específicos do painel ativo
     if (painelAtivo.value === 'processos') {
-      // Carrega apenas os dados necessários para a aba de Processos
+      // Carrega os dados para a aba de Análise de Processos
       await Promise.all([
         fetchProcessosPorForca(),
         fetchTempoMedioPorEtapa(),
       ]);
     } 
     else if (painelAtivo.value === 'financeiro') {
-      // Lógica específica para a aba Financeira
+      // Lógica específica para a aba de Análise Financeira
       if (subPainelFinanceiroAtivo.value === 'resumo') {
-        // Carrega todos os dados para a visão de Resumo Financeiro
+        // Carrega todos os dados para a visão de Resumo
         await Promise.all([
           fetchValoresPorOrgao(),
           fetchGastosPorOrgao(),
           fetchTotaisFinanceiros(),
-          fetchProcessosPorForca(), // O gráfico 'Qtd. de Processos' também está no resumo
+          fetchProcessosPorForca(), // Gráfico 'Qtd. de Processos' também está no resumo
         ]);
       } else if (subPainelFinanceiroAtivo.value === 'economicidade') {
         await fetchEconomicidadeDetalhada();
       } else if (subPainelFinanceiroAtivo.value === 'projetos') {
-        await Promise.all([
-          fetchDistribuicaoValores(),
-        ]);
+        // Carrega os dados para a visão de Projetos Detalhados
+        await fetchDistribuicaoValores();
       }
     }
   } catch (error) {
       console.error("Erro grave ao carregar dados dos gráficos:", error);
-      // Opcional: zerar os dados em caso de erro
-      // totalProjetos.value = 0;
-      // totalEconomicidade.value = 0;
   } finally {
     loading.value = false;
   }
@@ -705,22 +721,18 @@ watch(painelAtivo, () => {
 
 async function fetchEconomicidadeDetalhada() {
   loading.value = true;
-  const anoSelecionado = filtroAnoEconomicidade.value || filtroAno.value; 
-  const p_ano = anoSelecionado ? parseInt(String(anoSelecionado), 10) : null;
-
-  const { data, error } = await supabase.rpc('get_economicidade_detalhada_chart', { p_ano });
+  // A lógica de filtro para este painel pode usar ou o filtro principal ou o filtro específico dele
+  const anosParaFiltrar = filtroAnoEconomicidade.value ? [filtroAnoEconomicidade.value] : filtroAno.value;
+  
+  // ✨ CORREÇÃO: Passa o array de anos correto para o parâmetro 'p_anos'
+  const { data, error } = await supabase.rpc('get_economicidade_detalhada_chart', { p_anos: anosParaFiltrar });
 
   if (error) {
     console.error('Erro ao buscar economicidade detalhada:', error)
     dadosEconomicidadeDetalhada.value = [];
-    loading.value = false;
-    return;
+  } else {
+    dadosEconomicidadeDetalhada.value = data || [];
   }
-  
-  // ADICIONE ESTA LINHA PARA DEPURAR
-  console.log('Dados recebidos do Supabase:', data); 
-
-  dadosEconomicidadeDetalhada.value = data || [];
   loading.value = false;
 }
 
@@ -1461,6 +1473,8 @@ if (typeof window !== 'undefined') {
 
 // Carrega a lista de processos e os gráficos ao montar o componente
 onMounted(async () => {
+
+  // A lógica de buscar usuário e processos para o histórico está ótima.
   let usuario = user.value;
   if (!usuario) {
     usuario = await fetchUser();
@@ -1469,34 +1483,28 @@ onMounted(async () => {
     processos.value = [];
     return;
   }
-
-  // Carrega processos para o dropdown do histórico
-  // DENTRO DE onMounted()
-
-const { data } = await supabase
-  .from('processes')
-  .select('id, nome_acao, codigo_transferegov, thematic_areas(id, code)') // <-- VERIFIQUE SE 'codigo_transferegov' ESTÁ AQUI
-  .is('deleted_at', null)
-  .order('created_at', { ascending: false });
-
+  const { data } = await supabase
+    .from('processes')
+    .select('id, nome_acao, codigo_transferegov, thematic_areas(id, code)')
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
   if (data) {
     processos.value = (data as Processo[]).map((proc) => {
-      let area_code = '';
-      if (Array.isArray(proc.thematic_areas) && proc.thematic_areas.length > 0) {
-        area_code = proc.thematic_areas[0].code;
-      } else if (proc.thematic_areas && typeof proc.thematic_areas === 'object') {
-        area_code = (proc.thematic_areas as { code: string }).code;
-      }
-      return {
-        id: proc.id,
-        nome_acao: proc.nome_acao,
-        area_code,
-      };
+        let area_code = '';
+      if (Array.isArray(proc.thematic_areas) && proc.thematic_areas.length > 0) {
+        area_code = proc.thematic_areas[0].code;
+      } else if (proc.thematic_areas && typeof proc.thematic_areas === 'object') {
+        area_code = (proc.thematic_areas as { code: string }).code;
+      }
+      return {
+        id: proc.id,
+        nome_acao: proc.nome_acao,
+        area_code,
+      };
     });
   }
-
-  // Carrega todos os dados para os gráficos em paralelo para mais performance
-  await fetchForcas();
+  // ✨ MUDANÇA AQUI: Chamamos apenas a função principal de carregamento.
+  // Ela agora já cuida de buscar as forças se necessário.
   await carregarDadosDosGraficos();
 });
 
