@@ -39,7 +39,7 @@
                   </td>
                   <td class="py-2 px-3 flex gap-2">
                     <button @click.stop="abrirModalEditar(regra)" class="text-teal-400 hover:underline">Editar</button>
-                    <button @click.stop="excluirRegra(regra.id)" class="text-red-400 hover:underline">Excluir</button>
+                    <button @click.stop="confirmarExclusaoRegra(regra.id)" class="text-red-400 hover:underline">Excluir</button>
                   </td>
                 </tr>
               </template>
@@ -76,6 +76,7 @@
                 <option value="after_delay">Após um tempo em uma etapa</option>
                 <option value="on_substep_creation">Ao criar uma subtarefa</option>
                 <option value="on_substep_completion">Ao concluir uma subtarefa</option>
+                <option value="on_overspending">Quando o valor utilizado excede o destinado</option>
               </select>
             </div>
             <div v-if="form.trigger_type === 'on_step_entry' || form.trigger_type === 'after_delay'" class="mb-4">
@@ -581,6 +582,9 @@ function descricaoGatilho(regra: Regra): string {
   if (regra.trigger_type === 'on_substep_completion') {
     return 'Ao concluir uma subtarefa';
   }
+  if (regra.trigger_type === 'on_overspending') {
+    return 'Ao exceder o valor destinado';
+  }
   return 'Gatilho desconhecido';
 }
 
@@ -661,10 +665,25 @@ async function handleSaveRule() {
   resetForm();
 }
 
-async function excluirRegra(id: number) {
-  if (!window.confirm('Tem certeza que deseja excluir esta regra?')) return
-  await supabase.from('automation_rules').delete().eq('id', id)
-  await fetchRules()
+function confirmarExclusaoRegra(regraId: number) {
+  // Encontra o nome da regra para a mensagem ser mais amigável
+  const regra = regras.value.find(r => r.id === regraId);
+  const nomeRegra = regra ? regra.rule_name : 'esta regra';
+
+  confirmationTitle.value = 'Confirmar Exclusão de Regra';
+  confirmationMessage.value = `Tem certeza que deseja excluir a regra "${nomeRegra}"? Esta ação não pode ser desfeita.`;
+  actionToConfirm.value = () => executarExclusaoRegra(regraId); // Guarda a ação
+  showConfirmationModal.value = true; // Abre o modal
+}
+
+// Nova função que REALMENTE faz o trabalho (sua lógica antiga, sem o confirm)
+async function executarExclusaoRegra(id: number) {
+  try {
+    await supabase.from('automation_rules').delete().eq('id', id);
+    await fetchRules();
+  } catch (error: any) {
+    alert('Erro ao excluir a regra: ' + error.message);
+  }
 }
 
 async function toggleAtivo(regra: Regra) {

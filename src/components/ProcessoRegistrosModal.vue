@@ -139,6 +139,7 @@ import ConfirmationModal from './ConfirmationModal.vue';
 
 interface ProcessRecord {
   id: string;
+  process_id: string;
   request_date: string | null;
   acquisition_date: string | null;
   amount_used: number;
@@ -277,10 +278,11 @@ async function salvarRegistro() {
   }
   isSubmitting.value = true;
 
-  const fileData = {
-    file_url: null as string | null,
-    filename: null as string | null,
-    storage_path: null as string | null,
+  // Objeto para os dados do arquivo, já com os nomes corretos que a RPC espera
+  let fileParams = { 
+    p_file_url: null as string | null, 
+    p_filename: null as string | null, 
+    p_storage_path: null as string | null 
   };
 
   try {
@@ -289,48 +291,41 @@ async function salvarRegistro() {
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = `${props.processo.id}/records/${Date.now()}_${sanitizedFileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file);
-
+      const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-      fileData.file_url = urlData.publicUrl;
-      fileData.filename = file.name;
-      fileData.storage_path = filePath;
+      // Preenche o objeto com os nomes corretos
+      fileParams = {
+        p_file_url: urlData.publicUrl,
+        p_filename: file.name,
+        p_storage_path: filePath,
+      };
     }
 
-    // 2. INSERE O REGISTRO NO BANCO DE DADOS
-    const { error: insertError } = await supabase.from('process_records').insert([
-      {
-        process_id: props.processo.id,
-        user_id: user.value?.id,
-        request_date: newRecord.request_date || null,
-        acquisition_date: newRecord.acquisition_date || null,
-        amount_used: newRecord.amount_used,
-        description: newRecord.description,
-        // Adiciona os dados do arquivo (serão null se não houver anexo)
-        ...fileData,
-      },
-    ]);
+    // ✨ CORREÇÃO AQUI: Usa o objeto 'fileParams' espalhado ('...')
+    // que já contém os nomes de parâmetro corretos.
+    const { error } = await supabase.rpc('gerenciar_registro_de_gasto', {
+      p_operacao: 'INSERT',
+      p_process_id: props.processo.id,
+      p_request_date: newRecord.request_date || null,
+      p_acquisition_date: newRecord.acquisition_date || null,
+      p_amount_used: newRecord.amount_used,
+      p_description: newRecord.description,
+      ...fileParams // Espalha os parâmetros p_file_url, p_filename, etc.
+    });
 
-    if (insertError) throw insertError;
+    if (error) throw error;
 
-    // 3. LIMPA O FORMULÁRIO E RECARREGA A LISTA
+    // LIMPA O FORMULÁRIOS E RECARREGA A LISTA (sem alterações)
     newRecord.request_date = '';
     newRecord.acquisition_date = '';
     newRecord.amount_used = null;
     newRecord.description = '';
-    newRecordFile.value = null; // Limpa o arquivo também
-    const fileInput = document.getElementById('record-file-input') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.value = '';
-    }
+    newRecordFile.value = null;
 
     await fetchRecords();
-
-    emit('atualizar-processo')
+    emit('atualizar-processo');
 
   } catch (err: unknown) {
     const error = err as Error;
@@ -352,16 +347,23 @@ function confirmarExclusaoRegistro(record: ProcessRecord) {
 async function executarExclusaoRegistro(record: ProcessRecord) {
   isSubmitting.value = true;
   try {
+    // A exclusão do arquivo no storage continua sendo feita aqui no frontend
     if (record.storage_path) {
       await supabase.storage.from('documents').remove([record.storage_path]);
     }
-    const { error: dbError } = await supabase
-      .from('process_records')
-      .delete()
-      .eq('id', record.id);
-    if (dbError) throw dbError;
+
+    // ✨ MUDANÇA PRINCIPAL: Chama a nova função RPC "mestra"
+    const { error } = await supabase.rpc('excluir_registro_e_recalcular', {
+      p_record_id: record.id,
+      p_process_id: record.process_id
+    });
+
+    if (error) throw error;
+    
+    // Se a chamada RPC foi bem-sucedida, atualizamos a tela
     await fetchRecords();
     emit('atualizar-processo');
+
   } catch (err: unknown) {
     const error = err as Error;
     console.error('Erro ao excluir registro:', error);
@@ -370,7 +372,6 @@ async function executarExclusaoRegistro(record: ProcessRecord) {
     isSubmitting.value = false;
   }
 }
-
 // Watcher para carregar os dados quando o modal abrir
 watch(() => props.show, (newVal) => {
   if (newVal) {

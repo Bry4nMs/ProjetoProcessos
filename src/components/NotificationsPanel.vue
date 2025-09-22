@@ -49,6 +49,7 @@ interface Notification {
   message: string
   created_at: string
   is_read: boolean
+  type?: string | null
 }
 
 const notifications = ref<Notification[]>([])
@@ -163,15 +164,26 @@ async function initializePanel() {
 
 async function handleNotificationClick(notification: Notification) {
   if (notification.process_id) {
+    // A lógica para marcar como lida continua a mesma
     if (!notification.is_read) {
-        await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
-        const index = notifications.value.findIndex(n => n.id === notification.id);
-        if (index !== -1) {
-            notifications.value[index].is_read = true;
-        }
+      await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
+      const index = notifications.value.findIndex(n => n.id === notification.id);
+      if (index !== -1) {
+          notifications.value[index].is_read = true;
+      }
     }
     showPanel.value = false;
-    router.push(`/processos?processo_id=${notification.process_id}&modal_type=etapas`);
+    
+    // ✨ LÓGICA DE REDIRECIONAMENTO INTELIGENTE ✨
+    let modalType = 'etapas'; // Define 'etapas' como o padrão
+    
+    // Se a notificação for do tipo 'overspending', muda para 'registros'
+    if (notification.type === 'overspending') {
+      modalType = 'registros';
+    }
+    
+    // Usa a variável para construir a URL final
+    router.push(`/processos?processo_id=${notification.process_id}&modal_type=${modalType}`);
   }
 }
 
