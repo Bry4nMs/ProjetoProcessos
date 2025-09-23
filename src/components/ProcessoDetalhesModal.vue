@@ -82,15 +82,19 @@
         </div>
       </div>
       <div class="flex items-center gap-2 mb-4">
-        <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
-          {{ processo.nome_acao || 'Processo sem nome' }}
-        </h2>
-      </div>
+  <h2 class="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-300 bg-clip-text text-transparent">
+    {{ processo.nome_acao || 'Processo sem nome' }}
+  </h2>
+</div>
 
       <!-- Informações do Processo -->
       <div class="mb-6">
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-4">
+          <div class="flex justify-between items-center md:col-span-2">
+      <span class="text-slate-300">Código da Ação:</span>
+      <span class="font-mono tracking-widest text-lg font-semibold text-teal-300">{{ processo.codigo_da_acao || 'Não gerado' }}</span>
+    </div>
           <div class="flex justify-between items-center">
             <span class="text-slate-300">Área Temática:</span>
             <span class="bg-teal-600/20 text-teal-300 px-3 py-1 rounded-full text-xs font-semibold">{{ processo.area_code || 'Não definido' }}</span>
@@ -816,7 +820,7 @@ async function salvarAlteracoes() {
       ...dadosParaAtualizar
     }
     // O valor_total_destinado será recalculado automaticamente no componente pai
-    emit('atualizar-processo', processoAtualizado)
+    emit('atualizar-processo')
   } catch (error) {
     console.error('Erro ao salvar alterações:', error)
     editError.value = 'Erro ao salvar alterações. Tente novamente.'

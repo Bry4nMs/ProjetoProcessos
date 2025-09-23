@@ -159,37 +159,63 @@ async function carregarAcoes() {
 
 const codigoAcaoParcial = computed(() => {
   const ano = anoFaf.value || '....';
-  const area = areaTematicaId.value ? String(areaTematicaId.value).padStart(2, '0') : '..';
-  const natureza = tipoNatureza.value === 'Custeio' ? '03' : (tipoNatureza.value === 'Investimento' ? '04' : '..');
-  const forca = forcaResponsavelId.value ? String(forcaResponsavelId.value).padStart(2, '0') : '..';
   
+  // ✨ CORREÇÃO: Removemos o .padStart() para usar apenas 1 dígito
+  const area = areaTematicaId.value ? String(areaTematicaId.value) : '..';
+  
+  // ✨ CORREÇÃO: Alterado para 1 dígito
+  const natureza = tipoNatureza.value === 'Custeio' ? '3' : (tipoNatureza.value === 'Investimento' ? '4' : '.');
+  
+  // ✨ CORREÇÃO: Removemos o .padStart() para usar apenas 1 dígito
+  const forca = forcaResponsavelId.value ? String(forcaResponsavelId.value) : '.';
+  
+  // A função que busca o sequencial ('fetchProximoSequencial') não precisa de alterações.
   return `${ano}.${area}.${natureza}.${forca}.`;
 });
 
 async function fetchProximoSequencial() {
-  if (!anoFaf.value || !areaTematicaId.value) {
-    codigoAcaoPrevisto.value = codigoAcaoParcial.value + '...';
+  // Pega os valores atuais dos filtros
+  const ano = anoFaf.value;
+  const areaId = areaTematicaId.value;
+  const natureza = tipoNatureza.value;
+  const forcaId = forcaResponsavelId.value;
+
+  // Monta a prévia com placeholders se algum campo estiver faltando
+  const anoPart = ano || '....';
+  const areaPart = areaId ? String(areaId) : '.';
+  const naturezaPart = natureza === 'Custeio' ? '3' : (natureza === 'Investimento' ? '4' : '.');
+  const forcaPart = forcaId ? String(forcaId) : '.';
+  
+  // Condição para buscar o sequencial: só busca se os campos chave estiverem preenchidos
+  if (!ano || !areaId) {
+    codigoAcaoPrevisto.value = `${anoPart}.${areaPart}.${naturezaPart}.${forcaPart}.ERR`;
     return;
   }
 
   isLoadingCodigo.value = true;
   try {
-    const { data, error } = await supabase.rpc('prever_codigo_da_acao', {
-      p_ano_faf: anoFaf.value,
-      p_thematic_area_id: areaTematicaId.value
+    const { data: sequencial, error } = await supabase.rpc('prever_codigo_da_acao', {
+      p_ano_faf: Number(ano),
+      p_thematic_area_id: Number(areaId)
     });
 
     if (error) throw error;
     
-    codigoAcaoPrevisto.value = codigoAcaoParcial.value + data;
-  } catch (e) {
+    // Monta o código final completo com o sequencial retornado
+    if (sequencial) {
+      codigoAcaoPrevisto.value = `${anoPart}.${areaPart}.${naturezaPart}.${forcaPart}.${sequencial}`;
+    } else {
+      // Se a RPC retornar nulo por algum motivo, mostramos NULL na prévia
+      codigoAcaoPrevisto.value = `${anoPart}.${areaPart}.${naturezaPart}.${forcaPart}.NULL`;
+    }
+    
+  } catch (e: any) {
     console.error("Erro ao prever código da ação:", e);
-    codigoAcaoPrevisto.value = codigoAcaoParcial.value + 'ERR';
+    codigoAcaoPrevisto.value = `${anoPart}.${areaPart}.${naturezaPart}.${forcaPart}.ERR`;
   } finally {
     isLoadingCodigo.value = false;
   }
 }
-
 // Chame a função sempre que os campos relevantes mudarem
 watch([anoFaf, areaTematicaId, tipoNatureza, forcaResponsavelId], fetchProximoSequencial);
 
@@ -281,10 +307,10 @@ async function registrarProcesso() {
       {
         user_id: usuario.id,
         nome_acao: nomeAcao.value,
-        thematic_area_id: areaTematicaId.value ? Number(areaTematicaId.value) : null,
+        thematic_area_id: Number(areaTematicaId.value), 
         ano_faf: anoFaf.value ? Number(anoFaf.value) : null,
         tipo_natureza_despesa: tipoNatureza.value,
-        responsible_force_id: forcaResponsavelId.value ? Number(forcaResponsavelId.value) : null,
+        responsible_force_id: Number(forcaResponsavelId.value),
         valor_inicial_padrao: valor.value ? Number(valor.value) : null,
         data_encaminhamento_aprovacao: dataCriacao.value || null,
         codigo_transferegov: codigoTransferegov.value,
@@ -524,12 +550,7 @@ function handleFileSelected(event: Event) {
               class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
-          <div>
-        <label class="block text-slate-200 mb-1 font-semibold">Código da Ação (Prévia)</label>
-        <div class="w-full px-4 py-2 rounded-lg bg-slate-800/50 text-slate-300 border border-white/20 font-mono font-semibold tracking-widest">
-          {{ codigoAcaoPrevisto }}
-        </div>
-      </div>
+          
         </div>
         <div>
           <label class="block text-slate-200 mb-1 font-semibold">Vincular à Ação (Opcional)</label>

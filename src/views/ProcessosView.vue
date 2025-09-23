@@ -128,18 +128,18 @@
                 v-for="processo in processosFiltrados"
                 :key="processo.id"
                 :processo="processo"
-                @atualizar-processo="(processoAtualizado) => atualizarProcesso(processoAtualizado)"
+                @atualizar-processo="atualizarProcesso"
                 @abrir-detalhes="(processo) => abrirModalProcesso(processo, 'detalhes')"
                 @mostrar-etapas="(processo) => abrirModalProcesso(processo, 'etapas')"
               />
             </div>
-
             <!-- Visualização em Tabela -->
             <div v-else-if="viewMode === 'table'" class="w-full overflow-x-auto">
               <table class="w-full border-collapse">
                 <thead>
                   <tr class="bg-slate-800 text-left">
-                    <th class="px-4 py-3 text-slate-300 font-semibold">Processo SEI</th>
+                    
+                    <th class="px-4 py-3 text-slate-300 font-semibold">Código da Ação</th> <th class="px-4 py-3 text-slate-300 font-semibold">Processo SEI</th>
                     <th class="px-4 py-3 text-slate-300 font-semibold">Nome da Ação</th>
                     <th class="px-4 py-3 text-slate-300 font-semibold">Força Responsável</th>
                     <th class="px-4 py-3 text-slate-300 font-semibold">Área Temática</th>
@@ -158,7 +158,7 @@
                     class="border-b border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors"
                     @click="abrirModalProcesso(processo)"
                   >
-                    <td class="px-4 py-3 text-white">{{ processo.codigo_transferegov || 'Não definido' }}</td>
+                    <td class="px-4 py-3 text-white font-mono">{{ processo.codigo_da_acao || 'N/A' }}</td> <td class="px-4 py-3 text-white">{{ processo.codigo_transferegov || 'Não definido' }}</td>
                     <td class="px-4 py-3 text-white font-medium">{{ processo.nome_acao }}</td>
                     <td class="px-4 py-3">
                       <span class="bg-blue-600/20 text-blue-300 px-2 py-1 rounded-full text-xs font-semibold">
@@ -316,6 +316,7 @@ const mostrarConcluidos = ref(true)
 interface Processo {
   id: string
   user_id: string
+  codigo_da_acao?: string
   area_tematica?: string
   ano_faf?: number
   tipo_natureza_despesa?: string
@@ -374,6 +375,7 @@ async function fetchDashboardCounts() {
 }
 
 
+
 async function carregarProcessos() {
   loadingProcessos.value = true;
   let usuario = user.value;
@@ -386,14 +388,14 @@ async function carregarProcessos() {
     return;
   }
 
-  // 1. Buscar favoritos do usuário (continua igual)
+  // 1. Buscar favoritos do usuário (sem alterações)
   const { data: favorites } = await supabase
     .from('user_favorites')
     .select('process_id')
     .eq('user_id', usuario.id);
   const favoriteIds = new Set((favorites || []).map(f => f.process_id));
 
-  // 2. CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
+  // 2. CHAMADA RPC (sem alterações, assumindo que ela já retorna 'codigo_da_acao')
   const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
 
   if (error) {
@@ -404,25 +406,20 @@ async function carregarProcessos() {
   }
 
   if (data) {
-    // 3. Mapeamento simples dos dados já processados
+    // 3. Mapeamento dos dados
     processos.value = data.map(proc => ({
-          ...proc,
-      // Os dados de `forca` e `area` já vêm no formato correto do RPC
+          ...proc, // << ISSO JÁ INCLUI O 'codigo_da_acao' AUTOMATICAMENTE
+      // O resto do seu mapeamento continua igual
           forca_code: proc.responsible_forces?.code || '',
           area_code: proc.thematic_areas?.code || '',
-      // `etapaAtual` e `totalEtapas` já são calculados no back-end!
           totalEtapas: proc.totalEtapas,
-      // Adicionar sei e progresso
           sei: proc.codigo_transferegov,
           progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
-      // Adicionar nome da etapa atual
           etapaAtualNome: proc.current_step_name || 'Não definida',
-      // O restante da lógica permanece
           status: proc.status || 'Em Andamento',
           is_favorited: favoriteIds.has(proc.id),
     }));
-
-    // Buscar o nome da etapa atual para cada processo
+    
     await Promise.all(processos.value.map(async (processo) => {
       if (processo.id) {
         const { data: etapas } = await buscarEtapasDoProcesso(processo.id);
@@ -551,33 +548,21 @@ function switchToEtapasFromRegistros() {
 
 // Função para atualizar o processo após edição
 // VERSÃO CORRIGIDA E REATIVA ✨
-async function atualizarProcesso(processoAtualizado?: Partial<Processo>) {
-  // Se o modal ou o card enviou um objeto com as mudanças...
-  if (processoAtualizado && processoAtualizado.id) {
-    const index = processos.value.findIndex(p => p.id === processoAtualizado.id);
-
-    // Se encontramos o processo na lista principal...
-    if (index !== -1) {
-      // 1. Atualiza o processo na lista principal (para o card no fundo)
-      processos.value[index] = {
-        ...processos.value[index],
-        ...processoAtualizado
-      };
-
-      // 2. ✨ A LINHA MÁGICA: Atualiza também o processo que está no modal!
-      if (processoSelecionado.value && processoSelecionado.value.id === processoAtualizado.id) {
-        processoSelecionado.value = {
-          ...processoSelecionado.value,
-          ...processoAtualizado
-        };
-      }
-      return; // Agora podemos retornar, pois ambas as fontes foram atualizadas.
+async function atualizarProcesso() {
+  console.log("Atualizando a lista de processos após uma alteração...");
+  
+  // Simplesmente chama a função principal para recarregar todos os processos.
+  // Isso garante que você sempre terá os dados mais recentes e corretos do banco,
+  // incluindo o 'valor_total_destinado' que foi recalculado pela trigger.
+  await carregarProcessos();
+  
+  // ✨ BÔNUS: Se um modal estava aberto, atualizamos seus dados também.
+  if (processoSelecionado.value) {
+    const processoAtualizadoDaLista = processos.value.find(p => p.id === processoSelecionado.value.id);
+    if (processoAtualizadoDaLista) {
+      processoSelecionado.value = processoAtualizadoDaLista;
     }
   }
-
-  // Se não recebemos um objeto ou o processo não foi encontrado,
-  // recarregamos tudo como uma medida de segurança.
-  await carregarProcessos();
 }
 
 const processosFiltrados = computed(() => {
