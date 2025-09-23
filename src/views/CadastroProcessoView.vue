@@ -57,6 +57,8 @@ const forcasResponsaveis = ref<{ id: number; code: string; name: string }[]>([])
 const acoesDisponiveis = ref<{ id: string; name: string; action_code: string }[]>([]);
 const dropZoneRef = ref<HTMLDivElement | null>(null)
 const fileUpload = ref<HTMLInputElement | null>(null)
+const codigoAcaoPrevisto = ref('.... .. .. .. ...'); // Placeholder
+const isLoadingCodigo = ref(false);
 
 // Estado reativo para economicidade
 const saldoEconomicidadeDisponivel = ref(0)
@@ -154,6 +156,43 @@ async function carregarAcoes() {
     console.error('Erro ao carregar ações:', error);
   }
 }
+
+const codigoAcaoParcial = computed(() => {
+  const ano = anoFaf.value || '....';
+  const area = areaTematicaId.value ? String(areaTematicaId.value).padStart(2, '0') : '..';
+  const natureza = tipoNatureza.value === 'Custeio' ? '03' : (tipoNatureza.value === 'Investimento' ? '04' : '..');
+  const forca = forcaResponsavelId.value ? String(forcaResponsavelId.value).padStart(2, '0') : '..';
+  
+  return `${ano}.${area}.${natureza}.${forca}.`;
+});
+
+async function fetchProximoSequencial() {
+  if (!anoFaf.value || !areaTematicaId.value) {
+    codigoAcaoPrevisto.value = codigoAcaoParcial.value + '...';
+    return;
+  }
+
+  isLoadingCodigo.value = true;
+  try {
+    const { data, error } = await supabase.rpc('prever_codigo_da_acao', {
+      p_ano_faf: anoFaf.value,
+      p_thematic_area_id: areaTematicaId.value
+    });
+
+    if (error) throw error;
+    
+    codigoAcaoPrevisto.value = codigoAcaoParcial.value + data;
+  } catch (e) {
+    console.error("Erro ao prever código da ação:", e);
+    codigoAcaoPrevisto.value = codigoAcaoParcial.value + 'ERR';
+  } finally {
+    isLoadingCodigo.value = false;
+  }
+}
+
+// Chame a função sempre que os campos relevantes mudarem
+watch([anoFaf, areaTematicaId, tipoNatureza, forcaResponsavelId], fetchProximoSequencial);
+
 
 // Função para buscar saldo de economicidade via RPC do Supabase
 async function fetchSaldoEconomicidade() {
@@ -485,6 +524,12 @@ function handleFileSelected(event: Event) {
               class="w-full px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
+          <div>
+        <label class="block text-slate-200 mb-1 font-semibold">Código da Ação (Prévia)</label>
+        <div class="w-full px-4 py-2 rounded-lg bg-slate-800/50 text-slate-300 border border-white/20 font-mono font-semibold tracking-widest">
+          {{ codigoAcaoPrevisto }}
+        </div>
+      </div>
         </div>
         <div>
           <label class="block text-slate-200 mb-1 font-semibold">Vincular à Ação (Opcional)</label>
