@@ -371,42 +371,18 @@ async function toggleChecklistItem(item: ChecklistItem) {
 // Copie esta função inteira...
 async function passarEtapa() {
   if (!props.processo.id) return;
-
-  const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
-
-  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
+  
+  // 1. Chama a nova função RPC "inteligente" que faz tudo no backend
+  const { error } = await supabase.rpc('avancar_etapa_e_recalcular', { 
+    p_processo_id: props.processo.id 
+  });
 
   if (!error) {
-    if (isFinalStep) {
-      await registrarEventoHistorico(props.processo.id, 'Processo Concluído.');
-    } else {
-      const { data: etapas } = await buscarEtapasDoProcesso(props.processo.id);
-      if (etapas && etapas.length > 0) {
-        const etapaAtualIdx = etapas.findIndex(e => e.is_current);
-        if (etapaAtualIdx !== -1) {
-          const nomeNovaEtapa = etapas[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
-          await registrarEventoHistorico(props.processo.id, `Etapa avançada para "${nomeNovaEtapa}".`);
-
-          const processoAtualizado = {
-             ...props.processo,
-            etapaAtualNome: nomeNovaEtapa,
-            etapaAtual: etapaAtualIdx,
-            progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ?
-            Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0,
-            // Atualiza o status se for a última etapa
-            status: isFinalStep ? 'Concluído' : props.processo.status
-          };
-
-          // Recarrega as etapas no modal para refletir a mudança
-          await carregarEtapas();
-          emit('atualizar-processo', processoAtualizado);
-          return;
-        }
-      }
-    }
-    // Se for o caso de conclusão, emite a atualização para o pai
+    // 2. Apenas notifica a tela principal para buscar os dados 100% atualizados do banco.
+    //    Não há mais cálculos ou "adivinhações" no frontend.
     emit('atualizar-processo');
-    // Recarrega as etapas no modal
+    
+    // 3. Recarrega a lista de etapas dentro do próprio modal para refletir a mudança.
     await carregarEtapas();
   } else {
     console.error("Erro ao avançar etapa:", error);
@@ -416,47 +392,22 @@ async function passarEtapa() {
 
 async function voltarEtapa() {
   if (!props.processo.id) return;
+
+  // 1. Chama a função RPC para voltar a etapa (o ideal é criar uma RPC segura para isso também)
   const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
+  
   if (error) {
     console.error('Erro ao voltar etapa:', error);
-    alert('Erro ao voltar etapa: ' + (error.message || error.details || 'Erro desconhecido'));
+    alert('Erro ao voltar etapa: ' + (error.message || 'Erro desconhecido'));
     return;
   }
-  // Buscar etapas atualizadas
-  const { data: etapasData, error: etapasError } = await buscarEtapasDoProcesso(props.processo.id);
-  if (etapasError) {
-    console.error('Erro ao buscar etapas após voltar:', etapasError);
-    alert('Erro ao buscar etapas: ' + (etapasError.message || etapasError.details || 'Erro desconhecido'));
-    return;
-  }
-  if (etapasData && etapasData.length > 0) {
-    const etapaAtualIdx = etapasData.findIndex(e => e.is_current);
-    if (etapaAtualIdx !== -1) {
-      const nomeEtapa = etapasData[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
-      await registrarEventoHistorico(props.processo.id, `Etapa devolvida para "${nomeEtapa}".`);
-    }
-  }
-  await carregarEtapas();
-
-  // Criar um objeto com as atualizações em vez de emitir apenas o evento
-  if (etapasData && etapasData.length > 0) {
-    const etapaAtualIdx = etapasData.findIndex(e => e.is_current);
-    if (etapaAtualIdx !== -1) {
-      const nomeEtapa = etapasData[etapaAtualIdx].step_templates?.name || 'etapa desconhecida';
-      const processoAtualizado = {
-        ...props.processo,
-        etapaAtualNome: nomeEtapa,
-        etapaAtual: etapaAtualIdx,
-        progresso: etapaAtualIdx > 0 && props.processo.totalEtapas > 1 ?
-          Math.round((etapaAtualIdx / (props.processo.totalEtapas - 1)) * 100) : 0
-      };
-      emit('atualizar-processo', processoAtualizado);
-      return;
-    }
-  }
+  
+  // 2. Após o sucesso, apenas notifica a tela principal para recarregar tudo do banco.
   emit('atualizar-processo');
+  
+  // 3. Recarrega as etapas no modal.
+  await carregarEtapas();
 }
-
 // Função para fechar o modal
 function fecharEtapas() {
   emit('close')

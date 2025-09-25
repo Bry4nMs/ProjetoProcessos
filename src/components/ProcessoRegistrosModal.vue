@@ -24,20 +24,45 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white/5 p-4 rounded-lg">
-        <div class="text-center">
-          <p class="text-sm text-slate-300">Valor Total Destinado</p>
-          <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado || 0) }}</p>
-        </div>
-        <div class="text-center">
-          <p class="text-sm text-slate-300">Valor Total Utilizado</p>
-          <p class="text-2xl font-bold text-red-400">{{ formatarMoeda(totalUtilizado) }}</p>
-        </div>
-        <div class="text-center">
-          <p class="text-semibold text-slate-300">Saldo Restante</p>
-          <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoRestante) }}</p>
-        </div>
+      <div class="mb-6 bg-white/5 p-4 rounded-lg">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+    
+    <div class="text-center">
+      <p class="text-sm text-slate-300">Valor Total Destinado</p>
+      <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado || 0) }}</p>
+    </div>
+    
+    <div class="text-center">
+      <p class="text-sm text-slate-300 mb-1">Valor Utilizado (Empenhado)</p>
+      <div class="flex items-center justify-center gap-2">
+        <input 
+          type="number"
+          step="0.01"
+          v-model.number="valorUtilizadoEditavel" 
+          class="w-32 bg-transparent text-2xl font-bold text-red-400 text-center border border-slate-700 rounded-md focus:ring-teal-500 focus:border-teal-500"
+        />
+        <button @click="confirmarAtualizacaoValorUtilizado" 
+                :disabled="isSubmitting"
+                class="p-2 bg-teal-600 rounded-md hover:bg-teal-500 transition disabled:opacity-50"
+                title="Salvar Valor Utilizado">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+        </button>
       </div>
+    </div>
+
+    <div class="text-center">
+      <p class="text-semibold text-slate-300">Saldo a Pagar</p>
+      <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoAPagar) }}</p>
+    </div>
+
+  </div>
+
+  <div class="pt-4 border-t border-slate-700 text-center">
+    <p class="text-semibold text-slate-300">Economicidade Gerada</p>
+    <p class="text-2xl font-bold text-cyan-400">{{ formatarMoeda(economicidadeGeradaProcesso) }}</p>
+  </div>
+
+</div>
 
       <div class="flex-1 overflow-y-auto pr-2">
         <div class="bg-white/5 p-4 rounded-lg mb-6">
@@ -156,7 +181,9 @@ interface ProcessoCompleto {
   valor_inicial_padrao?: number;
   valor_rendimentos?: number;
   valor_economicidade?: number;
-  // adicione outros campos do processo que precisar
+  valor_utilizado_processo?: number;
+  status?: string; // ✨ ADICIONE ESTA LINHA
+  etapaAtualNome?: string; // ✨ E ESTA LINHA
 }
 
 const props = defineProps<{
@@ -168,6 +195,7 @@ const showConfirmationModal = ref(false);
 const confirmationTitle = ref('');
 const confirmationMessage = ref('');
 const actionToConfirm = ref<(() => void) | null>(null);
+const valorUtilizadoEditavel = ref(0);
 
 const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes', 'switch-to-etapas']);
 
@@ -219,16 +247,71 @@ const newRecord = reactive({
 });
 
 // Computed Property para o Total
-const totalUtilizado = computed(() => {
+const totalPago = computed(() => {
   return records.value.reduce((sum, record) => sum + (record.amount_used || 0), 0);
 });
 
-const saldoRestante = computed(() =>{
-  const destinado = valorTotalDestinadoCalculado.value || 0;
-  const utilizado = totalUtilizado.value;
-  return destinado - utilizado
-})
 
+const saldoAPagar = computed(() => {
+  // O valor empenhado vem diretamente da prop, que é a fonte da verdade
+  const empenhado = props.processo.valor_utilizado_processo || 0;
+  // O total pago é a soma dos registros na tela
+  const pago = totalPago.value;
+  
+  return empenhado - pago;
+});
+
+// Adicione esta propriedade computada junto com as outras
+const economicidadeGeradaProcesso = computed(() => {
+  // A lista de etapas que permitem gerar economicidade
+  const etapasValidas = ['NOTA DE EMPENHO', 'CONTRATO', 'RECEBER BENS OU SERVIÇO', 'NOTA FISCAL', 'LIQUIDAR DEPESA'];
+  
+  // Verifica se o processo atende às condições
+  const podeGerarEconomicidade = 
+    props.processo.status === 'Concluído' || 
+    etapasValidas.includes(props.processo.etapaAtualNome?.toUpperCase());
+
+  // Se não pode gerar, a economicidade gerada por ele é ZERO.
+  if (!podeGerarEconomicidade) {
+    return 0;
+  }
+
+  // Se pode, então calculamos (Destinado - Utilizado)
+  const destinado = valorTotalDestinadoCalculado.value || 0;
+  const utilizado = props.processo.valor_utilizado_processo || 0;
+  
+  // A economicidade gerada nunca deve ser negativa
+  return Math.max(0, destinado - utilizado);
+});
+
+async function atualizarValorUtilizado() {
+  isSubmitting.value = true;
+  try {
+    // ✨ MUDANÇA: Chama a nova função RPC segura
+    const { error } = await supabase.rpc('atualizar_valor_empenhado', {
+      p_process_id: props.processo.id,
+      p_novo_valor_empenhado: valorUtilizadoEditavel.value
+    });
+    
+    if (error) throw error;
+    emit('atualizar-processo');
+
+  } catch (error: any) {
+    console.error('Erro ao atualizar valor utilizado:', error);
+    alert('Erro ao salvar o Valor Utilizado: ' + error.message);
+    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+watch(() => props.show, (newVal) => {
+  if (newVal) {
+    // Preenche o campo editável com o valor atual do processo
+    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
+    fetchRecords();
+  }
+}, { immediate: true });
 // Funções
 
 function onFileChange(event: Event){
@@ -342,6 +425,19 @@ function confirmarExclusaoRegistro(record: ProcessRecord) {
   actionToConfirm.value = () => executarExclusaoRegistro(record);
   showConfirmationModal.value = true;
 }
+
+function confirmarAtualizacaoValorUtilizado() {
+  // Monta a mensagem de confirmação
+  confirmationTitle.value = 'Confirmar Alteração';
+  confirmationMessage.value = `Tem certeza que deseja salvar o Valor Utilizado (Empenhado) como ${formatarMoeda(valorUtilizadoEditavel.value)}?`;
+  
+  // Guarda a função que deve ser executada se o usuário confirmar
+  actionToConfirm.value = () => atualizarValorUtilizado();
+  
+  // Mostra o modal de confirmação
+  showConfirmationModal.value = true;
+}
+
 
 // 2. Função que FAZ o trabalho de exclusão
 async function executarExclusaoRegistro(record: ProcessRecord) {
