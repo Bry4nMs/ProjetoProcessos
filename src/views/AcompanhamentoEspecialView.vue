@@ -312,48 +312,61 @@ async function carregarProcessos() {
     return;
   }
 
-  // A chamada para favoritos continua igual
+  // 1. Buscar favoritos do usuário
   const { data: favorites } = await supabase
     .from('user_favorites')
     .select('process_id')
     .eq('user_id', usuario.id);
   const favoriteIds = new Set((favorites || []).map(f => f.process_id));
 
-  // A CHAMADA ÚNICA PARA A FUNÇÃO RPC OTIMIZADA
-  const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
+  // 2. CHAMADA ÚNICA E OTIMIZADA para buscar todos os dados necessários
+  const { data, error } = await supabase
+    .from('processes')
+    .select(`
+      *, 
+      codigo_da_acao, 
+      responsible_forces (id, code), 
+      thematic_areas (id, code),
+      process_steps (
+        is_current,
+        step_templates (name)
+      )
+    `)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erro ao buscar processos com RPC:', error);
+    console.error('Erro ao buscar processos:', error);
     processos.value = [];
     loadingProcessos.value = false;
     return;
   }
 
   if (data) {
-    // Mapeamento simples e direto dos dados JÁ PROCESSADOS pelo backend
-    processos.value = data.map(proc => ({
+    // 3. Mapeamento dos dados já completos, sem necessidade de buscas extras
+    processos.value = data.map(proc => {
+      const etapaAtual = proc.process_steps.find(step => step.is_current);
+      const totalEtapas = proc.process_steps.length;
+      const etapaAtualIndex = etapaAtual ? proc.process_steps.findIndex(s => s.is_current) : -1;
+      
+      return {
         ...proc,
-        forca_code: proc.responsible_forces?.code || 'N/D',
-        area_code: proc.thematic_areas?.code || 'N/D',
-        // O progresso agora é calculado com base nos dados corretos do RPC
-        progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1
-            ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100)
-            : 0,
-        // Usamos o nome da etapa que JÁ VEIO do banco de dados!
-        etapaAtualNome: proc.current_step_name || 'Não definida',
-        status: proc.status || 'Em Andamento',
+        forca_code: proc.responsible_forces?.code || 'N/A',
+        area_code: proc.thematic_areas?.code || 'N/A',
+        etapaAtualNome: etapaAtual?.step_templates?.name || 'Não definida',
         is_favorited: favoriteIds.has(proc.id),
-    }));
+        // Lógica de progresso baseada nos dados já buscados
+        progresso: etapaAtualIndex >= 0 && totalEtapas > 1 
+          ? Math.round((etapaAtualIndex / (totalEtapas - 1)) * 100) 
+          : (proc.status === 'Concluído' ? 100 : 0),
+        etapaAtual: etapaAtualIndex,
+        totalEtapas: totalEtapas
+      };
+    });
   } else {
     processos.value = [];
   }
-
-  // ✨ O BLOCO Promise.all FOI COMPLETAMENTE REMOVIDO! ✨
-
   loadingProcessos.value = false;
-
-  // Adicionado para garantir que o modal seja aberto após o carregamento, se necessário
-  handleRouteChange(route.query);
 }
 
 // Em AcompanhamentoEspecialView.vue

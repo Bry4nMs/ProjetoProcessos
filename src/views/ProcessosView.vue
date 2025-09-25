@@ -374,8 +374,6 @@ async function fetchDashboardCounts() {
    processosCancelados.value = counts['Cancelado'] || 0;
 }
 
-
-
 async function carregarProcessos() {
   loadingProcessos.value = true;
   let usuario = user.value;
@@ -388,54 +386,64 @@ async function carregarProcessos() {
     return;
   }
 
-  // 1. Buscar favoritos do usuário (sem alterações)
+  // 1. Buscar favoritos do usuário
   const { data: favorites } = await supabase
     .from('user_favorites')
     .select('process_id')
     .eq('user_id', usuario.id);
   const favoriteIds = new Set((favorites || []).map(f => f.process_id));
 
-  // 2. CHAMADA RPC (sem alterações, assumindo que ela já retorna 'codigo_da_acao')
-  const { data, error } = await supabase.rpc('get_processes_with_progress', { p_user_id: usuario.id });
+  // 2. CHAMADA ÚNICA E OTIMIZADA para buscar todos os dados necessários
+  const { data, error } = await supabase
+    .from('processes')
+    .select(`
+      *, 
+      codigo_da_acao, 
+      responsible_forces (id, code), 
+      thematic_areas (id, code),
+      process_steps (
+        is_current,
+        step_templates (name)
+      )
+    `)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Erro ao buscar processos com RPC:', error);
+    console.error('Erro ao buscar processos:', error);
     processos.value = [];
     loadingProcessos.value = false;
     return;
   }
 
   if (data) {
-    // 3. Mapeamento dos dados
-    processos.value = data.map(proc => ({
-          ...proc, // << ISSO JÁ INCLUI O 'codigo_da_acao' AUTOMATICAMENTE
-      // O resto do seu mapeamento continua igual
-          forca_code: proc.responsible_forces?.code || '',
-          area_code: proc.thematic_areas?.code || '',
-          totalEtapas: proc.totalEtapas,
-          sei: proc.codigo_transferegov,
-          progresso: proc.etapaAtual > 0 && proc.totalEtapas > 1 ? Math.round((proc.etapaAtual / (proc.totalEtapas - 1)) * 100) : 0,
-          etapaAtualNome: proc.current_step_name || 'Não definida',
-          status: proc.status || 'Em Andamento',
-          is_favorited: favoriteIds.has(proc.id),
-    }));
-    
-    await Promise.all(processos.value.map(async (processo) => {
-      if (processo.id) {
-        const { data: etapas } = await buscarEtapasDoProcesso(processo.id);
-        if (etapas && etapas.length > 0) {
-          const etapaAtual = etapas.find(e => e.is_current);
-          if (etapaAtual) {
-            processo.etapaAtualNome = etapaAtual.step_templates?.name || 'Não definida';
-          }
-        }
-      }
-    }));
+    // 3. Mapeamento dos dados já completos, sem necessidade de buscas extras
+    processos.value = data.map(proc => {
+      const etapaAtual = proc.process_steps.find(step => step.is_current);
+      const totalEtapas = proc.process_steps.length;
+      const etapaAtualIndex = etapaAtual ? proc.process_steps.findIndex(s => s.is_current) : -1;
+      
+      return {
+        ...proc,
+        forca_code: proc.responsible_forces?.code || 'N/A',
+        area_code: proc.thematic_areas?.code || 'N/A',
+        etapaAtualNome: etapaAtual?.step_templates?.name || 'Não definida',
+        is_favorited: favoriteIds.has(proc.id),
+        // Lógica de progresso baseada nos dados já buscados
+        progresso: etapaAtualIndex >= 0 && totalEtapas > 1 
+          ? Math.round((etapaAtualIndex / (totalEtapas - 1)) * 100) 
+          : (proc.status === 'Concluído' ? 100 : 0),
+        etapaAtual: etapaAtualIndex,
+        totalEtapas: totalEtapas
+      };
+    });
   } else {
     processos.value = [];
   }
   loadingProcessos.value = false;
 }
+
+
 
 const { filtroForcaId, limparFiltros } = useDashboardFilters()
 

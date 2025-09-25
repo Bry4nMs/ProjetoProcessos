@@ -46,23 +46,24 @@ async function passarEtapa(e: Event) {
   e.stopPropagation();
   if (!props.processo.id) return;
 
-  const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
-
-  // 1. Chama a função no banco de dados para avançar a etapa
-  const { error } = await supabase.rpc('avancar_etapa', { processo_id: props.processo.id });
+  // 1. ✨ MUDANÇA PRINCIPAL: Chama a nova função RPC 'avancar_etapa_e_recalcular'
+  //    que já tem as permissões corretas (SECURITY DEFINER) e faz o recálculo.
+  const { error } = await supabase.rpc('avancar_etapa_e_recalcular', { 
+    p_processo_id: props.processo.id 
+  });
 
   if (!error) {
-    // 2. Registra o evento no histórico (isso está ótimo!)
-    const nomeEtapa = isFinalStep ? 'Processo Concluído.' : `Etapa avançada.`; // Mensagem simplificada
+    // 2. Registra o evento no histórico.
+    const isFinalStep = props.processo.etapaAtual === props.processo.totalEtapas - 1 && props.processo.totalEtapas > 0;
+    const nomeEtapa = isFinalStep ? 'Processo Concluído.' : `Etapa avançada.`;
     await registrarEventoHistorico(props.processo.id, nomeEtapa);
 
-    // 3. ✨ A MUDANÇA PRINCIPAL: Apenas notifica o pai que algo mudou.
-    // Não enviamos mais o objeto `processoAtualizado`.
-    // O pai vai acionar `carregarProcessos` e pegar o estado 100% correto do banco.
+    // 3. Apenas notifica a tela principal para buscar os dados 100% atualizados do banco.
     emit('atualizar-processo');
+    
   } else {
     console.error("Erro ao avançar a etapa:", error);
-    alert("Ocorreu um erro ao avançar a etapa."); // Informa o usuário do erro
+    alert("Ocorreu um erro ao avançar a etapa: " + error.message);
   }
 }
 

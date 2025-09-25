@@ -393,8 +393,10 @@ async function passarEtapa() {
 async function voltarEtapa() {
   if (!props.processo.id) return;
 
-  // 1. Chama a função RPC para voltar a etapa (o ideal é criar uma RPC segura para isso também)
-  const { error } = await supabase.rpc('devolver_etapa', { processo_id_param: props.processo.id });
+  // ✨ MUDANÇA: Chama a nova função RPC segura
+  const { error } = await supabase.rpc('devolver_etapa_e_recalcular', { 
+    p_processo_id: props.processo.id 
+  });
   
   if (error) {
     console.error('Erro ao voltar etapa:', error);
@@ -402,12 +404,13 @@ async function voltarEtapa() {
     return;
   }
   
-  // 2. Após o sucesso, apenas notifica a tela principal para recarregar tudo do banco.
+  // Após o sucesso, apenas notifica a tela principal para recarregar tudo do banco
   emit('atualizar-processo');
   
-  // 3. Recarrega as etapas no modal.
+  // E recarrega as etapas no modal
   await carregarEtapas();
 }
+
 // Função para fechar o modal
 function fecharEtapas() {
   emit('close')
