@@ -26,19 +26,30 @@
             <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado) }}</p>
           </div>
           <div class="text-center">
-            <p class="text-sm text-slate-300 mb-1">Valor Utilizado (Empenhado)</p>
-            <div class="flex items-center justify-center gap-2">
-              <input 
-                type="number"
-                step="0.01"
-                v-model.number="valorUtilizadoEditavel" 
-                class="w-32 bg-transparent text-2xl font-bold text-red-400 text-center border border-slate-700 rounded-md focus:ring-teal-500 focus:border-teal-500"
-              />
-              <button @click="confirmarAtualizacaoValorUtilizado" :disabled="isSubmitting" class="p-2 bg-teal-600 rounded-md hover:bg-teal-500 transition disabled:opacity-50" title="Salvar Valor Utilizado">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-              </button>
-            </div>
-          </div>
+  <p class="text-sm text-slate-300 mb-1">Valor Utilizado (Empenhado)</p>
+  
+  <div v-if="!isEditingEmpenhado" class="flex items-center justify-center gap-3 h-10">
+    <p class="text-2xl font-bold text-red-400">{{ formatarMoeda(props.processo.valor_utilizado_processo || 0) }}</p>
+    <button @click="iniciarEdicaoEmpenhado" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-teal-400 transition" title="Editar Valor Empenhado">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.5a2.121 2.121 0 113 3L7 19.5 3 21l1.5-4L16.5 3.5z" /></svg>
+    </button>
+  </div>
+
+  <div v-else class="flex items-center justify-center gap-2 h-10">
+    <input 
+      type="number"
+      step="0.01"
+      v-model.number="valorUtilizadoEditavel" 
+      class="w-32 bg-transparent text-2xl font-bold text-red-400 text-center border border-slate-700 rounded-md focus:ring-teal-500 focus:border-teal-500"
+    />
+    <button @click="confirmarAtualizacaoValorUtilizado" :disabled="isSubmitting" class="p-2 bg-teal-600 rounded-md hover:bg-teal-500 transition disabled:opacity-50" title="Salvar">
+      <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+    </button>
+    <button @click="cancelarEdicaoEmpenhado" class="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-red-400 transition" title="Cancelar">
+      <svg class='w-5 h-5' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>
+    </button>
+  </div>
+</div>
           <div class="text-center">
             <p class="text-sm text-slate-300">Saldo a Pagar</p>
             <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoAPagar) }}</p>
@@ -334,6 +345,19 @@ async function salvarRegistro() {
   }
 }
 
+const isEditingEmpenhado = ref(false);
+
+// Adicione estas novas funções de controle
+function iniciarEdicaoEmpenhado() {
+  // Copia o valor atual do processo para o campo de edição
+  valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
+  isEditingEmpenhado.value = true;
+}
+
+function cancelarEdicaoEmpenhado() {
+  isEditingEmpenhado.value = false;
+}
+
 function confirmarAtualizacaoValorUtilizado() {
   confirmationTitle.value = 'Confirmar Alteração de Valor';
   confirmationMessage.value = `Deseja salvar o Valor Utilizado (Empenhado) como ${formatarMoeda(valorUtilizadoEditavel.value)}?`;
@@ -350,11 +374,9 @@ async function atualizarValorUtilizado() {
     });
     if (error) throw error;
     emit('atualizar-processo');
+    isEditingEmpenhado.value = false; // <-- Adicione esta linha para sair do modo de edição
   } catch (err) {
-    const error = err as PostgrestError;
-    console.error('Erro ao atualizar valor empenhado:', error.message);
-    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0; // Reverte em caso de erro
-    // TODO: Implementar notificação de erro
+    // ... seu tratamento de erro
   } finally {
     isSubmitting.value = false;
   }
