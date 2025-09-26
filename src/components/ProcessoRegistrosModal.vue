@@ -1,18 +1,13 @@
 <template>
-  <div
-    v-if="show"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40"
-    @click.self="$emit('close')"
-  >
-    <div
-      class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] flex flex-col"
-    >
+  <div v-if="show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40" @click.self="$emit('close')">
+    <div class="bg-gradient-to-br from-slate-900/95 to-blue-900/95 backdrop-blur-md border border-white/20 text-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative max-h-[90vh] flex flex-col">
+      
       <div class="flex items-center gap-4 mb-4">
         <div class="flex bg-slate-800/50 rounded-lg p-1">
-          <button @click="trocarParaDetalhes" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
+          <button @click="trocarParaDetalhes" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
             Detalhes
           </button>
-          <button @click="trocarParaEtapas" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10">
+          <button @click="trocarParaEtapas" class="px-4 py-1.5 rounded-md font-medium text-slate-300 hover:text-white hover:bg-white/10 transition-colors">
             Etapas
           </button>
           <button class="px-4 py-1.5 rounded-md font-medium bg-gradient-to-r from-teal-600 to-cyan-500 text-white">
@@ -25,91 +20,79 @@
       </div>
 
       <div class="mb-6 bg-white/5 p-4 rounded-lg">
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-    
-    <div class="text-center">
-      <p class="text-sm text-slate-300">Valor Total Destinado</p>
-      <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado || 0) }}</p>
-    </div>
-    
-    <div class="text-center">
-      <p class="text-sm text-slate-300 mb-1">Valor Utilizado (Empenhado)</p>
-      <div class="flex items-center justify-center gap-2">
-        <input 
-          type="number"
-          step="0.01"
-          v-model.number="valorUtilizadoEditavel" 
-          class="w-32 bg-transparent text-2xl font-bold text-red-400 text-center border border-slate-700 rounded-md focus:ring-teal-500 focus:border-teal-500"
-        />
-        <button @click="confirmarAtualizacaoValorUtilizado" 
-                :disabled="isSubmitting"
-                class="p-2 bg-teal-600 rounded-md hover:bg-teal-500 transition disabled:opacity-50"
-                title="Salvar Valor Utilizado">
-          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
-        </button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div class="text-center">
+            <p class="text-sm text-slate-300">Valor Total Destinado</p>
+            <p class="text-2xl font-bold text-green-400">{{ formatarMoeda(valorTotalDestinadoCalculado) }}</p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-slate-300 mb-1">Valor Utilizado (Empenhado)</p>
+            <div class="flex items-center justify-center gap-2">
+              <input 
+                type="number"
+                step="0.01"
+                v-model.number="valorUtilizadoEditavel" 
+                class="w-32 bg-transparent text-2xl font-bold text-red-400 text-center border border-slate-700 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              />
+              <button @click="confirmarAtualizacaoValorUtilizado" :disabled="isSubmitting" class="p-2 bg-teal-600 rounded-md hover:bg-teal-500 transition disabled:opacity-50" title="Salvar Valor Utilizado">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+              </button>
+            </div>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-slate-300">Saldo a Pagar</p>
+            <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoAPagar) }}</p>
+          </div>
+        </div>
+        <div class="pt-4 border-t border-slate-700 text-center">
+          <p class="text-sm text-slate-300">Economicidade Gerada</p>
+          <p class="text-2xl font-bold text-cyan-400">{{ formatarMoeda(economicidadeGeradaProcesso) }}</p>
+        </div>
       </div>
-    </div>
 
-    <div class="text-center">
-      <p class="text-semibold text-slate-300">Saldo a Pagar</p>
-      <p class="text-2xl font-bold text-teal-400">{{ formatarMoeda(saldoAPagar) }}</p>
-    </div>
-
-  </div>
-
-  <div class="pt-4 border-t border-slate-700 text-center">
-    <p class="text-semibold text-slate-300">Economicidade Gerada</p>
-    <p class="text-2xl font-bold text-cyan-400">{{ formatarMoeda(economicidadeGeradaProcesso) }}</p>
-  </div>
-
-</div>
-
-      <div class="flex-1 overflow-y-auto pr-2">
+      <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar">
         <div class="bg-white/5 p-4 rounded-lg mb-6">
           <h3 class="font-semibold text-white mb-3">Adicionar Novo Registro de Gasto</h3>
           <form @submit.prevent="salvarRegistro" class="space-y-4">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Data de Solicitação</label>
-        <input v-model="newRecord.request_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Data de Aquisição</label>
-        <input v-model="newRecord.acquisition_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Valor Utilizado</label>
-        <input v-model.number="newRecord.amount_used" type="number" step="0.01" placeholder="R$ 0,00" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" required>
-      </div>
-    </div>
-    
-    <div>
-      <label class="block text-sm font-medium text-slate-300 mb-1">Descrição dos Itens/Serviços</label>
-      <textarea v-model="newRecord.description" rows="2" placeholder="Descreva o que foi adquirido..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"></textarea>
-    </div>
-
-    <div>
-      <label class="block text-sm font-medium text-slate-300 mb-1">Anexar Comprovante (Opcional)</label>
-      <div class="flex items-center gap-4 bg-white/10 border border-white/20 rounded-lg px-3 py-2">
-        <label for="record-file-input" class="px-3 py-1 bg-white/10 border border-white/20 rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-white/20 transition">
-          Escolher Arquivo
-        </label>
-        <input id="record-file-input" type="file" @change="onFileChange" class="hidden" />
-        <span class="text-sm text-slate-300 truncate">{{ newRecordFile?.name || 'Nenhum arquivo selecionado...' }}</span>
-      </div>
-    </div>
-
-    <div class="flex justify-end">
-      <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed">
-        {{ isSubmitting ? 'Salvando...' : 'Salvar Registro' }}
-      </button>
-    </div>
-  </form>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">Data de Solicitação</label>
+                <input v-model="newRecord.request_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">Data de Aquisição</label>
+                <input v-model="newRecord.acquisition_date" type="date" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white custom-date-input">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-300 mb-1">Valor Utilizado</label>
+                <input v-model.number="newRecord.amount_used" type="number" step="0.01" placeholder="R$ 0,00" class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white" required>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">Descrição dos Itens/Serviços</label>
+              <textarea v-model="newRecord.description" rows="2" placeholder="Descreva o que foi adquirido..." class="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-300 mb-1">Anexar Comprovante (Opcional)</label>
+              <div class="flex items-center gap-4 bg-white/10 border border-white/20 rounded-lg px-3 py-2">
+                <label for="record-file-input" class="px-3 py-1 bg-white/10 border border-white/20 rounded-md text-white text-sm font-semibold cursor-pointer hover:bg-white/20 transition">
+                  Escolher Arquivo
+                </label>
+                <input id="record-file-input" type="file" @change="onFileChange" class="hidden" />
+                <span class="text-sm text-slate-300 truncate">{{ newRecordFile?.name || 'Nenhum arquivo selecionado...' }}</span>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" :disabled="isSubmitting" class="px-5 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded-lg font-semibold shadow disabled:opacity-50 disabled:cursor-not-allowed">
+                {{ isSubmitting ? 'Salvando...' : 'Salvar Registro' }}
+              </button>
+            </div>
+          </form>
         </div>
 
         <div>
           <h3 class="font-semibold text-white mb-3">Registros Salvos</h3>
-          <div v-if="loadingRecords" class="text-center p-4">Carregando...</div>
+          <div v-if="loadingRecords" class="text-center p-4 text-slate-400">Carregando registros...</div>
           <div v-else-if="records.length === 0" class="text-center text-slate-400 p-4">Nenhum registro de gasto encontrado.</div>
           <div v-else class="space-y-3">
             <div v-for="record in records" :key="record.id" class="bg-white/5 p-3 rounded-lg flex items-center justify-between gap-4 group">
@@ -118,33 +101,25 @@
                 <div class="flex items-center gap-4 text-sm text-slate-300 mt-1">
                   <span>Solicitado: {{ formatarData(record.request_date) }}</span>
                   <span>Adquirido: {{ formatarData(record.acquisition_date) }}</span>
-                  <a
-                    v-if="record.file_url"
-                    :href="record.file_url"
-                    target="_blank"
-                    class="flex items-center gap-1 text-teal-400 hover:text-teal-300 hover:underline"
-                    title="Ver anexo"
-                  >
+                  <a v-if="record.file_url" :href="record.file_url" target="_blank" class="flex items-center gap-1 text-teal-400 hover:text-teal-300 hover:underline" title="Ver anexo">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                     Ver Comprovante
                   </a>
                 </div>
               </div>
-
-              <div class="flex items-center gap-4">
+              <div class="flex items-center gap-2">
                 <p class="text-lg font-bold text-teal-300 flex-shrink-0">{{ formatarMoeda(record.amount_used) }}</p>
-                <button
-                  @click="confirmarExclusaoRegistro(record)"
-                  class="p-2 border border-red-500/50 text-red-400 hover:bg-red-500/20 bg-transparent rounded font-semibold transition opacity-0 group-hover:opacity-100"
-                  title="Excluir Registro"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 18h6l3-18H3zM5 6h14M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m-6 6v6m4-6v6"></path></svg>
+                <button @click="confirmarExclusaoRegistro(record)" class="p-2 text-red-400 hover:bg-red-500/20 rounded-full transition opacity-0 group-hover:opacity-100" title="Excluir Registro">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </div> </div> <ConfirmationModal
+      </div>
+    </div>
+    
+    <ConfirmationModal
       :show="showConfirmationModal"
       :title="confirmationTitle"
       :message="confirmationMessage"
@@ -160,8 +135,9 @@ import { supabase } from '../services/supabase';
 import { useAuth } from '../composables/useAuth';
 import { useFormatters } from '../composables/useFormatters';
 import ConfirmationModal from './ConfirmationModal.vue';
+import type { PostgrestError } from '@supabase/supabase-js';
 
-
+// --- Interfaces e Tipos ---
 interface ProcessRecord {
   id: string;
   process_id: string;
@@ -169,12 +145,10 @@ interface ProcessRecord {
   acquisition_date: string | null;
   amount_used: number;
   description: string | null;
-  file_url?: string | null;      // Adicionado
-  filename?: string | null;      // Adicionado
-  storage_path?: string | null;  // Adicionado
+  file_url?: string | null;
+  storage_path?: string | null;
 }
 
-// Props e Emits
 interface ProcessoCompleto {
   id: string;
   valor_total_destinado?: number;
@@ -182,148 +156,43 @@ interface ProcessoCompleto {
   valor_rendimentos?: number;
   valor_economicidade?: number;
   valor_utilizado_processo?: number;
-  status?: string; // ✨ ADICIONE ESTA LINHA
-  etapaAtualNome?: string; // ✨ E ESTA LINHA
+  status?: string;
+  etapaAtualNome?: string;
 }
 
+// --- Props e Emits ---
 const props = defineProps<{
   show: boolean;
-  processo: ProcessoCompleto; // <<<<<< MUDANÇA AQUI
+  processo: ProcessoCompleto;
 }>();
-
-const showConfirmationModal = ref(false);
-const confirmationTitle = ref('');
-const confirmationMessage = ref('');
-const actionToConfirm = ref<(() => void) | null>(null);
-const valorUtilizadoEditavel = ref(0);
 
 const emit = defineEmits(['close', 'atualizar-processo', 'switch-to-detalhes', 'switch-to-etapas']);
 
-
-function onConfirmAction() {
-  if (actionToConfirm.value) {
-    actionToConfirm.value();
-  }
-  closeConfirmationModal();
-}
-
-function onCancelAction() {
-  closeConfirmationModal();
-}
-
-function closeConfirmationModal() {
-  showConfirmationModal.value = false;
-  actionToConfirm.value = null;
-}
-
-function fecharModal() {
-  emit('close');
-}
-
-function trocarParaEtapas() {
-  emit('switch-to-etapas');
-}
-
-function trocarParaDetalhes() {
-  emit('switch-to-detalhes');
-}
-
-
-// Serviços e Composables
+// --- Composables ---
 const { user } = useAuth();
 const { formatarValor: formatarMoeda, formatarData } = useFormatters();
 
-// Estado do Componente
+// --- Estado Reativo ---
 const records = ref<ProcessRecord[]>([]);
 const loadingRecords = ref(false);
 const isSubmitting = ref(false);
-const newRecordFile = ref<File | null>(null)
+const newRecordFile = ref<File | null>(null);
+const valorUtilizadoEditavel = ref(0);
 
 const newRecord = reactive({
   request_date: '',
   acquisition_date: '',
-  amount_used: null,
+  amount_used: null as number | null,
   description: '',
 });
 
-// Computed Property para o Total
-const totalPago = computed(() => {
-  return records.value.reduce((sum, record) => sum + (record.amount_used || 0), 0);
-});
+// --- Estado do Modal de Confirmação ---
+const showConfirmationModal = ref(false);
+const confirmationTitle = ref('');
+const confirmationMessage = ref('');
+const actionToConfirm = ref<(() => void) | null>(null);
 
-
-const saldoAPagar = computed(() => {
-  // O valor empenhado vem diretamente da prop, que é a fonte da verdade
-  const empenhado = props.processo.valor_utilizado_processo || 0;
-  // O total pago é a soma dos registros na tela
-  const pago = totalPago.value;
-  
-  return empenhado - pago;
-});
-
-// Adicione esta propriedade computada junto com as outras
-const economicidadeGeradaProcesso = computed(() => {
-  // A lista de etapas que permitem gerar economicidade
-  const etapasValidas = ['NOTA DE EMPENHO', 'CONTRATO', 'RECEBER BENS OU SERVIÇO', 'NOTA FISCAL', 'LIQUIDAR DEPESA'];
-  
-  // Verifica se o processo atende às condições
-  const podeGerarEconomicidade = 
-    props.processo.status === 'Concluído' || 
-    etapasValidas.includes(props.processo.etapaAtualNome?.toUpperCase());
-
-  // Se não pode gerar, a economicidade gerada por ele é ZERO.
-  if (!podeGerarEconomicidade) {
-    return 0;
-  }
-
-  // Se pode, então calculamos (Destinado - Utilizado)
-  const destinado = valorTotalDestinadoCalculado.value || 0;
-  const utilizado = props.processo.valor_utilizado_processo || 0;
-  
-  // A economicidade gerada nunca deve ser negativa
-  return Math.max(0, destinado - utilizado);
-});
-
-async function atualizarValorUtilizado() {
-  isSubmitting.value = true;
-  try {
-    // ✨ MUDANÇA: Chama a nova função RPC segura
-    const { error } = await supabase.rpc('atualizar_valor_empenhado', {
-      p_process_id: props.processo.id,
-      p_novo_valor_empenhado: valorUtilizadoEditavel.value
-    });
-    
-    if (error) throw error;
-    emit('atualizar-processo');
-
-  } catch (error: any) {
-    console.error('Erro ao atualizar valor utilizado:', error);
-    alert('Erro ao salvar o Valor Utilizado: ' + error.message);
-    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
-  } finally {
-    isSubmitting.value = false;
-  }
-}
-
-watch(() => props.show, (newVal) => {
-  if (newVal) {
-    // Preenche o campo editável com o valor atual do processo
-    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
-    fetchRecords();
-  }
-}, { immediate: true });
-// Funções
-
-function onFileChange(event: Event){
-  const target = event.target as HTMLInputElement;
-  if(target.files && target.files.length > 0){
-    newRecordFile.value = target.files[0]
-  } else{
-    newRecordFile.value = null
-  }
-}
-
-// Esta propriedade computada será a nossa "fonte da verdade" para o valor destinado
+// --- Propriedades Computadas (Lógica de Negócio) ---
 const valorTotalDestinadoCalculado = computed(() => {
   const inicial = Number(props.processo.valor_inicial_padrao) || 0;
   const rendimentos = Number(props.processo.valor_rendimentos) || 0;
@@ -331,8 +200,66 @@ const valorTotalDestinadoCalculado = computed(() => {
   return inicial + rendimentos + economicidade;
 });
 
+const totalPago = computed(() => {
+  return records.value.reduce((sum, record) => sum + (record.amount_used || 0), 0);
+});
+
+const saldoAPagar = computed(() => {
+  const empenhado = props.processo.valor_utilizado_processo || 0;
+  return empenhado - totalPago.value;
+});
+
+const economicidadeGeradaProcesso = computed(() => {
+  const etapasValidas = ['NOTA DE EMPENHO', 'CONTRATO', 'RECEBER BENS OU SERVIÇO', 'NOTA FISCAL', 'LIQUIDAR DEPESA'];
+  const podeGerarEconomicidade = props.processo.status === 'Concluído' || etapasValidas.includes(props.processo.etapaAtualNome?.toUpperCase() ?? '');
+
+  if (!podeGerarEconomicidade) {
+    return 0;
+  }
+
+  const destinado = valorTotalDestinadoCalculado.value;
+  const utilizado = props.processo.valor_utilizado_processo || 0;
+  return Math.max(0, destinado - utilizado);
+});
+
+// --- Funções de Navegação e UI ---
+const fecharModal = () => emit('close');
+const trocarParaEtapas = () => emit('switch-to-etapas');
+const trocarParaDetalhes = () => emit('switch-to-detalhes');
+
+const onFileChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  newRecordFile.value = target.files?.[0] || null;
+};
+
+const resetNewRecordForm = () => {
+    newRecord.request_date = '';
+    newRecord.acquisition_date = '';
+    newRecord.amount_used = null;
+    newRecord.description = '';
+    newRecordFile.value = null;
+    // Reseta o input de arquivo visualmente
+    const fileInput = document.getElementById('record-file-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+};
 
 
+// --- Lógica de Confirmação ---
+const onConfirmAction = () => {
+  actionToConfirm.value?.();
+  closeConfirmationModal();
+};
+
+const onCancelAction = () => {
+  closeConfirmationModal();
+};
+
+const closeConfirmationModal = () => {
+  showConfirmationModal.value = false;
+  actionToConfirm.value = null;
+};
+
+// --- Funções de Interação com a API (Supabase) ---
 
 async function fetchRecords() {
   if (!props.processo.id) return;
@@ -347,8 +274,9 @@ async function fetchRecords() {
     if (error) throw error;
     records.value = data || [];
   } catch (err) {
-    console.error('Erro ao buscar registros:', err);
-    alert('Não foi possível carregar os registros.');
+    const error = err as PostgrestError;
+    console.error('Erro ao buscar registros:', error.message);
+    // TODO: Implementar um sistema de notificação (toast) para o usuário
   } finally {
     loadingRecords.value = false;
   }
@@ -356,29 +284,24 @@ async function fetchRecords() {
 
 async function salvarRegistro() {
   if (!newRecord.amount_used) {
+    // TODO: Usar notificação de erro mais elegante
     alert('O campo "Valor Utilizado" é obrigatório.');
     return;
   }
   isSubmitting.value = true;
-
-  // Objeto para os dados do arquivo, já com os nomes corretos que a RPC espera
-  let fileParams = { 
-    p_file_url: null as string | null, 
-    p_filename: null as string | null, 
-    p_storage_path: null as string | null 
-  };
+  
+  let fileParams = { p_file_url: null as string | null, p_filename: null as string | null, p_storage_path: null as string | null };
 
   try {
     if (newRecordFile.value) {
       const file = newRecordFile.value;
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = `${props.processo.id}/records/${Date.now()}_${sanitizedFileName}`;
-
+      
       const { error: uploadError } = await supabase.storage.from('documents').upload(filePath, file);
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage.from('documents').getPublicUrl(filePath);
-      // Preenche o objeto com os nomes corretos
       fileParams = {
         p_file_url: urlData.publicUrl,
         p_filename: file.name,
@@ -386,8 +309,6 @@ async function salvarRegistro() {
       };
     }
 
-    // ✨ CORREÇÃO AQUI: Usa o objeto 'fileParams' espalhado ('...')
-    // que já contém os nomes de parâmetro corretos.
     const { error } = await supabase.rpc('gerenciar_registro_de_gasto', {
       p_operacao: 'INSERT',
       p_process_id: props.processo.id,
@@ -395,25 +316,45 @@ async function salvarRegistro() {
       p_acquisition_date: newRecord.acquisition_date || null,
       p_amount_used: newRecord.amount_used,
       p_description: newRecord.description,
-      ...fileParams // Espalha os parâmetros p_file_url, p_filename, etc.
+      ...fileParams
     });
 
     if (error) throw error;
 
-    // LIMPA O FORMULÁRIOS E RECARREGA A LISTA (sem alterações)
-    newRecord.request_date = '';
-    newRecord.acquisition_date = '';
-    newRecord.amount_used = null;
-    newRecord.description = '';
-    newRecordFile.value = null;
-
+    resetNewRecordForm();
     await fetchRecords();
     emit('atualizar-processo');
 
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error('Erro ao salvar registro:', error);
-    alert(`Não foi possível salvar o registro: ${error.message}`);
+  } catch (err) {
+    const error = err as Error | PostgrestError;
+    console.error('Erro ao salvar registro:', error.message);
+    // TODO: Implementar notificação de erro para o usuário
+  } finally {
+    isSubmitting.value = false;
+  }
+}
+
+function confirmarAtualizacaoValorUtilizado() {
+  confirmationTitle.value = 'Confirmar Alteração de Valor';
+  confirmationMessage.value = `Deseja salvar o Valor Utilizado (Empenhado) como ${formatarMoeda(valorUtilizadoEditavel.value)}?`;
+  actionToConfirm.value = atualizarValorUtilizado;
+  showConfirmationModal.value = true;
+}
+
+async function atualizarValorUtilizado() {
+  isSubmitting.value = true;
+  try {
+    const { error } = await supabase.rpc('atualizar_valor_empenhado', {
+      p_process_id: props.processo.id,
+      p_novo_valor_empenhado: valorUtilizadoEditavel.value
+    });
+    if (error) throw error;
+    emit('atualizar-processo');
+  } catch (err) {
+    const error = err as PostgrestError;
+    console.error('Erro ao atualizar valor empenhado:', error.message);
+    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0; // Reverte em caso de erro
+    // TODO: Implementar notificação de erro
   } finally {
     isSubmitting.value = false;
   }
@@ -421,64 +362,65 @@ async function salvarRegistro() {
 
 function confirmarExclusaoRegistro(record: ProcessRecord) {
   confirmationTitle.value = 'Confirmar Exclusão de Registro';
-  confirmationMessage.value = `Tem certeza que deseja excluir o registro de gasto "${record.description || 'sem descrição'}" no valor de ${formatarMoeda(record.amount_used)}? Esta ação não pode ser desfeita.`;
+  confirmationMessage.value = `Tem certeza que deseja excluir o registro "${record.description || 'sem descrição'}" no valor de ${formatarMoeda(record.amount_used)}? Esta ação não pode ser desfeita.`;
   actionToConfirm.value = () => executarExclusaoRegistro(record);
   showConfirmationModal.value = true;
 }
 
-function confirmarAtualizacaoValorUtilizado() {
-  // Monta a mensagem de confirmação
-  confirmationTitle.value = 'Confirmar Alteração';
-  confirmationMessage.value = `Tem certeza que deseja salvar o Valor Utilizado (Empenhado) como ${formatarMoeda(valorUtilizadoEditavel.value)}?`;
-  
-  // Guarda a função que deve ser executada se o usuário confirmar
-  actionToConfirm.value = () => atualizarValorUtilizado();
-  
-  // Mostra o modal de confirmação
-  showConfirmationModal.value = true;
-}
+// Em ProcessoRegistrosModal.vue
 
-
-// 2. Função que FAZ o trabalho de exclusão
 async function executarExclusaoRegistro(record: ProcessRecord) {
   isSubmitting.value = true;
   try {
-    // A exclusão do arquivo no storage continua sendo feita aqui no frontend
     if (record.storage_path) {
       await supabase.storage.from('documents').remove([record.storage_path]);
     }
-
-    // ✨ MUDANÇA PRINCIPAL: Chama a nova função RPC "mestra"
-    const { error } = await supabase.rpc('excluir_registro_e_recalcular', {
-      p_record_id: record.id,
-      p_process_id: record.process_id
+    
+    // ✨ MUDANÇA AQUI: Chame a nova função com os parâmetros corretos
+    const { error } = await supabase.rpc('excluir_registro_de_gasto', {
+      p_record_id: record.id
     });
 
     if (error) throw error;
     
-    // Se a chamada RPC foi bem-sucedida, atualizamos a tela
     await fetchRecords();
     emit('atualizar-processo');
-
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error('Erro ao excluir registro:', error);
-    alert(`Não foi possível excluir o registro: ${error.message}`);
+  } catch (err) {
+    //... seu tratamento de erro
   } finally {
     isSubmitting.value = false;
   }
 }
-// Watcher para carregar os dados quando o modal abrir
-watch(() => props.show, (newVal) => {
-  if (newVal) {
+
+// --- Watcher ---
+watch(() => props.show, (isVisible) => {
+  if (isVisible) {
+    valorUtilizadoEditavel.value = props.processo.valor_utilizado_processo || 0;
     fetchRecords();
   }
-});
+}, { immediate: true });
+
 </script>
 
 <style scoped>
-/* Estilo para o input de data ter o ícone de calendário branco */
 .custom-date-input::-webkit-calendar-picker-indicator {
   filter: invert(1);
+  cursor: pointer;
+}
+
+/* Scrollbar customizada para a área de conteúdo */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
