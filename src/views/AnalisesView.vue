@@ -573,14 +573,15 @@ async function fetchTempoMedioPorEtapa() {
   if (data) {
     for (const step of data) {
       // Calcula a duração em horas para cada etapa retornada
-      const diffHoras = step.accumulated_duration_seconds != null
-        ? Math.abs(step.accumulated_duration_seconds) / 3600
-        : Math.abs(new Date(step.ended_at).getTime() - new Date(step.started_at).getTime()) / 3600000;
+      for (const step of data) {
+  // Simplificado: confia 100% no valor calculado pelo backend
+  const diffHoras = (step.accumulated_duration_seconds || 0) / 3600;
 
-      const id = step.step_template_id;
-      if (!grupos[id]) grupos[id] = { total: 0, soma: 0 };
-      grupos[id].total++;
-      grupos[id].soma += diffHoras;
+  const id = step.step_template_id;
+  if (!grupos[id]) grupos[id] = { total: 0, soma: 0 };
+  grupos[id].total++;
+  grupos[id].soma += diffHoras;
+      }
     }
   }
 
