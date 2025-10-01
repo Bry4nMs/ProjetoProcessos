@@ -482,7 +482,13 @@ const filtroAnoEconomicidade = ref<number | string>('');
 const filtroForcaProjetos = ref<number | null>(null);
 const dadosValoresEspecificos = ref<Array<{ code: string; valor_inicial: number; valor_rendimentos: number; valor_economicidade: number }>>([]);
 const dadosDistribuicaoValores = ref<{ total_inicial: number; total_rendimentos: number; total_economicidade: number } | null>(null);
+const dadosProcessosCarregados = ref(false);
+const dadosFinanceiroResumoCarregados = ref(false);
+const dadosFinanceiroEconomicidadeCarregados = ref(false);
+const dadosFinanceiroProjetosCarregados = ref(false);
 
+// Timer para o Debounce do filtro de ano
+let debounceTimer: number | NodeJS.Timeout | undefined;
 
 // Adicione esta propriedade computada junto com as outras
 const tituloGraficoValorEspecifico = computed(() => {
@@ -573,15 +579,12 @@ async function fetchTempoMedioPorEtapa() {
   if (data) {
     for (const step of data) {
       // Calcula a duração em horas para cada etapa retornada
-      for (const step of data) {
-  // Simplificado: confia 100% no valor calculado pelo backend
-  const diffHoras = (step.accumulated_duration_seconds || 0) / 3600;
+      const diffHoras = (step.accumulated_duration_seconds || 0) / 3600;
 
   const id = step.step_template_id;
   if (!grupos[id]) grupos[id] = { total: 0, soma: 0 };
   grupos[id].total++;
   grupos[id].soma += diffHoras;
-      }
     }
   }
 
@@ -650,52 +653,84 @@ async function fetchDistribuicaoValores() {
 }
 
 
-async function carregarDadosDosGraficos() {
-  loading.value = true;
-  try {
-
-    if (forcasMem.value.length === 0) {
-        await fetchForcas();
-    }
-     // Agora, carregamos os dados específicos do painel ativo
-    if (painelAtivo.value === 'processos') {
-      // Carrega os dados para a aba de Análise de Processos
-      await Promise.all([
-        fetchProcessosPorForca(),
-        fetchTempoMedioPorEtapa(),
-      ]);
-    } 
-    else if (painelAtivo.value === 'financeiro') {
-      // Lógica específica para a aba de Análise Financeira
-      if (subPainelFinanceiroAtivo.value === 'resumo') {
-        // Carrega todos os dados para a visão de Resumo
+// Funções de carregamento específicas para cada painel/sub-painel
+async function carregarDadosPainelProcessos() {
+    loading.value = true;
+    try {
         await Promise.all([
-          fetchValoresPorOrgao(),
-          fetchGastosPorOrgao(),
-          fetchTotaisFinanceiros(),
-          fetchProcessosPorForca(), // Gráfico 'Qtd. de Processos' também está no resumo
+            fetchProcessosPorForca(),
+            fetchTempoMedioPorEtapa(),
         ]);
-      } else if (subPainelFinanceiroAtivo.value === 'economicidade') {
-        await fetchEconomicidadeDetalhada();
-      } else if (subPainelFinanceiroAtivo.value === 'projetos') {
-        // Carrega os dados para a visão de Projetos Detalhados
+        dadosProcessosCarregados.value = true; // Marca como carregado
+    } catch (e) { console.error("Erro ao carregar dados de processos:", e); }
+    finally { loading.value = false; }
+}
+
+async function carregarDadosPainelFinanceiroResumo() {
+    loading.value = true;
+    try {
+        await Promise.all([
+            fetchValoresPorOrgao(),
+            fetchGastosPorOrgao(),
+            fetchTotaisFinanceiros(),
+            fetchProcessosPorForca(),
+        ]);
+        dadosFinanceiroResumoCarregados.value = true; // Marca como carregado
+    } catch (e) { console.error("Erro ao carregar resumo financeiro:", e); }
+    finally { loading.value = false; }
+}
+
+async function carregarDadosPainelFinanceiroEconomicidade() {
+    await fetchEconomicidadeDetalhada();
+    dadosFinanceiroEconomicidadeCarregados.value = true; // Marca como carregado
+}
+
+async function carregarDadosPainelFinanceiroProjetos() {
+    loading.value = true;
+    try {
         await fetchDistribuicaoValores();
-      }
+        dadosFinanceiroProjetosCarregados.value = true; // Marca como carregado
+    } catch (e) { console.error("Erro ao carregar dados de projetos:", e); }
+    finally { loading.value = false; }
+}
+
+// Função principal que decide qual painel recarregar
+function recarregarDadosDoPainelAtual() {
+    if (painelAtivo.value === 'processos') {
+        carregarDadosPainelProcessos();
+    } else if (painelAtivo.value === 'financeiro') {
+        switch (subPainelFinanceiroAtivo.value) {
+            case 'resumo':
+                carregarDadosPainelFinanceiroResumo();
+                break;
+            case 'economicidade':
+                carregarDadosPainelFinanceiroEconomicidade();
+                break;
+            case 'projetos':
+                carregarDadosPainelFinanceiroProjetos();
+                break;
+        }
     }
-  } catch (error) {
-      console.error("Erro grave ao carregar dados dos gráficos:", error);
-  } finally {
-    loading.value = false;
-  }
 }
 
 function handleCardClick(card: 'resumo' | 'economicidade' | 'projetos') {
     subPainelFinanceiroAtivo.value = card;
 }
 
+// ✨ OTIMIZAÇÃO: Watch com Debounce para o filtro de ano
 watch(filtroAno, () => {
-  carregarDadosDosGraficos();
-})
+    clearTimeout(debounceTimer); // Cancela o timer anterior se o usuário clicar de novo
+    debounceTimer = setTimeout(() => {
+        // Zera as flags para forçar o recarregamento com os novos filtros
+        dadosProcessosCarregados.value = false;
+        dadosFinanceiroResumoCarregados.value = false;
+        dadosFinanceiroEconomicidadeCarregados.value = false;
+        dadosFinanceiroProjetosCarregados.value = false;
+        
+        // Recarrega apenas os dados do painel que está visível no momento
+        recarregarDadosDoPainelAtual();
+    }, 500); // Espera 500ms após a última mudança para executar
+});
 
 watch(filtroAnoEconomicidade, () => {
     if (painelAtivo.value === 'financeiro' && subPainelFinanceiroAtivo.value === 'economicidade') {
@@ -703,10 +738,15 @@ watch(filtroAnoEconomicidade, () => {
     }
 });
 
-watch(subPainelFinanceiroAtivo, (newValue) => {
-  if (painelAtivo.value === 'financeiro'){
-    carregarDadosDosGraficos();
-  }
+watch(subPainelFinanceiroAtivo, (novoSubPainel) => {
+    // Se o usuário foi para economicidade E os dados ainda não foram carregados...
+    if (novoSubPainel === 'economicidade' && !dadosFinanceiroEconomicidadeCarregados.value) {
+        carregarDadosPainelFinanceiroEconomicidade();
+    } 
+    // Se o usuário foi para projetos E os dados ainda não foram carregados...
+    else if (novoSubPainel === 'projetos' && !dadosFinanceiroProjetosCarregados.value) {
+        carregarDadosPainelFinanceiroProjetos();
+    }
 })
 
 watch(filtroForcaProjetos, () => {
@@ -715,9 +755,16 @@ watch(filtroForcaProjetos, () => {
     }
 });
 
-watch(painelAtivo, () => {
-  // Quando mudamos de aba principal, sempre recarregamos os dados
-  carregarDadosDosGraficos();
+watch(painelAtivo, (novoPainel) => {
+    // Se o usuário foi para o painel de processos E os dados ainda não foram carregados...
+    if (novoPainel === 'processos' && !dadosProcessosCarregados.value) {
+        carregarDadosPainelProcessos();
+    } 
+    // Se o usuário foi para o painel financeiro E o resumo ainda não foi carregado...
+    else if (novoPainel === 'financeiro' && !dadosFinanceiroResumoCarregados.value) {
+        // Carrega o resumo, que é a tela inicial do financeiro
+        carregarDadosPainelFinanceiroResumo();
+    }
 });
 
 async function fetchEconomicidadeDetalhada() {
@@ -1506,7 +1553,7 @@ onMounted(async () => {
   }
   // ✨ MUDANÇA AQUI: Chamamos apenas a função principal de carregamento.
   // Ela agora já cuida de buscar as forças se necessário.
-  await carregarDadosDosGraficos();
+  await carregarDadosPainelProcessos();
 });
 
 const dadosFinanceirosCombinados = computed(() => {
