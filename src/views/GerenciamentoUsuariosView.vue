@@ -27,6 +27,16 @@ interface UsuarioEdicao extends Usuario {
   setor_idAnterior: string
 }
 
+const modalCriacaoAberto = ref(false)
+const novoUsuario = ref({
+  email: '',
+  password: '',
+  nome: '',
+  setor_id: null,
+  role: 'User' // Papel padrão
+})
+const criandoUsuario = ref(false)
+
 const toast = useToast()
 const usuarios = ref<Usuario[]>([])
 const carregando = ref(true)
@@ -46,6 +56,55 @@ const opcoesStatus = [
   { valor: 'ativo', texto: 'Ativo' },
   { valor: 'inativo', texto: 'Inativo' }
 ]
+
+function abrirModalCriacao() {
+  // Reseta o formulário
+  novoUsuario.value = {
+    email: '',
+    password: '',
+    nome: '',
+    setor_id: null,
+    role: 'User'
+  }
+  modalCriacaoAberto.value = true
+}
+
+function fecharModalCriacao() {
+  modalCriacaoAberto.value = false
+}
+
+async function criarNovoUsuario() {
+  if (!novoUsuario.value.email || !novoUsuario.value.password || !novoUsuario.value.nome) {
+    toast.error('Preencha pelo menos Nome, Email e Senha.')
+    return
+  }
+
+  criandoUsuario.value = true
+  try {
+    // Chama a nova função segura do Supabase (vamos criá-la no Passo 3)
+    const { error } = await supabase.rpc('create_new_user', {
+      email: novoUsuario.value.email,
+      password: novoUsuario.value.password,
+      nome: novoUsuario.value.nome,
+      role: novoUsuario.value.role,
+      setor_id: novoUsuario.value.setor_id
+    })
+
+    if (error) throw error
+
+    toast.success(`Usuário ${novoUsuario.value.email} criado com sucesso!`)
+    fecharModalCriacao()
+    await buscarUsuarios() // Atualiza a lista da tabela
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    toast.error(`Erro ao criar usuário: ${errorMessage}`)
+    console.error('Erro ao criar usuário:', error)
+  } finally {
+    criandoUsuario.value = false
+  }
+}
+
 
 // Função para buscar todos os usuários (CORRIGIDA)
 async function buscarUsuarios() {
@@ -203,7 +262,20 @@ onMounted(() => {
 
 <template>
   <Layout>
-    <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-8">Gerenciamento de Usuários</h1>
+    <div class="flex justify-between items-center mb-8 w-full max-w-6xl">
+
+    <h1 class="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+      Gerenciamento de Usuários
+    </h1>
+  
+      <button 
+      @click="abrirModalCriacao" 
+        class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition"
+        >
+          Adicionar Novo Usuário
+      </button>
+
+    </div>
 
     <div v-if="carregando" class="flex flex-col items-center justify-center p-10 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-2xl">
       <div class="w-12 h-12 border-4 border-teal-400 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -362,6 +434,43 @@ onMounted(() => {
             :disabled="!houveAlteracoes"
           >
             Salvar Alterações
+          </button>
+        </div>
+      </div>
+    </Modal>
+    <Modal :show="modalCriacaoAberto" @close="fecharModalCriacao" title="Criar Novo Usuário">
+      <div class="space-y-4">
+        <div>
+          <label for="novo-nome" class="block text-sm font-medium text-slate-200 mb-1">Nome Completo</label>
+          <input type="text" id="novo-nome" v-model="novoUsuario.nome" class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Nome do novo usuário" />
+        </div>
+        <div>
+          <label for="novo-email" class="block text-sm font-medium text-slate-200 mb-1">Email</label>
+          <input type="email" id="novo-email" v-model="novoUsuario.email" class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="email@dominio.com" />
+        </div>
+        <div>
+          <label for="novo-senha" class="block text-sm font-medium text-slate-200 mb-1">Senha Inicial</label>
+          <input type="password" id="novo-senha" v-model="novoUsuario.password" class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400" placeholder="Senha forte" />
+          <small class="text-slate-400 text-xs">O usuário poderá alterar esta senha depois.</small>
+        </div>
+        <div>
+          <label for="novo-setor" class="block text-sm font-medium text-slate-200 mb-1">Setor</label>
+          <select id="novo-setor" v-model="novoUsuario.setor_id" class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400">
+            <option :value="null">Nenhum setor</option>
+            <option v-for="setor in setores" :key="setor.id" :value="setor.id">{{ setor.nome }}</option>
+          </select>
+        </div>
+        <div>
+          <label for="novo-role" class="block text-sm font-medium text-slate-200 mb-1">Papel (Role)</label>
+          <select id="novo-role" v-model="novoUsuario.role" class="w-full px-3 py-2 bg-slate-800/50 border border-white/20 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400">
+            <option v-for="opcao in opcoesRole" :key="opcao.valor" :value="opcao.valor">{{ opcao.texto }}</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end space-x-4 pt-4">
+          <button @click="fecharModalCriacao" class="px-4 py-2 bg-white/10 border border-white/20 text-slate-200 rounded font-medium hover:bg-white/20 transition">Cancelar</button>
+          <button @click="criarNovoUsuario" :disabled="criandoUsuario" class="px-4 py-2 bg-gradient-to-r from-teal-600 to-cyan-500 text-white rounded font-bold shadow hover:from-teal-700 hover:to-cyan-600 transition disabled:opacity-50">
+            {{ criandoUsuario ? 'Criando...' : 'Criar Usuário' }}
           </button>
         </div>
       </div>
