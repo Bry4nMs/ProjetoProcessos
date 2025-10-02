@@ -206,7 +206,7 @@
       </div>
       <div>
         <h2 class="text-lg font-semibold text-teal-300">Total em Projetos</h2>
-        <div class="text-3xl font-bold text-white tracking-tight">{{ formatarMoeda(totalProjetos) }}</div>
+        <div class="text-3xl font-bold text-white tracking-tight">{{ formatarMoeda(totalProjetosCorrigido) }}</div>
       </div>
     </div>
 
@@ -474,7 +474,6 @@ const dadosValoresPorOrgao = ref<Array<{ id: number; code: string; valor_total: 
 const { formatarData: formatarDataSimples, formatarValor: formatarMoeda } = useFormatters()
 const dadosGastosPorOrgao = ref<Array<{ id: number; code: string; total_gasto: number}>>([]);
 
-const totalProjetos = ref(0);
 const totalEconomicidade = ref(0);
 const dadosEconomicidadeDetalhada = ref<Array<{ thematic_area_code: string; tipo_despesa: string; total_economicidade: number }>>([]);
 const filtroAnoEconomicidade = ref<number | string>('');
@@ -614,11 +613,8 @@ async function fetchGastosPorOrgao() {
 }
 
 async function fetchTotaisFinanceiros() {
-
-
   try {
     const { data: economicidadeData, error: economicidadeError } = await supabase.rpc('get_saldo_liquido_economicidade', { p_anos: filtroAno.value });
-    const { data: projetosData, error: projetosError } = await supabase.rpc('get_totais_financeiros', { p_anos: filtroAno.value });
 
     if (economicidadeError) {
       console.error('Erro ao buscar saldo líquido de economicidade:', economicidadeError);
@@ -627,17 +623,11 @@ async function fetchTotaisFinanceiros() {
       totalEconomicidade.value = economicidadeData || 0;
     }
 
-    if (projetosError) {
-      console.error('Erro ao buscar total de projetos:', projetosError);
-      totalProjetos.value = 0;
-    } else {
-      if (projetosData && projetosData.length > 0) {
-        totalProjetos.value = projetosData[0].total_projetos || 0;
-      }
-    }
+    // A parte que buscava 'get_totais_financeiros' e preenchia 'totalProjetos' foi removida.
+
   } catch (error) {
     console.error('Erro geral ao buscar totais financeiros:', error);
-    totalProjetos.value = 0;
+    // Apenas a 'economicidade' precisa ser zerada aqui em caso de erro geral
     totalEconomicidade.value = 0;
   }
 }
@@ -921,6 +911,11 @@ const chartOptionsEtapa = {
     },
   },
 };
+
+const totalProjetosCorrigido = computed(() => {
+  // A função 'reduce' soma todos os 'valor_total' de cada órgão na lista
+  return dadosValoresPorOrgao.value.reduce((total, orgao) => total + (orgao.valor_total || 0), 0);
+});
 
 const chartDataValores = computed(() => ({
   labels: dadosFinanceirosCombinados.value.map((d) => d.code),

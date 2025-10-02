@@ -108,7 +108,6 @@ var totalProcessosGrafico = computed(function () { return dadosProcessosPorForca
 var dadosValoresPorOrgao = ref([]);
 var _b = useFormatters(), formatarDataSimples = _b.formatarData, formatarMoeda = _b.formatarValor;
 var dadosGastosPorOrgao = ref([]);
-var totalProjetos = ref(0);
 var totalEconomicidade = ref(0);
 var dadosEconomicidadeDetalhada = ref([]);
 var filtroAnoEconomicidade = ref('');
@@ -299,17 +298,14 @@ function fetchGastosPorOrgao() {
 }
 function fetchTotaisFinanceiros() {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, economicidadeData, economicidadeError, _b, projetosData, projetosError, error_1;
-        return __generator(this, function (_c) {
-            switch (_c.label) {
+        var _a, economicidadeData, economicidadeError, error_1;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0:
-                    _c.trys.push([0, 3, , 4]);
+                    _b.trys.push([0, 2, , 3]);
                     return [4 /*yield*/, supabase.rpc('get_saldo_liquido_economicidade', { p_anos: filtroAno.value })];
                 case 1:
-                    _a = _c.sent(), economicidadeData = _a.data, economicidadeError = _a.error;
-                    return [4 /*yield*/, supabase.rpc('get_totais_financeiros', { p_anos: filtroAno.value })];
-                case 2:
-                    _b = _c.sent(), projetosData = _b.data, projetosError = _b.error;
+                    _a = _b.sent(), economicidadeData = _a.data, economicidadeError = _a.error;
                     if (economicidadeError) {
                         console.error('Erro ao buscar saldo líquido de economicidade:', economicidadeError);
                         totalEconomicidade.value = 0;
@@ -317,23 +313,14 @@ function fetchTotaisFinanceiros() {
                     else {
                         totalEconomicidade.value = economicidadeData || 0;
                     }
-                    if (projetosError) {
-                        console.error('Erro ao buscar total de projetos:', projetosError);
-                        totalProjetos.value = 0;
-                    }
-                    else {
-                        if (projetosData && projetosData.length > 0) {
-                            totalProjetos.value = projetosData[0].total_projetos || 0;
-                        }
-                    }
-                    return [3 /*break*/, 4];
-                case 3:
-                    error_1 = _c.sent();
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_1 = _b.sent();
                     console.error('Erro geral ao buscar totais financeiros:', error_1);
-                    totalProjetos.value = 0;
+                    // Apenas a 'economicidade' precisa ser zerada aqui em caso de erro geral
                     totalEconomicidade.value = 0;
-                    return [3 /*break*/, 4];
-                case 4: return [2 /*return*/];
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
             }
         });
     });
@@ -684,6 +671,10 @@ var chartOptionsEtapa = {
         },
     },
 };
+var totalProjetosCorrigido = computed(function () {
+    // A função 'reduce' soma todos os 'valor_total' de cada órgão na lista
+    return dadosValoresPorOrgao.value.reduce(function (total, orgao) { return total + (orgao.valor_total || 0); }, 0);
+});
 var chartDataValores = computed(function () { return ({
     labels: dadosFinanceirosCombinados.value.map(function (d) { return d.code; }),
     datasets: [
@@ -1764,7 +1755,7 @@ else if (__VLS_ctx.painelAtivo === 'financeiro') {
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)({});
         __VLS_asFunctionalElement(__VLS_intrinsicElements.h2, __VLS_intrinsicElements.h2)(__assign({ class: "text-lg font-semibold text-teal-300" }));
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)(__assign({ class: "text-3xl font-bold text-white tracking-tight" }));
-        (__VLS_ctx.formatarMoeda(__VLS_ctx.totalProjetos));
+        (__VLS_ctx.formatarMoeda(__VLS_ctx.totalProjetosCorrigido));
         __VLS_asFunctionalElement(__VLS_intrinsicElements.div, __VLS_intrinsicElements.div)(__assign({ onClick: function () {
                 var _a = [];
                 for (var _i = 0; _i < arguments.length; _i++) {
@@ -2861,7 +2852,6 @@ var __VLS_self = (await import('vue')).defineComponent({
             dadosValoresPorOrgao: dadosValoresPorOrgao,
             formatarDataSimples: formatarDataSimples,
             formatarMoeda: formatarMoeda,
-            totalProjetos: totalProjetos,
             totalEconomicidade: totalEconomicidade,
             dadosEconomicidadeDetalhada: dadosEconomicidadeDetalhada,
             filtroAnoEconomicidade: filtroAnoEconomicidade,
@@ -2872,6 +2862,7 @@ var __VLS_self = (await import('vue')).defineComponent({
             handleCardClick: handleCardClick,
             chartDataEtapa: chartDataEtapa,
             chartOptionsEtapa: chartOptionsEtapa,
+            totalProjetosCorrigido: totalProjetosCorrigido,
             chartDataValores: chartDataValores,
             chartOptionsValores: chartOptionsValores,
             chartDataRankingPagamento: chartDataRankingPagamento,
